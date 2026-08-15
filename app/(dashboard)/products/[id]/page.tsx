@@ -9,8 +9,8 @@ export default function ProductDetailPage({ params }: { params: { id: string } }
   if (!product) notFound();
 
   const totalStock = product.variants.reduce((s, v) => s + v.stock, 0);
-  const colors = [...new Set(product.variants.map((v) => v.color))];
-  const sizes  = [...new Set(product.variants.map((v) => v.size))].sort();
+  const colors = Array.from(new Set(product.variants.map((v) => v.color)));
+  const sizes  = Array.from(new Set(product.variants.map((v) => v.size))).sort();
   const profitPerUnit = product.sellingPrice - product.costPrice;
   const margin = Math.round((profitPerUnit / product.sellingPrice) * 100);
 

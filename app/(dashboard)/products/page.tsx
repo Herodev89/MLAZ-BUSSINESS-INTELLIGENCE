@@ -21,7 +21,7 @@ export default function ProductsPage() {
     if (res.success) setProductList(res.products);
   };
 
-  const [selectedProduct, setSelectedProduct] = useState<Product | null>(null);
+  const [selectedProduct, setSelectedProduct] = useState<any | null>(null);
   const [modalType, setModalType] = useState<"view" | "edit" | null>(null);
   const [editForm, setEditForm] = useState<{ name: string; sku: string; category: string; basePrice: number; imageUrl: string; variants: any[] }>({
     name: "", sku: "", category: "Shea Butter", basePrice: 0, imageUrl: "", variants: []

@@ -130,7 +130,7 @@ export default function OrdersPage() {
               <hr style={{ borderColor: "var(--color-border)", margin: "8px 0" }} />
               <div><strong>Items Purchased:</strong></div>
               <ul style={{ paddingLeft: 20 }}>
-                {selectedOrder.items.map((it, idx) => (
+                {selectedOrder.items.map((it: any, idx: number) => (
                   <li key={idx}>{it.productName} ({it.variantName}) x {it.quantity} - {formatNaira(it.unitPrice * it.quantity)}</li>
                 ))}
               </ul>

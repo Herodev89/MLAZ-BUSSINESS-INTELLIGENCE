@@ -136,7 +136,7 @@ export default function Sidebar({ onClose }: SidebarProps) {
       <nav style={{ flex: 1, padding: "8px 0 16px" }}>
         {navItems.map((item, index) => {
           // Check role permission
-          if (user && !item.roles.includes(user.role)) return null;
+          if (user && !item.roles.includes(user.role as any)) return null;
 
           // Section label
           if ("type" in item && item.type === "section") {
