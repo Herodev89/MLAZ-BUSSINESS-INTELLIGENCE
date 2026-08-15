@@ -28,7 +28,7 @@ export default function SaleDetailPage({ params }: { params: { id: string } }) {
         </div>
       </div>
 
-      <div style={{ display: "grid", gridTemplateColumns: "1fr 340px", gap: 20 }}>
+      <div className="grid grid-cols-1 lg:grid-cols-[1fr_340px] gap-5 items-start">
         {/* Main Details */}
         <div className="card">
           <div className="card-header"><div style={{ fontWeight: 700, fontSize: "14px" }}>Transaction Breakdown</div></div>

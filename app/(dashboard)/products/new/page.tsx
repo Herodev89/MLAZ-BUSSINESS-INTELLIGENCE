@@ -48,7 +48,7 @@ export default function NewProductPage() {
         </div>
       </div>
 
-      <div style={{ display: "grid", gridTemplateColumns: "1fr 340px", gap: 20, alignItems: "start" }}>
+      <div className="grid grid-cols-1 lg:grid-cols-[1fr_340px] gap-5 items-start">
         {/* Main Form */}
         <div style={{ display: "flex", flexDirection: "column", gap: 20 }}>
           {/* Basic Info */}
@@ -57,7 +57,7 @@ export default function NewProductPage() {
               <div style={{ fontWeight: 700, fontSize: "14px" }}>Basic Information</div>
             </div>
             <div className="card-body" style={{ display: "flex", flexDirection: "column", gap: 16 }}>
-              <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 16 }}>
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div>
                   <label className="label" htmlFor="product-name">Product Name *</label>
                   <input id="product-name" className="input" placeholder="e.g. Classic Pams" value={form.name} onChange={(e) => update("name", e.target.value)} />
@@ -67,7 +67,7 @@ export default function NewProductPage() {
                   <input id="product-sku" className="input" placeholder="e.g. MLZ-CP-001" value={form.sku} onChange={(e) => update("sku", e.target.value)} />
                 </div>
               </div>
-              <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 16 }}>
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div>
                   <label className="label" htmlFor="product-category">Category *</label>
                   <select id="product-category" className="select" value={form.category} onChange={(e) => update("category", e.target.value)}>
@@ -104,7 +104,7 @@ export default function NewProductPage() {
             <div className="card-header">
               <div style={{ fontWeight: 700, fontSize: "14px" }}>Pricing</div>
             </div>
-            <div className="card-body" style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: 16 }}>
+            <div className="card-body grid grid-cols-1 md:grid-cols-3 gap-4">
               <div>
                 <label className="label" htmlFor="cost-price">Cost Price (₦) *</label>
                 <input id="cost-price" type="number" className="input" placeholder="0" value={form.costPrice} onChange={(e) => update("costPrice", e.target.value)} />

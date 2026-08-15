@@ -211,7 +211,7 @@
     background: var(--color-surface);
   }
   .page-container {
-    @apply p-6 max-w-[1440px];
+    @apply p-4 md:p-6 max-w-[1440px];
   }
 
   /* ── Cards ── */
@@ -219,10 +219,10 @@
     @apply bg-white rounded-xl border border-border shadow-card;
   }
   .card-header {
-    @apply px-6 py-4 border-b border-border;
+    @apply px-4 py-3 md:px-6 md:py-4 border-b border-border;
   }
   .card-body {
-    @apply px-6 py-4;
+    @apply px-4 py-3 md:px-6 md:py-4;
   }
 
   /* ── Buttons ── */

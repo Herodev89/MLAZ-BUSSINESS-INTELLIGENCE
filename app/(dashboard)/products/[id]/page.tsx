@@ -37,7 +37,7 @@ export default function ProductDetailPage({ params }: { params: { id: string } }
         </div>
       </div>
 
-      <div style={{ display: "grid", gridTemplateColumns: "1fr 320px", gap: 20, alignItems: "start" }}>
+      <div className="grid grid-cols-1 lg:grid-cols-[1fr_320px] gap-5 items-start">
         {/* Left */}
         <div style={{ display: "flex", flexDirection: "column", gap: 20 }}>
           {/* Product Info Card */}
@@ -46,7 +46,7 @@ export default function ProductDetailPage({ params }: { params: { id: string } }
               <div style={{ fontWeight: 700, fontSize: "14px" }}>Product Details</div>
             </div>
             <div className="card-body">
-              <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 16 }}>
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 {[
                   { label: "Brand", value: product.brand },
                   { label: "Material", value: product.material },

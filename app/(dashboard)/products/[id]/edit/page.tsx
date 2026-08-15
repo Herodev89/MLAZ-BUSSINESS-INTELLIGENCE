@@ -29,17 +29,17 @@ export default function EditProductPage({ params }: { params: { id: string } }) 
         </div>
       </div>
 
-      <div style={{ display: "grid", gridTemplateColumns: "1fr 340px", gap: 20, alignItems: "start" }}>
+      <div className="grid grid-cols-1 lg:grid-cols-[1fr_340px] gap-5 items-start">
         {/* Main Form (Similar to Add Product) */}
         <div style={{ display: "flex", flexDirection: "column", gap: 20 }}>
           <div className="card">
             <div className="card-header"><div style={{ fontWeight: 700, fontSize: "14px" }}>Basic Information</div></div>
             <div className="card-body" style={{ display: "flex", flexDirection: "column", gap: 16 }}>
-              <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 16 }}>
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div><label className="label">Product Name *</label><input className="input" value={form.name} onChange={(e) => update("name", e.target.value)} /></div>
                 <div><label className="label">SKU *</label><input className="input" value={form.sku} onChange={(e) => update("sku", e.target.value)} /></div>
               </div>
-              <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 16 }}>
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div>
                   <label className="label">Category *</label>
                   <select className="select" value={form.category} onChange={(e) => update("category", e.target.value)}>
@@ -54,7 +54,7 @@ export default function EditProductPage({ params }: { params: { id: string } }) 
           </div>
           <div className="card">
             <div className="card-header"><div style={{ fontWeight: 700, fontSize: "14px" }}>Pricing</div></div>
-            <div className="card-body" style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: 16 }}>
+            <div className="card-body grid grid-cols-1 md:grid-cols-3 gap-4">
               <div><label className="label">Cost Price (₦) *</label><input type="number" className="input" value={form.costPrice} onChange={(e) => update("costPrice", e.target.value)} /></div>
               <div><label className="label">Selling Price (₦) *</label><input type="number" className="input" value={form.sellingPrice} onChange={(e) => update("sellingPrice", e.target.value)} /></div>
               <div><label className="label">Reorder Level</label><input type="number" className="input" value={form.reorderLevel} onChange={(e) => update("reorderLevel", e.target.value)} /></div>

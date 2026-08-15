@@ -49,7 +49,7 @@ export default function AdjustStockPage() {
               </div>
             )}
 
-            <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 16 }}>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <div>
                 <label className="label">Adjustment Type *</label>
                 <select className="select" value={form.type} onChange={e => setForm({...form, type: e.target.value})}>

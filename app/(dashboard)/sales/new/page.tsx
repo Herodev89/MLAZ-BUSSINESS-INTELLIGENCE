@@ -174,7 +174,7 @@ export default function RecordSalePage() {
         </div>
       </div>
 
-      <div style={{ display: "grid", gridTemplateColumns: "1fr 360px", gap: 20, alignItems: "start" }}>
+      <div className="grid grid-cols-1 lg:grid-cols-[1fr_360px] gap-5 items-start">
         {/* Form */}
         <div style={{ display: "flex", flexDirection: "column", gap: 20 }}>
           <div className="card">
@@ -197,7 +197,7 @@ export default function RecordSalePage() {
               
 
 
-              <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 16 }}>
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div>
                   <label className="label">Quantity *</label>
                   <input type="number" className="input" min={1} value={form.quantity} onChange={(e) => setForm({ ...form, quantity: Number(e.target.value) })} />
@@ -220,7 +220,7 @@ export default function RecordSalePage() {
                   {customers.map((c) => <option key={c.id} value={c.id}>{c.name} ({c.phone})</option>)}
                 </select>
               </div>
-              <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 16 }}>
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div>
                   <label className="label">Payment Method *</label>
                   <select className="select" value={form.paymentMethod} onChange={(e) => setForm({ ...form, paymentMethod: e.target.value })}>

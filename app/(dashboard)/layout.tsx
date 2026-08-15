@@ -26,7 +26,7 @@ export default function DashboardLayout({
       />
 
       {/* ── Main Area ── */}
-      <div className="main-content" style={{ flex: 1 }}>
+      <div className="main-content" style={{ flex: 1, minWidth: 0 }}>
         <TopNav onMenuClick={() => setDrawerOpen(true)} />
         <main className="page-container">
           {children}
