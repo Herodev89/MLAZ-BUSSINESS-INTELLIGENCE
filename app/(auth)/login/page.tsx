@@ -170,15 +170,8 @@ export default function LoginPage() {
 
       {/* ── Right Panel — Login Form ── */}
       <div
-        style={{
-          width: "100%",
-          maxWidth: 480,
-          display: "flex",
-          flexDirection: "column",
-          justifyContent: "center",
-          padding: "48px 40px",
-          background: "var(--color-surface)",
-        }}
+        className="w-full max-w-[480px] flex flex-col justify-center p-6 sm:p-10 lg:p-12 mx-auto lg:mx-0"
+        style={{ background: "var(--color-surface)" }}
       >
         {/* Mobile logo */}
         <div className="lg:hidden" style={{ marginBottom: 32, display: "flex", alignItems: "center", gap: 12 }}>
