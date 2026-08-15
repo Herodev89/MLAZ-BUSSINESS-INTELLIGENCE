@@ -120,7 +120,7 @@ export default async function DashboardPage() {
           value={stats.totalProfit}
           isCurrency
           compact
-          change={"+0%"}
+          change={0}
           changePeriod={"vs last month"}
           icon={TrendingUp}
           accentColor="var(--color-success)"
@@ -129,7 +129,7 @@ export default async function DashboardPage() {
           id="kpi-sales"
           title="Total Sales"
           value={stats.totalSales}
-          change={"+0%"}
+          change={0}
           changePeriod={"vs last month"}
           icon={ShoppingBag}
           accentColor="#1E5F8A"
@@ -138,7 +138,7 @@ export default async function DashboardPage() {
           id="kpi-pairs"
           title="Pairs Sold"
           value={stats.pairsSold}
-          change={"+0%"}
+          change={0}
           changePeriod={"vs last month"}
           icon={Package}
           accentColor="var(--color-brand-light)"
@@ -149,7 +149,7 @@ export default async function DashboardPage() {
           value={stats.inventoryValue}
           isCurrency
           compact
-          change={"+0%"}
+          change={0}
           changePeriod={"vs last month"}
           icon={BarChart3}
           accentColor="var(--color-accent)"
