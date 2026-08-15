@@ -52,15 +52,11 @@ export default function LoginPage() {
         style={{
           flex: 1,
           background: "linear-gradient(145deg, #1E0C04 0%, #3D1F0E 45%, #2A1208 100%)",
-          display: "flex",
-          flexDirection: "column",
-          justifyContent: "center",
-          alignItems: "center",
           padding: "48px",
           position: "relative",
           overflow: "hidden",
         }}
-        className="hidden lg:flex"
+        className="hidden lg:flex flex-col justify-center items-center"
       >
         {/* Decorative gold ring */}
         <div
