@@ -6,7 +6,7 @@ import { ArrowLeft, CheckCircle2 } from "lucide-react";
 import { formatNaira } from "@/lib/utils";
 import { getProductsAction } from "@/lib/actions/products";
 import { getCustomersAction } from "@/lib/actions/customers";
-import { createSaleAction } from "@/lib/actions/pos";
+import { createSaleAction } from "@/lib/actions/sales";
 import { useRouter } from "next/navigation";
 
 export default function RecordSalePage() {
