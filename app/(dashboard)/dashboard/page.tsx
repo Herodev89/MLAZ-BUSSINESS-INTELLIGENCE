@@ -109,7 +109,7 @@ export default async function DashboardPage() {
           value={stats.totalRevenue}
           isCurrency
           compact
-          change={"+0%"}
+          change={0}
           changePeriod={"vs last month"}
           icon={DollarSign}
           accentColor="var(--color-accent)"

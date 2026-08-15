@@ -1,8 +1,9 @@
-import db from './lib/db';
+import db, { initDb } from './lib/db';
 import bcrypt from 'bcryptjs';
 import { randomUUID } from 'crypto';
 
 async function seed() {
+  await initDb();
   await db.executeMultiple(`
     DELETE FROM SaleItem;
     DELETE FROM Sale;
