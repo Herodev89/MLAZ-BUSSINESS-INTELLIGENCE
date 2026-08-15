@@ -1,0 +1,62 @@
+"use server";
+
+import db from "@/lib/db";
+import { randomUUID } from "crypto";
+
+export async function getProductsAction() {
+  try {
+    const products = await db.prepare('SELECT * FROM Product ORDER BY name ASC').all() as any[];
+    const variants = await db.prepare('SELECT * FROM ProductVariant').all() as any[];
+    
+    // Attach variants to products
+    const productsWithVariants = products.map(p => {
+      const pVariants = variants.filter(v => v.productId === p.id);
+      // Compute total stock and base price for the parent product based on variants
+      const totalStock = pVariants.reduce((sum, v) => sum + v.stock, 0);
+      const basePrice = pVariants.length > 0 ? pVariants[0].price : 0;
+      return { ...p, variants: pVariants, stock: totalStock, price: basePrice };
+    });
+
+    return { success: true, products: productsWithVariants };
+  } catch (error) {
+    return { error: "Failed to fetch products" };
+  }
+}
+
+export async function createProductAction(formData: FormData) {
+  const name = formData.get("name")?.toString();
+  const variantsJson = formData.get("variants")?.toString() || "[]";
+  
+  if (!name) {
+    return { error: "Name is required" };
+  }
+
+  let variants = [];
+  try {
+    variants = JSON.parse(variantsJson);
+  } catch {
+    return { error: "Invalid variants data" };
+  }
+
+  const productId = randomUUID();
+
+  try {
+    await db.prepare('INSERT INTO Product (id, name) VALUES (?, ?)').run(productId, name);
+    const insertVariant = await db.prepare('INSERT INTO ProductVariant (id, productId, size, color, price, stock, sku) VALUES (?, ?, ?, ?, ?, ?, ?)');
+    for (const v of variants) {
+      await insertVariant.run(randomUUID(), productId, v.size || '', v.color || '', parseFloat(v.price) || 0, parseInt(v.stock) || 0, v.sku || '');
+    }
+    return { success: true, productId };
+  } catch (error) {
+    return { error: "Failed to create product" };
+  }
+}
+
+export async function deleteProductAction(id: string) {
+  try {
+    await db.prepare('DELETE FROM Product WHERE id = ?').run(id);
+    return { success: true };
+  } catch (error) {
+    return { error: "Failed to delete product" };
+  }
+}
