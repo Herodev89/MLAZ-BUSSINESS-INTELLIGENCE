@@ -67,7 +67,7 @@ export default function ExpensesPage() {
           <Search size={14} />
           <input className="input" placeholder="Search expenses..." value={search} onChange={(e) => setSearch(e.target.value)} />
         </div>
-        <select className="select" value={categoryFilter} onChange={(e) => setCategoryFilter(e.target.value as ExpenseCategory | "All")}>
+        <select className="select" value={categoryFilter} onChange={(e) => setCategoryFilter(e.target.value)}>
           <option value="All">All Categories</option>
           {expenseCategories.map(c => <option key={c} value={c}>{c}</option>)}
         </select>
