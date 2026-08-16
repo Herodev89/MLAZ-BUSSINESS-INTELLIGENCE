@@ -4,7 +4,7 @@ import { useState, useEffect } from "react";
 import Link from "next/link";
 import { Plus, Search, Eye, Edit, Trash2, X, Upload } from "lucide-react";
 import { formatNaira } from "@/lib/utils";
-import { getProductsAction, deleteProductAction } from "@/lib/actions/products";
+import { getProductsAction, deleteProductAction, updateProductAction } from "@/lib/actions/products";
 
 export default function ProductsPage() {
   const [productList, setProductList] = useState<any[]>([]);
@@ -58,10 +58,25 @@ export default function ProductsPage() {
     setModalType("edit");
   };
 
-  const handleSaveEdit = (e: React.FormEvent) => {
+  const [isSaving, setIsSaving] = useState(false);
+
+  const handleSaveEdit = async (e: React.FormEvent) => {
     e.preventDefault();
-    // Update logic here, for now just close modal as we focus on Phase 1 core logic
-    setModalType(null);
+    if (!selectedProduct) return;
+    setIsSaving(true);
+    
+    const formData = new FormData();
+    formData.append("name", editForm.name);
+    formData.append("variants", JSON.stringify(editForm.variants));
+    
+    const res = await updateProductAction(selectedProduct.id, formData);
+    if (res.success) {
+      setModalType(null);
+      loadProducts();
+    } else {
+      alert(res.error || "Failed to update product");
+    }
+    setIsSaving(false);
   };
 
   const handleImageUpload = (e: React.ChangeEvent<HTMLInputElement>) => {

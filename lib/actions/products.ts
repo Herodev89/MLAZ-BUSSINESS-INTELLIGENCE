@@ -23,6 +23,21 @@ export async function getProductsAction() {
   }
 }
 
+export async function getProductByIdAction(id: string) {
+  try {
+    const p = await db.prepare('SELECT * FROM Product WHERE id = ?').get(id) as any;
+    if (!p) return { error: "Product not found" };
+    
+    const variants = await db.prepare('SELECT * FROM ProductVariant WHERE productId = ?').all(id) as any[];
+    const totalStock = variants.reduce((sum, v) => sum + v.stock, 0);
+    const basePrice = variants.length > 0 ? variants[0].price : 0;
+    
+    return { success: true, product: { ...p, variants, stock: totalStock, price: basePrice } };
+  } catch (error) {
+    return { error: "Failed to fetch product" };
+  }
+}
+
 export async function createProductAction(formData: FormData) {
   const name = formData.get("name")?.toString();
   const variantsJson = formData.get("variants")?.toString() || "[]";
@@ -49,6 +64,36 @@ export async function createProductAction(formData: FormData) {
     return { success: true, productId };
   } catch (error) {
     return { error: "Failed to create product" };
+  }
+}
+
+export async function updateProductAction(id: string, formData: FormData) {
+  const name = formData.get("name")?.toString();
+  const variantsJson = formData.get("variants")?.toString() || "[]";
+  
+  if (!name) {
+    return { error: "Name is required" };
+  }
+
+  let variants = [];
+  try {
+    variants = JSON.parse(variantsJson);
+  } catch {
+    return { error: "Invalid variants data" };
+  }
+
+  try {
+    await db.prepare('UPDATE Product SET name = ? WHERE id = ?').run(name, id);
+    
+    // Replace all variants
+    await db.prepare('DELETE FROM ProductVariant WHERE productId = ?').run(id);
+    const insertVariant = await db.prepare('INSERT INTO ProductVariant (id, productId, size, color, price, stock, sku) VALUES (?, ?, ?, ?, ?, ?, ?)');
+    for (const v of variants) {
+      await insertVariant.run(randomUUID(), id, v.size || '', v.color || '', parseFloat(v.price) || 0, parseInt(v.stock) || 0, v.sku || '');
+    }
+    return { success: true };
+  } catch (error) {
+    return { error: "Failed to update product" };
   }
 }
 

@@ -2,13 +2,28 @@
 
 import Link from "next/link";
 import { ArrowRight, BarChart3, AlertTriangle, ListFilter, Plus, RefreshCw } from "lucide-react";
-import { products } from "@/lib/mock-data/products";
-import { dashboardKPIs } from "@/lib/mock-data/dashboard";
+import { useState, useEffect } from "react";
+import { getInventoryStatsAction } from "@/lib/actions/inventory";
 import KPICard from "@/components/dashboard/KPICard";
 
 export default function InventoryDashboardPage() {
-  const totalProducts = products.length;
-  const outOfStockCount = products.reduce((acc, p) => acc + p.variants.filter(v => v.stock === 0).length, 0);
+  const [stats, setStats] = useState({
+    totalProducts: 0,
+    totalPairs: 0,
+    inventoryValue: 0,
+    lowStockCount: 0,
+    outOfStockCount: 0
+  });
+
+  useEffect(() => {
+    async function loadStats() {
+      const res = await getInventoryStatsAction();
+      if (res.success && res.stats) {
+        setStats(res.stats);
+      }
+    }
+    loadStats();
+  }, []);
 
   return (
     <div style={{ animation: "fade-in 0.3s ease-out" }}>
@@ -29,21 +44,21 @@ export default function InventoryDashboardPage() {
         <KPICard
           id="inv-total-products"
           title="Total Products"
-          value={totalProducts}
+          value={stats.totalProducts}
           icon={ListFilter}
           accentColor="var(--color-brand)"
         />
         <KPICard
           id="inv-total-pairs"
           title="Total Pairs in Stock"
-          value={dashboardKPIs.pairsSold.value * 3} // Mock logic
+          value={stats.totalPairs}
           icon={BarChart3}
           accentColor="var(--color-accent)"
         />
         <KPICard
           id="inv-value"
           title="Inventory Value"
-          value={dashboardKPIs.inventoryValue.value}
+          value={stats.inventoryValue}
           isCurrency
           compact
           icon={BarChart3}
@@ -52,14 +67,14 @@ export default function InventoryDashboardPage() {
         <KPICard
           id="inv-low-stock"
           title="Low Stock Variants"
-          value={dashboardKPIs.lowStockCount.value}
+          value={stats.lowStockCount}
           icon={AlertTriangle}
           accentColor="var(--color-warning)"
         />
         <KPICard
           id="inv-out-of-stock"
           title="Out of Stock"
-          value={outOfStockCount}
+          value={stats.outOfStockCount}
           icon={AlertTriangle}
           accentColor="var(--color-error)"
         />

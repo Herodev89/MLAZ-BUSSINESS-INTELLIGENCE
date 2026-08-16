@@ -26,27 +26,27 @@ import {
 
 // ── Sidebar navigation config ──
 const navItems = [
-  { label: "Main", type: "section", roles: ["ADMIN", "SALES_REP"] },
-  { href: "/dashboard",       label: "Dashboard",       icon: LayoutDashboard, roles: ["ADMIN", "SALES_REP"] },
+  { label: "Main", type: "section", roles: ["ADMIN", "SALES_REP", "STORE_MANAGER"] },
+  { href: "/dashboard",       label: "Dashboard",       icon: LayoutDashboard, roles: ["ADMIN", "SALES_REP", "STORE_MANAGER"] },
 
-  { label: "Store", type: "section", roles: ["ADMIN", "SALES_REP"] },
-  { href: "/products",        label: "Products",        icon: Package, roles: ["ADMIN", "SALES_REP"] },
-  { href: "/inventory",       label: "Inventory",       icon: Warehouse, roles: ["ADMIN"] },
-  { href: "/sales",           label: "Sales",           icon: ShoppingCart, roles: ["ADMIN", "SALES_REP"] },
-  { href: "/orders",          label: "Orders",          icon: ClipboardList, roles: ["ADMIN", "SALES_REP"] },
-  { href: "/customers",       label: "Customers",       icon: Users, roles: ["ADMIN", "SALES_REP"] },
+  { label: "Store", type: "section", roles: ["ADMIN", "SALES_REP", "STORE_MANAGER"] },
+  { href: "/products",        label: "Products",        icon: Package, roles: ["ADMIN", "SALES_REP", "STORE_MANAGER"] },
+  { href: "/inventory",       label: "Inventory",       icon: Warehouse, roles: ["ADMIN", "STORE_MANAGER"] },
+  { href: "/sales",           label: "Sales",           icon: ShoppingCart, roles: ["ADMIN", "SALES_REP", "STORE_MANAGER"] },
+  { href: "/orders",          label: "Orders",          icon: ClipboardList, roles: ["ADMIN", "SALES_REP", "STORE_MANAGER"] },
+  { href: "/customers",       label: "Customers",       icon: Users, roles: ["ADMIN", "SALES_REP", "STORE_MANAGER"] },
 
-  { label: "Production", type: "section", roles: ["ADMIN"] },
-  { href: "/production",      label: "Production",      icon: Factory, roles: ["ADMIN"] },
-  { href: "/raw-materials",   label: "Raw Materials",   icon: Layers, roles: ["ADMIN"] },
-  { href: "/expenses",        label: "Expenses",        icon: Receipt, roles: ["ADMIN"] },
+  { label: "Production", type: "section", roles: ["ADMIN", "STORE_MANAGER"] },
+  { href: "/production",      label: "Production",      icon: Factory, roles: ["ADMIN", "STORE_MANAGER"] },
+  { href: "/raw-materials",   label: "Raw Materials",   icon: Layers, roles: ["ADMIN", "STORE_MANAGER"] },
+  { href: "/expenses",        label: "Expenses",        icon: Receipt, roles: ["ADMIN", "STORE_MANAGER"] },
 
   { label: "Analytics", type: "section", roles: ["ADMIN"] },
   { href: "/profit-analysis", label: "Profit Analysis", icon: TrendingUp, roles: ["ADMIN"] },
   { href: "/reports",         label: "Reports",         icon: FileBarChart, roles: ["ADMIN"] },
 
-  { label: "System", type: "section", roles: ["ADMIN", "SALES_REP"] },
-  { href: "/notifications",   label: "Notifications",   icon: Bell, roles: ["ADMIN", "SALES_REP"] },
+  { label: "System", type: "section", roles: ["ADMIN", "SALES_REP", "STORE_MANAGER"] },
+  { href: "/notifications",   label: "Notifications",   icon: Bell, roles: ["ADMIN", "SALES_REP", "STORE_MANAGER"] },
   { href: "/settings",        label: "Settings",        icon: Settings, roles: ["ADMIN"] },
 ] as const;
 
@@ -217,7 +217,7 @@ export default function Sidebar({ onClose }: SidebarProps) {
             {user?.name ? user.name : "Loading..."}
           </div>
           <div style={{ fontSize: "11px", color: "var(--sidebar-text)" }}>
-            {user ? (user.role === "ADMIN" ? "Administrator" : "Sales Representative") : ""}
+            {user ? (user.role === "ADMIN" ? "Administrator" : user.role === "STORE_MANAGER" ? "Store Manager" : "Sales Representative") : ""}
           </div>
         </div>
         <button onClick={handleLogout} style={{ background: "none", border: "none", cursor: "pointer", color: "var(--sidebar-icon)" }}>

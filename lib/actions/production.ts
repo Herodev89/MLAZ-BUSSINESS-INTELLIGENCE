@@ -79,3 +79,23 @@ export async function createProductionRunAction(formData: FormData) {
     return { error: "Failed to create production run" };
   }
 }
+
+export async function updateProductionRunAction(id: string, formData: FormData) {
+  const status = formData.get("status")?.toString() || "In Progress";
+  
+  try {
+    const existing = await db.prepare('SELECT * FROM ProductionRun WHERE id = ?').get(id) as any;
+    if (!existing) return { error: "Production run not found" };
+
+    await db.prepare('UPDATE ProductionRun SET status = ? WHERE id = ?').run(status, id);
+
+    // If it is newly marked as Completed, we should ideally add to inventory.
+    // For simplicity in this edit, we assume variantId isn't tracked in ProductionRun table directly, 
+    // but we can query it if we need to. Wait, ProductionRun doesn't store variantId in the schema!
+    // We will just update the status for now as requested by user.
+
+    return { success: true };
+  } catch (error) {
+    return { error: "Failed to update production run" };
+  }
+}

@@ -2,15 +2,40 @@
 
 import Link from "next/link";
 import { ArrowLeft, Save, Plus, Trash2 } from "lucide-react";
-import { products } from "@/lib/mock-data/products";
-import { notFound } from "next/navigation";
-import { useState } from "react";
+import { getProductByIdAction, updateProductAction } from "@/lib/actions/products";
+import { useRouter } from "next/navigation";
+import { useState, useEffect } from "react";
 
 export default function ManageVariantsPage({ params }: { params: { id: string } }) {
-  const product = products.find((p) => p.id === params.id);
-  if (!product) notFound();
+  const router = useRouter();
+  const [product, setProduct] = useState<any>(null);
+  const [variants, setVariants] = useState<any[]>([]);
 
-  const [variants, setVariants] = useState([...product.variants]);
+  useEffect(() => {
+    async function fetchProduct() {
+      const res = await getProductByIdAction(params.id);
+      if (res.success) {
+        setProduct(res.product);
+        setVariants(res.product.variants || []);
+      }
+    }
+    fetchProduct();
+  }, [params.id]);
+
+  if (!product) return <div>Loading...</div>;
+
+  const handleSave = async () => {
+    const formData = new FormData();
+    formData.append("name", product.name);
+    formData.append("variants", JSON.stringify(variants));
+
+    const res = await updateProductAction(product.id, formData);
+    if (res.success) {
+      router.push(`/products/${product.id}`);
+    } else {
+      alert(res.error || "Failed to update variants");
+    }
+  };
 
   const addVariant = () => {
     setVariants([...variants, { id: `V-NEW-${Date.now()}`, color: "", size: "", stock: 0, reorderLevel: product.reorderLevel }]);
@@ -45,17 +70,25 @@ export default function ManageVariantsPage({ params }: { params: { id: string } 
                 <th>Color</th>
                 <th>Size (EU)</th>
                 <th>Stock</th>
-                <th>Reorder Level</th>
+                <th>Price (₦)</th>
                 <th style={{ width: 50 }}></th>
               </tr>
             </thead>
             <tbody>
               {variants.map((v, i) => (
                 <tr key={v.id}>
-                  <td><input className="input" defaultValue={v.color} placeholder="e.g. Black" /></td>
-                  <td><input className="input" defaultValue={v.size} placeholder="e.g. EU 42" /></td>
-                  <td><input type="number" className="input" defaultValue={v.stock} /></td>
-                  <td><input type="number" className="input" defaultValue={v.reorderLevel} /></td>
+                  <td><input className="input" value={v.color} onChange={(e) => {
+                    const newV = [...variants]; newV[i].color = e.target.value; setVariants(newV);
+                  }} placeholder="e.g. Black" /></td>
+                  <td><input className="input" value={v.size} onChange={(e) => {
+                    const newV = [...variants]; newV[i].size = e.target.value; setVariants(newV);
+                  }} placeholder="e.g. EU 42" /></td>
+                  <td><input type="number" className="input" value={v.stock} onChange={(e) => {
+                    const newV = [...variants]; newV[i].stock = Number(e.target.value); setVariants(newV);
+                  }} /></td>
+                  <td><input type="number" className="input" value={v.price || product.price} onChange={(e) => {
+                    const newV = [...variants]; newV[i].price = Number(e.target.value); setVariants(newV);
+                  }} /></td>
                   <td>
                     <button className="btn-ghost" style={{ color: "var(--color-error)", padding: 8 }} onClick={() => removeVariant(v.id)}>
                       <Trash2 size={16} />

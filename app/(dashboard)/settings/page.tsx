@@ -4,6 +4,7 @@ import { useState, useEffect } from "react";
 import { Save, UserPlus, Trash2, KeyRound, CheckCircle2, LogOut, AlertCircle, Eye, EyeOff, Shield } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { getUsersAction, createSalesRepAction, deleteUserAction } from "@/lib/actions/auth";
+import { clearDatabaseAction } from "@/lib/actions/admin";
 
 // Role-based access definitions
 const rolePermissions: Record<string, { canView: string[]; canEdit: string[]; description: string }> = {
@@ -40,6 +41,10 @@ export default function SettingsPage() {
 
   // Selected role to preview permissions
   const [previewRole, setPreviewRole] = useState<string | null>(null);
+
+  // Danger Zone
+  const [clearConfirmMsg, setClearConfirmMsg] = useState("");
+  const [isClearingDb, setIsClearingDb] = useState(false);
 
   useEffect(() => {
     const isDark = document.documentElement.classList.contains("dark");
@@ -130,7 +135,27 @@ export default function SettingsPage() {
     window.location.href = "/login";
   };
 
-
+  const handleClearDatabase = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (clearConfirmMsg !== "CONFIRM-CLEAR") {
+      alert("Please type exactly CONFIRM-CLEAR to proceed.");
+      return;
+    }
+    
+    if (!confirm("WARNING: This action is irreversible. All operational data will be deleted. Do you want to proceed?")) {
+      return;
+    }
+    
+    setIsClearingDb(true);
+    const res = await clearDatabaseAction(clearConfirmMsg);
+    if (res.success) {
+      alert("Database cleared successfully. Operational data has been removed.");
+      setClearConfirmMsg("");
+    } else {
+      alert(res.error || "Failed to clear database");
+    }
+    setIsClearingDb(false);
+  };
 
   return (
     <div style={{ animation: "fade-in 0.3s ease-out" }}>
@@ -349,6 +374,48 @@ export default function SettingsPage() {
                 </div>
               </div>
             ))}
+          </div>
+        </div>
+        </div>
+
+        {/* Danger Zone */}
+        <div className="card" style={{ gridColumn: "1 / -1", border: "1px solid var(--color-error)" }}>
+          <div className="card-header" style={{ borderBottomColor: "rgba(155, 35, 53, 0.2)" }}>
+            <div style={{ fontWeight: 700, fontSize: "14px", display: "flex", alignItems: "center", gap: 8, color: "var(--color-error)" }}>
+              <AlertCircle size={16} /> Danger Zone (Admin Only)
+            </div>
+          </div>
+          <div className="card-body" style={{ display: "flex", flexDirection: "column", gap: 16 }}>
+            <div>
+              <h4 style={{ margin: "0 0 8px 0", fontSize: "15px", fontWeight: 700, color: "var(--color-text-primary)" }}>Clear All Operational Data</h4>
+              <p style={{ fontSize: "13px", color: "var(--color-text-secondary)", margin: 0, lineHeight: 1.5, maxWidth: 600 }}>
+                This action will delete all sales, inventory movements, production runs, raw materials, expenses, customers, and product variants. User accounts and system settings will remain intact. <strong>This action cannot be undone.</strong>
+              </p>
+            </div>
+            
+            <form onSubmit={handleClearDatabase} style={{ display: "flex", alignItems: "center", gap: 12, flexWrap: "wrap", marginTop: 8 }}>
+              <input 
+                type="text" 
+                className="input" 
+                style={{ width: "220px" }} 
+                placeholder="Type CONFIRM-CLEAR" 
+                value={clearConfirmMsg} 
+                onChange={(e) => setClearConfirmMsg(e.target.value)} 
+              />
+              <button 
+                type="submit" 
+                className="btn-ghost" 
+                style={{ 
+                  background: "var(--color-error)", 
+                  color: "white", 
+                  padding: "8px 16px",
+                  fontWeight: 600
+                }} 
+                disabled={isClearingDb || clearConfirmMsg !== "CONFIRM-CLEAR"}
+              >
+                {isClearingDb ? "Clearing Data..." : "Clear Database"}
+              </button>
+            </form>
           </div>
         </div>
       </div>

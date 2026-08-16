@@ -43,8 +43,15 @@ export default function TopNav({ onMenuClick }: TopNavProps) {
   const [notifOpen, setNotifOpen] = useState(false);
 
   const [notifications, setNotifications] = useState<any[]>([]);
+  const [user, setUser] = useState<{ name: string; role: string; email: string } | null>(null);
 
   useEffect(() => {
+    fetch("/api/auth/session")
+      .then((res) => res.json())
+      .then((data) => {
+        if (data.user) setUser(data.user);
+      })
+      .catch(console.error);
     loadNotifications();
   }, []);
 
@@ -241,14 +248,14 @@ export default function TopNav({ onMenuClick }: TopNavProps) {
               fontWeight: 700,
             }}
           >
-            A
+            {user?.name ? user.name.charAt(0).toUpperCase() : "A"}
           </div>
           <div style={{ display: "none", flexDirection: "column", alignItems: "flex-start" }} id="profile-name-block">
             <span style={{ fontSize: "13px", fontWeight: 600, color: "var(--color-text-primary)", lineHeight: 1.2 }}>
-              Admin
+              {user?.name || "Loading..."}
             </span>
             <span style={{ fontSize: "11px", color: "var(--color-text-muted)" }}>
-              Administrator
+              {user ? (user.role === "ADMIN" ? "Administrator" : user.role === "STORE_MANAGER" ? "Store Manager" : "Sales Rep") : "..."}
             </span>
           </div>
           <ChevronDown size={14} style={{ color: "var(--color-text-muted)" }} />
@@ -272,8 +279,8 @@ export default function TopNav({ onMenuClick }: TopNavProps) {
             }}
           >
             <div style={{ padding: "12px 16px", borderBottom: "1px solid var(--color-border)" }}>
-              <div style={{ fontSize: "13px", fontWeight: 700, color: "var(--color-text-primary)" }}>Admin User</div>
-              <div style={{ fontSize: "12px", color: "var(--color-text-muted)" }}>admin@mlaz.com</div>
+              <div style={{ fontSize: "13px", fontWeight: 700, color: "var(--color-text-primary)" }}>{user?.name || "Admin User"}</div>
+              <div style={{ fontSize: "12px", color: "var(--color-text-muted)" }}>{user?.email || "admin@mlaz.com"}</div>
             </div>
             {[
               { href: "/settings", label: "Profile Settings", icon: User },

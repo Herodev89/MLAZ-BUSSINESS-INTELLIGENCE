@@ -1,21 +1,66 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import { ArrowLeft, Save, Upload, X } from "lucide-react";
-import { productCategories, products } from "@/lib/mock-data/products";
-import { notFound } from "next/navigation";
+import { productCategories } from "@/lib/mock-data/products";
+import { getProductByIdAction, updateProductAction } from "@/lib/actions/products";
 
 export default function EditProductPage({ params }: { params: { id: string } }) {
-  const product = products.find(p => p.id === params.id);
-  if (!product) notFound();
-
+  const router = useRouter();
+  const [product, setProduct] = useState<any>(null);
   const [form, setForm] = useState({
-    name: product.name, sku: product.sku, category: product.category, description: product.description, material: product.material,
-    brand: product.brand, costPrice: product.costPrice.toString(), sellingPrice: product.sellingPrice.toString(), reorderLevel: product.reorderLevel.toString(), status: product.status,
+    name: "",
+    sku: "",
+    category: "",
+    description: "",
+    material: "",
+    brand: "",
+    costPrice: "",
+    sellingPrice: "",
+    reorderLevel: "",
+    status: "Active",
   });
 
+  useEffect(() => {
+    async function fetchProduct() {
+      const res = await getProductByIdAction(params.id);
+      if (res.success) {
+        setProduct(res.product);
+        setForm({
+          name: res.product.name,
+          sku: res.product.sku || "",
+          category: res.product.category || "Shea Butter",
+          description: res.product.description || "",
+          material: res.product.material || "",
+          brand: res.product.brand || "",
+          costPrice: (res.product.price ? res.product.price * 0.6 : 0).toString(),
+          sellingPrice: (res.product.price || 0).toString(),
+          reorderLevel: (res.product.reorderLevel || 10).toString(),
+          status: res.product.status || "Active",
+        });
+      }
+    }
+    fetchProduct();
+  }, [params.id]);
+
+  if (!product) return <div>Loading...</div>;
+
   const update = (key: string, value: string) => setForm((f) => ({ ...f, [key]: value }));
+
+  const handleSave = async () => {
+    const formData = new FormData();
+    Object.entries(form).forEach(([key, value]) => formData.append(key, value));
+    formData.append("variants", JSON.stringify(product.variants));
+
+    const res = await updateProductAction(product.id, formData);
+    if (res.success) {
+      router.push(`/products/${product.id}`);
+    } else {
+      alert(res.error || "Failed to update product");
+    }
+  };
 
   return (
     <div style={{ animation: "fade-in 0.3s ease-out" }}>

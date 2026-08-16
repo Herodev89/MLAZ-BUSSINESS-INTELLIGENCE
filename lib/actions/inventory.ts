@@ -42,3 +42,30 @@ export async function recordInventoryMovementAction(formData: FormData) {
     return { error: "Failed to record movement" };
   }
 }
+
+export async function getInventoryStatsAction() {
+  try {
+    const products = await db.prepare('SELECT * FROM Product').all() as any[];
+    const variants = await db.prepare('SELECT * FROM ProductVariant').all() as any[];
+    
+    const totalProducts = products.length;
+    let totalPairs = 0;
+    let inventoryValue = 0;
+    let lowStockCount = 0;
+    let outOfStockCount = 0;
+
+    variants.forEach(v => {
+      totalPairs += v.stock;
+      inventoryValue += (v.stock * v.price);
+      if (v.stock === 0) outOfStockCount++;
+      else if (v.stock <= 10) lowStockCount++;
+    });
+
+    return { 
+      success: true, 
+      stats: { totalProducts, totalPairs, inventoryValue, lowStockCount, outOfStockCount }
+    };
+  } catch (error) {
+    return { error: "Failed to fetch stats" };
+  }
+}

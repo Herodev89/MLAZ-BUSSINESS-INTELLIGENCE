@@ -1,9 +1,9 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import { Plus, Search, X, Trash2 } from "lucide-react";
+import { Plus, Search, X, Trash2, Edit } from "lucide-react";
 import { formatNaira, formatDate } from "@/lib/utils";
-import { getProductionRunsAction, createProductionRunAction } from "@/lib/actions/production";
+import { getProductionRunsAction, createProductionRunAction, updateProductionRunAction } from "@/lib/actions/production";
 import { getProductsAction } from "@/lib/actions/products";
 
 export default function ProductionPage() {
@@ -13,6 +13,11 @@ export default function ProductionPage() {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [form, setForm] = useState({ variantId: "", qty: "", labour: "", material: "", other: "", status: "Completed" });
   const [products, setProducts] = useState<any[]>([]);
+
+  // Edit State
+  const [showEditModal, setShowEditModal] = useState(false);
+  const [selectedRun, setSelectedRun] = useState<any>(null);
+  const [editStatus, setEditStatus] = useState("In Progress");
 
   useEffect(() => {
     loadRuns();
@@ -78,6 +83,28 @@ export default function ProductionPage() {
     }
   };
 
+  const handleOpenEdit = (run: any) => {
+    setSelectedRun(run);
+    setEditStatus(run.status || "In Progress");
+    setShowEditModal(true);
+  };
+
+  const handleSaveEdit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!selectedRun) return;
+    setIsSubmitting(true);
+    const formData = new FormData();
+    formData.append("status", editStatus);
+    const res = await updateProductionRunAction(selectedRun.id, formData);
+    if (res.success) {
+      setShowEditModal(false);
+      loadRuns();
+    } else {
+      alert(res.error || "Failed to update run");
+    }
+    setIsSubmitting(false);
+  };
+
   return (
     <div style={{ animation: "fade-in 0.3s ease-out" }}>
       <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", marginBottom: 24, flexWrap: "wrap", gap: 12 }}>
@@ -129,9 +156,14 @@ export default function ProductionPage() {
                   </td>
                   <td style={{ color: "var(--color-text-muted)", fontSize: "12px" }}>{formatDate(run.productionDate)}</td>
                   <td style={{ textAlign: "right" }}>
-                    <button className="btn-ghost btn-sm" onClick={() => handleDeleteRun(run.id)} title="Delete Run" style={{ color: "var(--color-error)" }}>
-                      <Trash2 size={14} />
-                    </button>
+                    <div style={{ display: "flex", gap: 6, justifyContent: "flex-end" }}>
+                      <button className="btn-ghost btn-sm" onClick={() => handleOpenEdit(run)} title="Edit Run">
+                        <Edit size={14} />
+                      </button>
+                      <button className="btn-ghost btn-sm" onClick={() => handleDeleteRun(run.id)} title="Delete Run" style={{ color: "var(--color-error)" }}>
+                        <Trash2 size={14} />
+                      </button>
+                    </div>
                   </td>
                 </tr>
               ))
@@ -189,6 +221,31 @@ export default function ProductionPage() {
               <div style={{ display: "flex", justifyContent: "flex-end", gap: 8, marginTop: 12 }}>
                 <button type="button" className="btn-outline" onClick={() => setShowRecordModal(false)}>Cancel</button>
                 <button type="submit" className="btn-accent" disabled={isSubmitting}>{isSubmitting ? "Saving..." : "Record Run"}</button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+
+      {showEditModal && selectedRun && (
+        <div style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.5)", display: "flex", alignItems: "center", justifyContent: "center", zIndex: 1000 }}>
+          <div className="card" style={{ width: 400, padding: 24, background: "var(--color-surface-card)" }}>
+            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 16 }}>
+              <h3 style={{ fontWeight: 700, fontSize: 18 }}>Update Status</h3>
+              <button className="btn-ghost" onClick={() => setShowEditModal(false)}><X size={18} /></button>
+            </div>
+            <form onSubmit={handleSaveEdit} style={{ display: "flex", flexDirection: "column", gap: 14 }}>
+              <div>
+                <label className="label">Status</label>
+                <select className="input" value={editStatus} onChange={(e) => setEditStatus(e.target.value)}>
+                  <option value="In Progress">In Progress</option>
+                  <option value="Completed">Completed</option>
+                  <option value="Cancelled">Cancelled</option>
+                </select>
+              </div>
+              <div style={{ display: "flex", justifyContent: "flex-end", gap: 8, marginTop: 12 }}>
+                <button type="button" className="btn-outline" onClick={() => setShowEditModal(false)}>Cancel</button>
+                <button type="submit" className="btn-accent" disabled={isSubmitting}>{isSubmitting ? "Saving..." : "Save Changes"}</button>
               </div>
             </form>
           </div>

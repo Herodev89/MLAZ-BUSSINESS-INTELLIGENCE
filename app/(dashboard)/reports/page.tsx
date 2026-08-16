@@ -120,7 +120,8 @@ export default function ReportsPage() {
           </style>
         </head>
         <body>
-          <h2>MLAZ Enterprise Platform</h2>
+          <h2 style="font-weight: 800; font-style: italic;">MLAZ LIMITED</h2>
+          <div style="font-size: 13px; font-style: italic; color: #B8860B; margin-top: -4px; margin-bottom: 24px;">Guaranteed amble across the globe</div>
           <h1>${type}</h1>
           <div class="header-info">Generated on: ${new Date().toLocaleString()} | Period: ${startDate || "All Time"} to ${endDate || "Present"}</div>
           
@@ -160,6 +161,8 @@ export default function ReportsPage() {
               <option>Inventory Valuation</option>
               <option>Profit & Loss Statement</option>
               <option>Production Yield</option>
+              <option>Order Report</option>
+              <option>Financial Statement</option>
             </select>
           </div>
           <div>
