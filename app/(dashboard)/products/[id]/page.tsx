@@ -104,8 +104,8 @@ export default async function ProductDetailPage({ params }: { params: { id: stri
                           {color}
                         </div>
                       </td>
-                      {sizes.map((size) => {
-                        const variant = product.variants.find((v) => v.color === color && v.size === size);
+                      {sizes.map((size: any) => {
+                        const variant = product.variants.find((v: any) => v.color === color && v.size === size);
                         const status = variant ? getStockStatus(variant.stock, variant.reorderLevel) : null;
                         return (
                           <td key={size} style={{ textAlign: "center" }}>
