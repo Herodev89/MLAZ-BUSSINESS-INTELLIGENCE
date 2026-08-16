@@ -11,8 +11,8 @@ export default async function ProductDetailPage({ params }: { params: { id: stri
   const product = res.product;
 
   const totalStock = product.variants.reduce((s: any, v: any) => s + v.stock, 0);
-  const colors = Array.from(new Set(product.variants.map((v: any) => v.color)));
-  const sizes  = Array.from(new Set(product.variants.map((v: any) => v.size))).sort();
+  const colors = Array.from(new Set(product.variants.map((v: any) => v.color))) as any[];
+  const sizes  = Array.from(new Set(product.variants.map((v: any) => v.size))).sort() as any[];
   
   // Provide default values since DB schema is simpler
   const profitPerUnit = (product.price || 0) * 0.4; // rough estimate for now
@@ -88,7 +88,7 @@ export default async function ProductDetailPage({ params }: { params: { id: stri
                   </tr>
                 </thead>
                 <tbody>
-                  {colors.map((color) => (
+                  {colors.map((color: any) => (
                     <tr key={color}>
                       <td style={{ fontWeight: 600 }}>
                         <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
