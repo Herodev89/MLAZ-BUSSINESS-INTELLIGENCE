@@ -41,22 +41,19 @@ export default function LoginPage() {
 
   return (
     <div
+      className="flex flex-col lg:flex-row"
       style={{
         minHeight: "100vh",
-        display: "flex",
         fontFamily: "Inter, sans-serif",
       }}
     >
-      {/* ── Left Panel — Branding ── */}
+      {/* ── Top/Left Panel — Branding ── */}
       <div
+        className="flex flex-col justify-center items-center py-12 px-6 lg:p-12 relative overflow-hidden"
         style={{
           flex: 1,
           background: "linear-gradient(145deg, #1E0C04 0%, #3D1F0E 45%, #2A1208 100%)",
-          padding: "48px",
-          position: "relative",
-          overflow: "hidden",
         }}
-        className="hidden lg:flex flex-col justify-center items-center"
       >
         {/* Decorative gold ring */}
         <div
@@ -99,9 +96,8 @@ export default function LoginPage() {
         </div>
 
         <h2
-          className="brand-font-serif"
+          className="brand-font-serif text-2xl lg:text-[38px]"
           style={{
-            fontSize: "38px",
             fontWeight: 800,
             fontStyle: "italic",
             letterSpacing: "0.06em",
@@ -114,20 +110,19 @@ export default function LoginPage() {
           MLAZ LIMITED
         </h2>
         <p
-          className="brand-font-serif"
+          className="brand-font-serif text-[11px] lg:text-[13px]"
           style={{
-            fontSize: "13px",
             fontStyle: "italic",
             color: "rgba(196,168,130,0.85)",
             margin: 0,
-            marginBottom: 40,
+            marginBottom: "10%",
             letterSpacing: "0.08em",
           }}
         >
           Guaranteed amble across the globe
         </p>
 
-        <div style={{ maxWidth: 340, textAlign: "center" }}>
+        <div className="hidden lg:block" style={{ maxWidth: 340, textAlign: "center", zIndex: 10 }}>
           <h3
             style={{
               fontSize: "22px",
@@ -145,7 +140,7 @@ export default function LoginPage() {
         </div>
 
         {/* Feature highlights */}
-        <div style={{ display: "flex", gap: 16, marginTop: 48, flexWrap: "wrap", justifyContent: "center" }}>
+        <div className="hidden lg:flex" style={{ gap: 16, marginTop: 48, flexWrap: "wrap", justifyContent: "center", zIndex: 10 }}>
           {["Products & Variants", "Sales & Orders", "Profit Analytics", "Inventory Control"].map((f) => (
             <div
               key={f}
@@ -164,30 +159,29 @@ export default function LoginPage() {
         </div>
       </div>
 
-      {/* ── Right Panel — Login Form ── */}
+      {/* ── Bottom/Right Panel — Login Form ── */}
       <div
-        className="w-full max-w-[480px] flex flex-col justify-center p-6 sm:p-10 lg:p-12 mx-auto lg:mx-0"
-        style={{ background: "var(--color-surface)" }}
+        className="w-full lg:max-w-[480px] flex flex-col justify-center p-6 sm:p-10 lg:p-12 mx-auto lg:mx-0 z-20 login-card"
+        style={{ 
+          background: "var(--color-surface)",
+          flex: 1
+        }}
       >
-        {/* Mobile logo */}
-        <div className="lg:hidden" style={{ marginBottom: 32, display: "flex", alignItems: "center", gap: 12 }}>
-          <div
-            style={{
-              width: 44,
-              height: 44,
-              borderRadius: "50%",
-              overflow: "hidden",
-            }}
-          >
-            <Image src="/logo.jpg" alt="MLAZ Logo" width={44} height={44} style={{ objectFit: "cover" }} />
-          </div>
-          <div>
-            <div className="brand-font-serif" style={{ fontWeight: 800, fontSize: "18px", fontStyle: "italic", color: "var(--color-brand)", letterSpacing: "0.04em" }}>
-              MLAZ LIMITED
-            </div>
-            <div className="brand-font-serif" style={{ fontSize: "10px", fontStyle: "italic", color: "var(--color-text-muted)" }}>Guaranteed amble across the globe</div>
-          </div>
-        </div>
+        <style>{`
+          .login-card {
+            border-top-left-radius: 32px;
+            border-top-right-radius: 32px;
+            margin-top: -40px;
+            box-shadow: 0 -10px 40px rgba(0,0,0,0.2);
+          }
+          @media (min-width: 1024px) {
+            .login-card {
+              border-radius: 0;
+              margin-top: 0;
+              box-shadow: none;
+            }
+          }
+        `}</style>
 
         {/* Form header */}
         <div style={{ marginBottom: 32 }}>
