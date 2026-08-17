@@ -45,6 +45,9 @@ export default async function DashboardPage() {
     salesByColor: [],
   };
 
+  // Safe destructuring with fallbacks for the new fields if they aren't returned yet
+  const { totalExpenses = 0, totalRawMaterialsCost = 0 } = stats as any;
+
   return (
     <div style={{ animation: "fade-in 0.3s ease-out" }}>
       {/* ── Page Header ── */}
@@ -103,65 +106,82 @@ export default async function DashboardPage() {
         }}
         id="kpi-grid"
       >
-        <KPICard
-          id="kpi-revenue"
-          title="Total Revenue"
-          value={stats.totalRevenue}
-          isCurrency
-          compact
-          change={0}
-          changePeriod={"vs last month"}
-          icon={DollarSign}
-          accentColor="var(--color-accent)"
-        />
-        <KPICard
-          id="kpi-profit"
-          title="Total Profit"
-          value={stats.totalProfit}
-          isCurrency
-          compact
-          change={0}
-          changePeriod={"vs last month"}
-          icon={TrendingUp}
-          accentColor="var(--color-success)"
-        />
-        <KPICard
-          id="kpi-sales"
-          title="Total Sales"
-          value={stats.totalSales}
-          change={0}
-          changePeriod={"vs last month"}
-          icon={ShoppingBag}
-          accentColor="#1E5F8A"
-        />
-        <KPICard
-          id="kpi-pairs"
-          title="Pairs Sold"
-          value={stats.pairsSold}
-          change={0}
-          changePeriod={"vs last month"}
-          icon={Package}
-          accentColor="var(--color-brand-light)"
-        />
-        <KPICard
-          id="kpi-inventory-value"
-          title="Inventory Value"
-          value={stats.inventoryValue}
-          isCurrency
-          compact
-          change={0}
-          changePeriod={"vs last month"}
-          icon={BarChart3}
-          accentColor="var(--color-accent)"
-        />
-        <KPICard
-          id="kpi-low-stock"
-          title="Low Stock"
-          value={stats.lowStockCount}
-          changePeriod={"Currently"}
-          icon={AlertTriangle}
-          accentColor="var(--color-warning)"
-        />
+        <Link href="/sales" style={{ textDecoration: 'none' }}>
+          <KPICard
+            id="kpi-revenue"
+            title="Total Revenue"
+            value={stats.totalRevenue}
+            isCurrency
+            compact
+            change={0}
+            changePeriod={"vs last month"}
+            icon={DollarSign}
+            accentColor="var(--color-accent)"
+          />
+        </Link>
+        <Link href="/reports" style={{ textDecoration: 'none' }}>
+          <KPICard
+            id="kpi-profit"
+            title="Net Profit"
+            value={stats.totalProfit}
+            isCurrency
+            compact
+            change={0}
+            changePeriod={"vs last month"}
+            icon={TrendingUp}
+            accentColor="var(--color-success)"
+          />
+        </Link>
+        <Link href="/expenses" style={{ textDecoration: 'none' }}>
+          <KPICard
+            id="kpi-expenses"
+            title="Total Expenses"
+            value={totalExpenses}
+            isCurrency
+            compact
+            change={0}
+            changePeriod={"vs last month"}
+            icon={DollarSign}
+            accentColor="var(--color-error)"
+          />
+        </Link>
+        <Link href="/raw-materials" style={{ textDecoration: 'none' }}>
+          <KPICard
+            id="kpi-raw-materials"
+            title="Raw Materials"
+            value={totalRawMaterialsCost}
+            isCurrency
+            compact
+            change={0}
+            changePeriod={"vs last month"}
+            icon={Package}
+            accentColor="#9C5A35"
+          />
+        </Link>
+        <Link href="/sales" style={{ textDecoration: 'none' }}>
+          <KPICard
+            id="kpi-sales"
+            title="Total Sales"
+            value={stats.totalSales}
+            change={0}
+            changePeriod={"vs last month"}
+            icon={ShoppingBag}
+            accentColor="#1E5F8A"
+          />
+        </Link>
+        <Link href="/inventory" style={{ textDecoration: 'none' }}>
+          <KPICard
+            id="kpi-inventory-value"
+            title="Inventory Value"
+            value={stats.inventoryValue}
+            isCurrency
+            compact
+            change={0}
+            changePeriod={"vs last month"}
+            icon={BarChart3}
+            accentColor="var(--color-accent)"
+          />
+        </Link>
       </div>
 
       {/* ── Revenue Chart ── */}

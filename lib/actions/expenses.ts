@@ -39,3 +39,22 @@ export async function deleteExpenseAction(id: string) {
     return { error: "Failed to delete expense" };
   }
 }
+
+export async function updateExpenseAction(id: string, formData: FormData) {
+  const name = formData.get("name")?.toString();
+  const category = formData.get("category")?.toString();
+  const amount = parseFloat(formData.get("amount")?.toString() || "0");
+  const description = formData.get("description")?.toString() || "";
+
+  if (!name || !category || amount <= 0) {
+    return { error: "Name, category, and valid amount are required" };
+  }
+
+  try {
+    await db.prepare('UPDATE Expense SET name = ?, category = ?, amount = ?, description = ? WHERE id = ?')
+      .run(name, category, amount, description, id);
+    return { success: true };
+  } catch (error) {
+    return { error: "Failed to update expense" };
+  }
+}

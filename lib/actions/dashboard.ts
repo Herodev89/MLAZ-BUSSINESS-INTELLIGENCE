@@ -5,11 +5,19 @@ import db from "@/lib/db";
 export async function getDashboardStatsAction() {
   try {
     const revenueRow: any = await db.prepare("SELECT SUM(amount) as total FROM Sale WHERE status = 'Confirmed'").get();
-    const profitRow: any = await db.prepare("SELECT SUM(profit) as total FROM Sale WHERE status = 'Confirmed'").get();
+    const grossProfitRow: any = await db.prepare("SELECT SUM(profit) as total FROM Sale WHERE status = 'Confirmed'").get();
     const salesCountRow: any = await db.prepare("SELECT COUNT(*) as total FROM Sale WHERE status = 'Confirmed'").get();
     const pairsSoldRow: any = await db.prepare("SELECT SUM(quantity) as total FROM Sale WHERE status = 'Confirmed'").get();
     const inventoryValRow: any = await db.prepare('SELECT SUM(price * stock) as total FROM ProductVariant').get();
     const lowStockRow: any = await db.prepare('SELECT COUNT(*) as total FROM ProductVariant WHERE stock < 10').get();
+    
+    const expensesRow: any = await db.prepare("SELECT SUM(amount) as total FROM Expense").get();
+    const rawMaterialsRow: any = await db.prepare("SELECT SUM(quantity * costPerUnit) as total FROM RawMaterial").get();
+
+    const totalExpenses = expensesRow?.total || 0;
+    const totalRawMaterialsCost = rawMaterialsRow?.total || 0;
+    const grossProfit = grossProfitRow?.total || 0;
+    const netProfit = grossProfit - totalExpenses;
 
     // Chart Data
     // 1. Revenue & Profit Trend (Monthly)
@@ -117,11 +125,13 @@ export async function getDashboardStatsAction() {
       success: true,
       stats: {
         totalRevenue: revenueRow?.total || 0,
-        totalProfit: profitRow?.total || 0,
+        totalProfit: netProfit,
         totalSales: salesCountRow?.total || 0,
         pairsSold: pairsSoldRow?.total || 0,
         inventoryValue: inventoryValRow?.total || 0,
         lowStockCount: lowStockRow?.total || 0,
+        totalExpenses: totalExpenses,
+        totalRawMaterialsCost: totalRawMaterialsCost,
       },
       charts: {
         revenueTrend: revenueTrendData,

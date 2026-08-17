@@ -72,3 +72,13 @@ export async function confirmSaleAction(id: string) {
     return { error: "Failed to confirm sale" };
   }
 }
+
+export async function getSaleByIdAction(id: string) {
+  try {
+    const sale = await db.prepare('SELECT * FROM Sale WHERE id = ?').get(id);
+    if (!sale) return { error: "Sale not found" };
+    return { success: true, sale };
+  } catch (error) {
+    return { error: "Failed to fetch sale" };
+  }
+}

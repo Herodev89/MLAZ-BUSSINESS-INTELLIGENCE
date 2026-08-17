@@ -1,9 +1,9 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import { Plus, Search, Eye, X } from "lucide-react";
+import { Plus, Search, Eye, X, Edit, Trash2 } from "lucide-react";
 import { formatNaira, formatDate, getOrderStatusClass } from "@/lib/utils";
-import { getOrdersAction, createOrderAction } from "@/lib/actions/orders";
+import { getOrdersAction, createOrderAction, updateOrderStatusAction, deleteOrderAction } from "@/lib/actions/orders";
 
 export default function OrdersPage() {
   const [orderList, setOrderList] = useState<any[]>([]);
@@ -12,6 +12,7 @@ export default function OrdersPage() {
 
   const [selectedOrder, setSelectedOrder] = useState<any | null>(null);
   const [showCreateModal, setShowCreateModal] = useState(false);
+  const [showEditModal, setShowEditModal] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
 
   useEffect(() => {
@@ -42,6 +43,34 @@ export default function OrdersPage() {
       alert(res.error);
     }
     setIsSubmitting(false);
+  };
+
+  const handleOpenEdit = (order: any) => {
+    setSelectedOrder(order);
+    setShowEditModal(true);
+  };
+
+  const handleSaveEdit = async (e: React.FormEvent<HTMLFormElement>) => {
+    e.preventDefault();
+    if (!selectedOrder) return;
+    setIsSubmitting(true);
+    const formData = new FormData(e.currentTarget);
+    const res = await updateOrderStatusAction(selectedOrder.id, formData);
+    if (res.success) {
+      setShowEditModal(false);
+      loadOrders();
+    } else {
+      alert(res.error || "Failed to update order");
+    }
+    setIsSubmitting(false);
+  };
+
+  const handleDelete = async (id: string) => {
+    if (confirm("Are you sure you want to delete this order?")) {
+      const res = await deleteOrderAction(id);
+      if (res.success) loadOrders();
+      else alert(res.error || "Failed to delete order");
+    }
   };
 
   return (
@@ -104,7 +133,11 @@ export default function OrdersPage() {
                   <td><span className={getOrderStatusClass(o.orderStatus)}>{o.orderStatus}</span></td>
                   <td style={{ color: "var(--color-text-muted)", fontSize: "12px" }}>{formatDate(o.date)}</td>
                   <td>
-                    <button className="btn-ghost btn-sm" onClick={() => setSelectedOrder(o)} title="View Details"><Eye size={14} /></button>
+                    <div style={{ display: "flex", gap: 6 }}>
+                      <button className="btn-ghost btn-sm" onClick={() => setSelectedOrder(o)} title="View Details"><Eye size={14} /></button>
+                      <button className="btn-ghost btn-sm" onClick={() => handleOpenEdit(o)} title="Edit Status"><Edit size={14} /></button>
+                      <button className="btn-ghost btn-sm" onClick={() => handleDelete(o.id)} title="Delete Order" style={{ color: "var(--color-error)" }}><Trash2 size={14} /></button>
+                    </div>
                   </td>
                 </tr>
               ))
@@ -139,6 +172,34 @@ export default function OrdersPage() {
             <div style={{ display: "flex", justifyContent: "flex-end", marginTop: 16 }}>
               <button className="btn-accent" onClick={() => setSelectedOrder(null)}>Close</button>
             </div>
+          </div>
+        </div>
+      )}
+
+      {showEditModal && selectedOrder && (
+        <div style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.5)", display: "flex", alignItems: "center", justifyContent: "center", zIndex: 1000 }}>
+          <div className="card" style={{ width: 400, padding: 24, background: "var(--color-surface-card)" }}>
+            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 16 }}>
+              <h3 style={{ fontWeight: 700, fontSize: 18 }}>Update Order Status</h3>
+              <button className="btn-ghost" onClick={() => setShowEditModal(false)}><X size={18} /></button>
+            </div>
+            <form onSubmit={handleSaveEdit} style={{ display: "flex", flexDirection: "column", gap: 14 }}>
+              <div>
+                <label className="label">Status</label>
+                <select name="status" className="input" defaultValue={selectedOrder.orderStatus}>
+                  <option value="Pending">Pending</option>
+                  <option value="Confirmed">Confirmed</option>
+                  <option value="Processing">Processing</option>
+                  <option value="Ready">Ready</option>
+                  <option value="Delivered">Delivered</option>
+                  <option value="Cancelled">Cancelled</option>
+                </select>
+              </div>
+              <div style={{ display: "flex", justifyContent: "flex-end", gap: 8, marginTop: 12 }}>
+                <button type="button" className="btn-outline" onClick={() => setShowEditModal(false)}>Cancel</button>
+                <button type="submit" className="btn-accent" disabled={isSubmitting}>{isSubmitting ? "Saving..." : "Save Changes"}</button>
+              </div>
+            </form>
           </div>
         </div>
       )}

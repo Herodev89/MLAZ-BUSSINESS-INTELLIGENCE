@@ -3,7 +3,7 @@
 import { useState, useEffect } from "react";
 import { Plus, Search, X, Trash2, Edit } from "lucide-react";
 import { formatNaira, formatDate } from "@/lib/utils";
-import { getProductionRunsAction, createProductionRunAction, updateProductionRunAction } from "@/lib/actions/production";
+import { getProductionRunsAction, createProductionRunAction, updateProductionRunAction, deleteProductionRunAction } from "@/lib/actions/production";
 import { getProductsAction } from "@/lib/actions/products";
 
 export default function ProductionPage() {
@@ -49,6 +49,8 @@ export default function ProductionPage() {
     (p.id?.toLowerCase() || "").includes(search.toLowerCase())
   );
 
+  const totalProductionCost = filtered.reduce((acc, curr) => acc + (curr.totalCost || 0), 0);
+
   const handleRecordProduction = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
     setIsSubmitting(true);
@@ -79,7 +81,9 @@ export default function ProductionPage() {
 
   const handleDeleteRun = async (id: string) => {
     if (confirm("Are you sure you want to delete this production run?")) {
-      alert("Delete not implemented in Phase 2");
+      const res = await deleteProductionRunAction(id);
+      if (res.success) loadRuns();
+      else alert(res.error || "Failed to delete production run");
     }
   };
 
@@ -115,6 +119,11 @@ export default function ProductionPage() {
         <button className="btn-accent" onClick={() => setShowRecordModal(true)}>
           <Plus size={16} /> Record Production
         </button>
+      </div>
+
+      <div className="card" style={{ padding: "16px 20px", marginBottom: 24, display: "inline-block" }}>
+        <div style={{ fontSize: "12px", color: "var(--color-text-muted)", textTransform: "uppercase", fontWeight: 600, marginBottom: 4 }}>Total Production Cost</div>
+        <div style={{ fontSize: "28px", fontWeight: 800, color: "var(--color-error)" }}>{formatNaira(totalProductionCost)}</div>
       </div>
 
       <div className="card" style={{ padding: "14px 16px", display: "flex", gap: 12, flexWrap: "wrap", alignItems: "center", marginBottom: 16 }}>

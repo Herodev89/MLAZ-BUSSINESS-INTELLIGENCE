@@ -43,6 +43,36 @@ export async function createRawMaterialAction(formData: FormData) {
   }
 }
 
+export async function updateRawMaterialAction(id: string, formData: FormData) {
+  const name = formData.get("name")?.toString();
+  const unit = formData.get("unit")?.toString() || "unit";
+  const quantity = parseFloat(formData.get("quantity")?.toString() || "0");
+  const costPerUnit = parseFloat(formData.get("costPerUnit")?.toString() || "0");
+  const reorderLevel = parseFloat(formData.get("reorderLevel")?.toString() || "0");
+  const supplier = formData.get("supplier")?.toString() || "";
+
+  if (!name) return { error: "Name is required" };
+
+  const status = quantity <= reorderLevel ? (quantity === 0 ? "Out of Stock" : "Low Stock") : "In Stock";
+
+  try {
+    await db.prepare('UPDATE RawMaterial SET name = ?, unit = ?, quantity = ?, costPerUnit = ?, reorderLevel = ?, supplier = ?, status = ? WHERE id = ?')
+      .run(name, unit, quantity, costPerUnit, reorderLevel, supplier, status, id);
+    return { success: true };
+  } catch (error) {
+    return { error: "Failed to update raw material" };
+  }
+}
+
+export async function deleteRawMaterialAction(id: string) {
+  try {
+    await db.prepare('DELETE FROM RawMaterial WHERE id = ?').run(id);
+    return { success: true };
+  } catch (error) {
+    return { error: "Failed to delete raw material" };
+  }
+}
+
 export async function createProductionRunAction(formData: FormData) {
   const productName = formData.get("productName")?.toString();
   const variantId = formData.get("variantId")?.toString();
@@ -97,5 +127,14 @@ export async function updateProductionRunAction(id: string, formData: FormData) 
     return { success: true };
   } catch (error) {
     return { error: "Failed to update production run" };
+  }
+}
+
+export async function deleteProductionRunAction(id: string) {
+  try {
+    await db.prepare('DELETE FROM ProductionRun WHERE id = ?').run(id);
+    return { success: true };
+  } catch (error) {
+    return { error: "Failed to delete production run" };
   }
 }

@@ -1,14 +1,14 @@
-"use client";
-
 import Link from "next/link";
 import { ArrowLeft, Printer, Download } from "lucide-react";
-import { recentSales } from "@/lib/mock-data/dashboard";
 import { formatNaira, formatDate } from "@/lib/utils";
 import { notFound } from "next/navigation";
+import { getSaleByIdAction } from "@/lib/actions/sales";
 
-export default function SaleDetailPage({ params }: { params: { id: string } }) {
-  const sale = recentSales.find((s) => s.id === params.id);
-  if (!sale) notFound();
+export default async function SaleDetailPage({ params }: { params: { id: string } }) {
+  const res = await getSaleByIdAction(params.id);
+  if (!res.success || !res.sale) notFound();
+  
+  const sale = res.sale as any;
 
   return (
     <div style={{ animation: "fade-in 0.3s ease-out" }}>
@@ -38,16 +38,16 @@ export default function SaleDetailPage({ params }: { params: { id: string } }) {
                 <span style={{ fontSize: "24px" }}>👞</span>
               </div>
               <div>
-                <div style={{ fontSize: "18px", fontWeight: 700, color: "var(--color-text-primary)" }}>{sale.product}</div>
+                <div style={{ fontSize: "18px", fontWeight: 700, color: "var(--color-text-primary)" }}>{sale.productName}</div>
                 <div style={{ fontSize: "14px", color: "var(--color-text-secondary)", marginTop: 2 }}>Variant: {sale.color} · {sale.size}</div>
-                <div style={{ fontSize: "13px", color: "var(--color-text-muted)", marginTop: 4 }}>Quantity: <strong>{sale.qty} pair(s)</strong></div>
+                <div style={{ fontSize: "13px", color: "var(--color-text-muted)", marginTop: 4 }}>Quantity: <strong>{sale.quantity} pair(s)</strong></div>
               </div>
             </div>
 
             <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
               <div style={{ display: "flex", justifyContent: "space-between" }}>
                 <span style={{ color: "var(--color-text-secondary)" }}>Unit Price</span>
-                <span style={{ fontWeight: 600 }}>{formatNaira(sale.amount / sale.qty)}</span>
+                <span style={{ fontWeight: 600 }}>{formatNaira(sale.amount / sale.quantity)}</span>
               </div>
               <div style={{ display: "flex", justifyContent: "space-between" }}>
                 <span style={{ color: "var(--color-text-secondary)" }}>Subtotal</span>
@@ -85,9 +85,9 @@ export default function SaleDetailPage({ params }: { params: { id: string } }) {
           <div className="card">
             <div className="card-header"><div style={{ fontWeight: 700, fontSize: "14px" }}>Customer Info</div></div>
             <div className="card-body">
-              {sale.customer !== "Walk-in Customer" ? (
+              {sale.customerName ? (
                 <div>
-                  <div style={{ fontWeight: 700, color: "var(--color-text-primary)", marginBottom: 4 }}>{sale.customer}</div>
+                  <div style={{ fontWeight: 700, color: "var(--color-text-primary)", marginBottom: 4 }}>{sale.customerName}</div>
                   <Link href="/customers" style={{ fontSize: "13px", color: "var(--color-accent)", fontWeight: 600 }}>View Profile →</Link>
                 </div>
               ) : (

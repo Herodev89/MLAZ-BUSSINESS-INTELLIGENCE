@@ -68,3 +68,25 @@ export async function createOrderAction(formData: FormData) {
     return { error: "Failed to create order" };
   }
 }
+
+export async function updateOrderStatusAction(id: string, formData: FormData) {
+  const status = formData.get("status")?.toString() || "Pending";
+  
+  try {
+    await db.prepare('UPDATE "Order" SET status = ? WHERE id = ?').run(status, id);
+    return { success: true };
+  } catch (error) {
+    console.error(error);
+    return { error: "Failed to update order status" };
+  }
+}
+
+export async function deleteOrderAction(id: string) {
+  try {
+    await db.prepare('DELETE FROM "Order" WHERE id = ?').run(id);
+    return { success: true };
+  } catch (error) {
+    console.error(error);
+    return { error: "Failed to delete order" };
+  }
+}
