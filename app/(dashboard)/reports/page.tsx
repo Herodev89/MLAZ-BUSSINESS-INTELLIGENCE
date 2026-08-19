@@ -36,10 +36,16 @@ export default function ReportsPage() {
   }, []);
 
   const totalSalesRevenue = recentSales.reduce((acc, s) => acc + (s.amount || 0), 0);
-  const totalSalesProfit = recentSales.reduce((acc, s) => acc + (s.profit || 0), 0);
+  const totalCOGS = recentSales.reduce((acc, s) => acc + (s.costPrice || 0), 0);
+  const totalSalesProfit = totalSalesRevenue - totalCOGS; // or recentSales.reduce((acc, s) => acc + (s.profit || 0), 0)
+  
   const totalProductionCost = productionRuns.reduce((acc, r) => acc + (r.totalCost || 0), 0);
-  const totalExpenses = expenses.reduce((acc, e) => acc + (e.amount || 0), 0);
-  const inventoryValuation = products.reduce((acc, p) => acc + ((p.price || 0) * (p.stock || 0)), 0);
+  
+  const operatingExpenses = expenses.filter(e => e.type !== 'Factory Overhead').reduce((acc, e) => acc + (e.amount || 0), 0);
+  const factoryOverhead = expenses.filter(e => e.type === 'Factory Overhead').reduce((acc, e) => acc + (e.amount || 0), 0);
+  const totalExpenses = operatingExpenses + factoryOverhead;
+  
+  const inventoryValuation = products.reduce((acc, p) => acc + ((p.costPrice || p.price || 0) * (p.stock || 0)), 0);
 
   const handleGenerateReport = () => {
     setGeneratedReport({
@@ -48,10 +54,12 @@ export default function ReportsPage() {
       range: startDate && endDate ? `${startDate} to ${endDate}` : "All Time Records",
       salesCount: recentSales.length,
       revenue: totalSalesRevenue,
+      cogs: totalCOGS,
       profit: totalSalesProfit,
       productionCost: totalProductionCost,
-      expenses: totalExpenses,
-      netProfit: totalSalesProfit - totalExpenses,
+      operatingExpenses: operatingExpenses,
+      factoryOverhead: factoryOverhead,
+      netProfit: totalSalesProfit - operatingExpenses,
       inventoryValuation,
     });
   };
@@ -127,8 +135,10 @@ export default function ReportsPage() {
           
           <div class="stats-grid">
             <div class="stat-box"><div>Total Revenue</div><div class="stat-val">${formatNaira(totalSalesRevenue)}</div></div>
+            <div class="stat-box"><div>COGS</div><div class="stat-val" style="color: #9C5A35;">${formatNaira(totalCOGS)}</div></div>
             <div class="stat-box"><div>Gross Profit</div><div class="stat-val">${formatNaira(totalSalesProfit)}</div></div>
-            <div class="stat-box"><div>Operating Expenses</div><div class="stat-val">${formatNaira(totalExpenses)}</div></div>
+            <div class="stat-box"><div>Operating Exp.</div><div class="stat-val" style="color: #8B0000;">${formatNaira(operatingExpenses)}</div></div>
+            <div class="stat-box"><div>Net Profit</div><div class="stat-val" style="color: #006400;">${formatNaira(totalSalesProfit - operatingExpenses)}</div></div>
           </div>
 
           <table>
@@ -192,11 +202,16 @@ export default function ReportsPage() {
             </div>
           </div>
 
-          <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(200px, 1fr))", gap: 16, marginBottom: 24 }}>
+          <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(180px, 1fr))", gap: 16, marginBottom: 24 }}>
             <div className="card" style={{ padding: 16, background: "var(--color-surface-warm)" }}>
-              <div style={{ fontSize: 12, color: "var(--color-text-muted)", textTransform: "uppercase", fontWeight: 600 }}>Total Sales Revenue</div>
+              <div style={{ fontSize: 12, color: "var(--color-text-muted)", textTransform: "uppercase", fontWeight: 600 }}>Total Revenue</div>
               <div style={{ fontSize: 22, fontWeight: 800, color: "var(--color-accent)", marginTop: 4 }}>{formatNaira(generatedReport.revenue)}</div>
               <div style={{ fontSize: 12, color: "var(--color-text-secondary)", marginTop: 2 }}>From {generatedReport.salesCount} logged sales</div>
+            </div>
+            <div className="card" style={{ padding: 16, background: "var(--color-surface-warm)" }}>
+              <div style={{ fontSize: 12, color: "var(--color-text-muted)", textTransform: "uppercase", fontWeight: 600 }}>Cost of Goods Sold (COGS)</div>
+              <div style={{ fontSize: 22, fontWeight: 800, color: "var(--color-text-secondary)", marginTop: 4 }}>{formatNaira(generatedReport.cogs)}</div>
+              <div style={{ fontSize: 12, color: "var(--color-text-secondary)", marginTop: 2 }}>Direct manufacturing costs</div>
             </div>
             <div className="card" style={{ padding: 16, background: "var(--color-surface-warm)" }}>
               <div style={{ fontSize: 12, color: "var(--color-text-muted)", textTransform: "uppercase", fontWeight: 600 }}>Gross Profit</div>
@@ -204,10 +219,14 @@ export default function ReportsPage() {
             </div>
             <div className="card" style={{ padding: 16, background: "var(--color-surface-warm)" }}>
               <div style={{ fontSize: 12, color: "var(--color-text-muted)", textTransform: "uppercase", fontWeight: 600 }}>Operating Expenses</div>
-              <div style={{ fontSize: 22, fontWeight: 800, color: "var(--color-error)", marginTop: 4 }}>{formatNaira(generatedReport.expenses)}</div>
+              <div style={{ fontSize: 22, fontWeight: 800, color: "var(--color-error)", marginTop: 4 }}>{formatNaira(generatedReport.operatingExpenses)}</div>
+            </div>
+            <div className="card" style={{ padding: 16, background: "var(--color-surface-warm)", border: "2px solid var(--color-success)" }}>
+              <div style={{ fontSize: 12, color: "var(--color-text-muted)", textTransform: "uppercase", fontWeight: 600 }}>Net Profit</div>
+              <div style={{ fontSize: 22, fontWeight: 800, color: "var(--color-success)", marginTop: 4 }}>{formatNaira(generatedReport.netProfit)}</div>
             </div>
             <div className="card" style={{ padding: 16, background: "var(--color-surface-warm)" }}>
-              <div style={{ fontSize: 12, color: "var(--color-text-muted)", textTransform: "uppercase", fontWeight: 600 }}>Current Inventory Value</div>
+              <div style={{ fontSize: 12, color: "var(--color-text-muted)", textTransform: "uppercase", fontWeight: 600 }}>Inventory Value</div>
               <div style={{ fontSize: 22, fontWeight: 800, color: "var(--color-brand)", marginTop: 4 }}>{formatNaira(generatedReport.inventoryValuation)}</div>
             </div>
           </div>

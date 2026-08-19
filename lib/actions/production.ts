@@ -92,12 +92,13 @@ export async function createProductionRunAction(formData: FormData) {
   try {
     const id = `PRD-${Math.floor(1000 + Math.random() * 9000)}`;
     
-    await db.prepare('INSERT INTO ProductionRun (id, productName, qtyProduced, labourCost, materialCost, otherCosts, totalCost, status, notes) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)')
-      .run(id, productName, qtyProduced, labourCost, materialCost, otherCosts, totalCost, status, notes);
+    await db.prepare('INSERT INTO ProductionRun (id, productName, variantId, qtyProduced, labourCost, materialCost, otherCosts, totalCost, status, notes) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)')
+      .run(id, productName, variantId, qtyProduced, labourCost, materialCost, otherCosts, totalCost, status, notes);
 
-    // If completed, add to inventory
+    // If completed, add to inventory and update variant cost
     if (status === "Completed") {
-       await db.prepare('UPDATE ProductVariant SET stock = stock + ? WHERE id = ?').run(qtyProduced, variantId);
+       const costPerPair = totalCost / qtyProduced;
+       await db.prepare('UPDATE ProductVariant SET stock = stock + ?, costPrice = ? WHERE id = ?').run(qtyProduced, costPerPair, variantId);
        
        const movId = `IM-${Math.floor(1000 + Math.random() * 9000)}`;
        await db.prepare('INSERT INTO InventoryMovement (id, productName, variantId, size, color, quantity, type, reference, note) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)')
@@ -119,10 +120,17 @@ export async function updateProductionRunAction(id: string, formData: FormData) 
 
     await db.prepare('UPDATE ProductionRun SET status = ? WHERE id = ?').run(status, id);
 
-    // If it is newly marked as Completed, we should ideally add to inventory.
-    // For simplicity in this edit, we assume variantId isn't tracked in ProductionRun table directly, 
-    // but we can query it if we need to. Wait, ProductionRun doesn't store variantId in the schema!
-    // We will just update the status for now as requested by user.
+    // If it is newly marked as Completed, update inventory and variant cost
+    if (existing.status !== "Completed" && status === "Completed") {
+      if (existing.variantId) {
+        const costPerPair = existing.totalCost / existing.qtyProduced;
+        await db.prepare('UPDATE ProductVariant SET stock = stock + ?, costPrice = ? WHERE id = ?').run(existing.qtyProduced, costPerPair, existing.variantId);
+        
+        const movId = `IM-${Math.floor(1000 + Math.random() * 9000)}`;
+        await db.prepare('INSERT INTO InventoryMovement (id, productName, variantId, quantity, type, reference, note) VALUES (?, ?, ?, ?, ?, ?, ?)')
+          .run(movId, existing.productName, existing.variantId, existing.qtyProduced, 'Production', id, "Completed via status update");
+      }
+    }
 
     return { success: true };
   } catch (error) {

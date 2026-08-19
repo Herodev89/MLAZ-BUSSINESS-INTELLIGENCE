@@ -32,7 +32,7 @@ export async function createSaleAction(formData: FormData) {
   }
 
   // Check variant stock
-  const variantRecord = await db.prepare('SELECT id, stock FROM ProductVariant WHERE id = ?').get(variantId) as any;
+  const variantRecord = await db.prepare('SELECT id, stock, costPrice FROM ProductVariant WHERE id = ?').get(variantId) as any;
   if (!variantRecord) {
     return { error: "Product variant not found" };
   }
@@ -43,10 +43,14 @@ export async function createSaleAction(formData: FormData) {
   const saleId = `TX-${Math.floor(1000 + Math.random() * 9000)}`;
 
   try {
+    const unitCost = variantRecord.costPrice || 0;
+    const totalCostPrice = unitCost * quantity;
+    const profit = amount - totalCostPrice;
+
     await db.prepare(`
       INSERT INTO Sale (id, userId, customerName, productName, variantId, size, color, quantity, amount, costPrice, profit, paymentMethod, status)
       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-    `).run(saleId, session.id, customerName, productName, variantId, size, color, quantity, amount, amount * 0.6, amount * 0.4, paymentMethod, status);
+    `).run(saleId, session.id, customerName, productName, variantId, size, color, quantity, amount, totalCostPrice, profit, paymentMethod, status);
     
     // Update variant stock
     await db.prepare('UPDATE ProductVariant SET stock = stock - ? WHERE id = ?').run(quantity, variantRecord.id);

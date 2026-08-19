@@ -66,6 +66,7 @@ export async function initDb() {
       size TEXT,
       color TEXT,
       price REAL NOT NULL,
+      costPrice REAL DEFAULT 0,
       stock INTEGER NOT NULL DEFAULT 0,
       sku TEXT,
       createdAt DATETIME DEFAULT CURRENT_TIMESTAMP,
@@ -86,6 +87,11 @@ export async function initDb() {
     CREATE TABLE IF NOT EXISTS "Order" (
       id TEXT PRIMARY KEY,
       customerId TEXT,
+      productName TEXT,
+      variantId TEXT,
+      size TEXT,
+      color TEXT,
+      quantity INTEGER DEFAULT 1,
       amount REAL NOT NULL,
       paymentMethod TEXT DEFAULT 'Transfer',
       status TEXT DEFAULT 'Pending',
@@ -140,6 +146,7 @@ export async function initDb() {
     CREATE TABLE IF NOT EXISTS ProductionRun (
       id TEXT PRIMARY KEY,
       productName TEXT NOT NULL,
+      variantId TEXT,
       qtyProduced INTEGER NOT NULL,
       productionDate DATETIME DEFAULT CURRENT_TIMESTAMP,
       labourCost REAL DEFAULT 0,
@@ -153,6 +160,7 @@ export async function initDb() {
     CREATE TABLE IF NOT EXISTS Expense (
       id TEXT PRIMARY KEY,
       name TEXT NOT NULL,
+      type TEXT DEFAULT 'Operating',
       category TEXT NOT NULL,
       amount REAL NOT NULL,
       description TEXT,

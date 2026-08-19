@@ -11,7 +11,7 @@ export async function getOrdersAction() {
     // Let's join with Customer to get the name.
     
     const ordersWithDetails = await db.prepare(`
-      SELECT o.id, c.name as customer, c.phone, o.amount as totalAmount, o.paymentMethod, o.status as orderStatus, o.createdAt as date
+      SELECT o.id, c.name as customer, c.phone, o.productName, o.variantId, o.size, o.color, o.quantity, o.amount as totalAmount, o.paymentMethod, o.status as orderStatus, o.createdAt as date
       FROM "Order" o
       LEFT JOIN Customer c ON o.customerId = c.id
       ORDER BY o.createdAt DESC
@@ -20,7 +20,6 @@ export async function getOrdersAction() {
     // Format them for the UI
     const formattedOrders = ordersWithDetails.map(o => ({
       ...o,
-      items: [{ productName: "Order Items", variantName: "Standard", quantity: 1, unitPrice: o.totalAmount }],
       paymentStatus: "Paid" // Mocking this since we didn't add it to DB schema explicitly
     }));
 
@@ -36,6 +35,11 @@ export async function createOrderAction(formData: FormData) {
   const amount = parseFloat(formData.get("amount")?.toString() || "0");
   const paymentMethod = formData.get("paymentMethod")?.toString() || "Transfer";
   const status = formData.get("status")?.toString() || "Pending";
+  const productName = formData.get("productName")?.toString();
+  const variantId = formData.get("variantId")?.toString();
+  const size = formData.get("size")?.toString() || "";
+  const color = formData.get("color")?.toString() || "";
+  const quantity = parseInt(formData.get("qty")?.toString() || "1", 10);
 
   if (!amount) {
     return { error: "Amount is required" };
@@ -58,9 +62,14 @@ export async function createOrderAction(formData: FormData) {
 
   try {
     await db.prepare(`
-      INSERT INTO "Order" (id, customerId, amount, paymentMethod, status)
-      VALUES (?, ?, ?, ?, ?)
-    `).run(orderId, finalCustId, amount, paymentMethod, status);
+      INSERT INTO "Order" (id, customerId, productName, variantId, size, color, quantity, amount, paymentMethod, status)
+      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+    `).run(orderId, finalCustId, productName, variantId, size, color, quantity, amount, paymentMethod, status);
+    
+    // If initially created as confirmed, trigger sale
+    if (status === "Confirmed" || status === "Delivered") {
+      await processOrderToSale(orderId);
+    }
     
     return { success: true, orderId };
   } catch (error) {
@@ -73,7 +82,15 @@ export async function updateOrderStatusAction(id: string, formData: FormData) {
   const status = formData.get("status")?.toString() || "Pending";
   
   try {
+    const existingOrder = await db.prepare('SELECT status FROM "Order" WHERE id = ?').get(id) as any;
     await db.prepare('UPDATE "Order" SET status = ? WHERE id = ?').run(status, id);
+    
+    if (existingOrder && existingOrder.status !== "Confirmed" && existingOrder.status !== "Delivered") {
+      if (status === "Confirmed" || status === "Delivered") {
+        await processOrderToSale(id);
+      }
+    }
+    
     return { success: true };
   } catch (error) {
     console.error(error);
@@ -89,4 +106,29 @@ export async function deleteOrderAction(id: string) {
     console.error(error);
     return { error: "Failed to delete order" };
   }
+}
+
+async function processOrderToSale(orderId: string) {
+  const order = await db.prepare(`
+    SELECT o.*, c.name as customerName 
+    FROM "Order" o 
+    LEFT JOIN Customer c ON o.customerId = c.id 
+    WHERE o.id = ?
+  `).get(orderId) as any;
+  
+  if (!order || !order.variantId) return;
+
+  const variantRecord = await db.prepare('SELECT id, costPrice FROM ProductVariant WHERE id = ?').get(order.variantId) as any;
+  if (!variantRecord) return;
+
+  const costPrice = (variantRecord.costPrice || 0) * order.quantity;
+  const profit = order.amount - costPrice;
+  const saleId = `TX-${Math.floor(1000 + Math.random() * 9000)}`;
+
+  await db.prepare(`
+    INSERT INTO Sale (id, userId, customerName, productName, variantId, size, color, quantity, amount, costPrice, profit, paymentMethod, status)
+    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+  `).run(saleId, "system", order.customerName || "Walk-in", order.productName, order.variantId, order.size, order.color, order.quantity, order.amount, costPrice, profit, order.paymentMethod, order.status);
+  
+  await db.prepare('UPDATE ProductVariant SET stock = stock - ? WHERE id = ?').run(order.quantity, order.variantId);
 }

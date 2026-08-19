@@ -106,6 +106,7 @@ export default function ExpensesPage() {
           <thead>
             <tr>
               <th>Expense Name</th>
+              <th>Type</th>
               <th>Category</th>
               <th>Description</th>
               <th>Amount</th>
@@ -120,6 +121,11 @@ export default function ExpensesPage() {
               filtered.map((exp) => (
                 <tr key={exp.id}>
                   <td style={{ fontWeight: 600, color: "var(--color-text-primary)" }}>{exp.name}</td>
+                  <td>
+                    <span className={`badge ${exp.type === 'Factory Overhead' ? 'badge-warning' : 'badge-neutral'}`}>
+                      {exp.type || "Operating"}
+                    </span>
+                  </td>
                   <td><span className="badge-muted">{exp.category}</span></td>
                   <td style={{ color: "var(--color-text-secondary)", fontSize: "13px" }}>{exp.description || "—"}</td>
                   <td style={{ fontWeight: 700, color: "var(--color-text-primary)" }}>{formatNaira(exp.amount)}</td>
@@ -149,11 +155,20 @@ export default function ExpensesPage() {
                 <label className="label">Expense Title</label>
                 <input name="name" className="input" defaultValue={selectedExpense?.name || ""} placeholder="Generator Fuel" required />
               </div>
-              <div>
-                <label className="label">Category</label>
-                <select name="category" className="select" defaultValue={selectedExpense?.category || "Other"}>
-                  {expenseCategories.map(c => <option key={c} value={c}>{c}</option>)}
-                </select>
+              <div style={{ display: "flex", gap: 12 }}>
+                <div style={{ flex: 1 }}>
+                  <label className="label">Type</label>
+                  <select name="type" className="select" defaultValue={selectedExpense?.type || "Operating"}>
+                    <option value="Operating">Operating Expense</option>
+                    <option value="Factory Overhead">Factory Overhead</option>
+                  </select>
+                </div>
+                <div style={{ flex: 1 }}>
+                  <label className="label">Category</label>
+                  <select name="category" className="select" defaultValue={selectedExpense?.category || "Other"}>
+                    {expenseCategories.map(c => <option key={c} value={c}>{c}</option>)}
+                  </select>
+                </div>
               </div>
               <div>
                 <label className="label">Amount (₦)</label>

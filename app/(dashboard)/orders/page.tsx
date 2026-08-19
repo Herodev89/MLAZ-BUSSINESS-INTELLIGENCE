@@ -4,6 +4,7 @@ import { useState, useEffect } from "react";
 import { Plus, Search, Eye, X, Edit, Trash2 } from "lucide-react";
 import { formatNaira, formatDate, getOrderStatusClass } from "@/lib/utils";
 import { getOrdersAction, createOrderAction, updateOrderStatusAction, deleteOrderAction } from "@/lib/actions/orders";
+import { getProductsAction } from "@/lib/actions/products";
 
 export default function OrdersPage() {
   const [orderList, setOrderList] = useState<any[]>([]);
@@ -14,14 +15,64 @@ export default function OrdersPage() {
   const [showCreateModal, setShowCreateModal] = useState(false);
   const [showEditModal, setShowEditModal] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [products, setProducts] = useState<any[]>([]);
+  
+  const [orderForm, setOrderForm] = useState({
+    customer: "",
+    productId: "",
+    productName: "",
+    variantId: "",
+    size: "",
+    color: "",
+    qty: 1,
+    amount: 0,
+    status: "Pending",
+    paymentMethod: "Transfer"
+  });
+
+  const flatVariants = products.flatMap(p => 
+    (p.variants || []).map((v: any) => ({
+      ...v,
+      productName: p.name,
+      displayName: `${p.name} - ${v.size} ${v.color}`.trim()
+    }))
+  );
 
   useEffect(() => {
     loadOrders();
+    loadProducts();
   }, []);
 
   const loadOrders = async () => {
     const res = await getOrdersAction();
     if (res.success) setOrderList(res.orders);
+  };
+
+  const loadProducts = async () => {
+    const res = await getProductsAction();
+    if (res.success && res.products) {
+      const prods = res.products as any[];
+      setProducts(prods);
+      
+      const flat = prods.flatMap(p => 
+        (p.variants || []).map((v: any) => ({
+          ...v,
+          productName: p.name
+        }))
+      );
+      
+      if (flat.length > 0) {
+        setOrderForm(prev => ({
+          ...prev,
+          productId: flat[0].productId,
+          productName: flat[0].productName,
+          variantId: flat[0].id,
+          size: flat[0].size,
+          color: flat[0].color,
+          amount: flat[0].price * prev.qty
+        }));
+      }
+    }
   };
 
   const filtered = orderList.filter(o => {
@@ -33,7 +84,18 @@ export default function OrdersPage() {
   const handleCreateOrder = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
     setIsSubmitting(true);
-    const formData = new FormData(e.currentTarget);
+    
+    const formData = new FormData();
+    formData.append("customer", orderForm.customer);
+    formData.append("productName", orderForm.productName);
+    formData.append("variantId", orderForm.variantId);
+    formData.append("size", orderForm.size);
+    formData.append("color", orderForm.color);
+    formData.append("qty", orderForm.qty.toString());
+    formData.append("amount", orderForm.amount.toString());
+    formData.append("status", orderForm.status);
+    formData.append("paymentMethod", orderForm.paymentMethod);
+
     const res = await createOrderAction(formData);
     
     if (res.success) {
@@ -43,6 +105,33 @@ export default function OrdersPage() {
       alert(res.error);
     }
     setIsSubmitting(false);
+  };
+
+  const handleProductChange = (e: React.ChangeEvent<HTMLSelectElement>) => {
+    const selectedVariantId = e.target.value;
+    const variant = flatVariants.find(v => v.id === selectedVariantId);
+    if (variant) {
+      setOrderForm(prev => ({
+        ...prev,
+        productId: variant.productId,
+        productName: variant.productName,
+        variantId: variant.id,
+        size: variant.size,
+        color: variant.color,
+        amount: variant.price * prev.qty
+      }));
+    }
+  };
+
+  const handleQtyChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const qty = parseInt(e.target.value) || 1;
+    const variant = flatVariants.find(v => v.id === orderForm.variantId);
+    const price = variant ? variant.price : 0;
+    setOrderForm(prev => ({
+      ...prev,
+      qty,
+      amount: price * qty
+    }));
   };
 
   const handleOpenEdit = (order: any) => {
@@ -163,9 +252,7 @@ export default function OrdersPage() {
               <hr style={{ borderColor: "var(--color-border)", margin: "8px 0" }} />
               <div><strong>Items Purchased:</strong></div>
               <ul style={{ paddingLeft: 20 }}>
-                {selectedOrder.items.map((it: any, idx: number) => (
-                  <li key={idx}>{it.productName} ({it.variantName}) x {it.quantity} - {formatNaira(it.unitPrice * it.quantity)}</li>
-                ))}
+                <li>{selectedOrder.productName} ({selectedOrder.size} {selectedOrder.color}) x {selectedOrder.quantity} - {formatNaira(selectedOrder.totalAmount)}</li>
               </ul>
               <div style={{ fontSize: 16, fontWeight: 700, textAlign: "right", marginTop: 8 }}>Total: {formatNaira(selectedOrder.totalAmount)}</div>
             </div>
@@ -214,23 +301,37 @@ export default function OrdersPage() {
             <form onSubmit={handleCreateOrder} style={{ display: "flex", flexDirection: "column", gap: 14 }}>
               <div>
                 <label className="label">Customer Name</label>
-                <input name="customer" className="input" placeholder="John Doe" required />
+                <input name="customer" className="input" placeholder="John Doe" value={orderForm.customer} onChange={(e) => setOrderForm({...orderForm, customer: e.target.value})} required />
               </div>
               <div>
-                <label className="label">Total Amount (₦)</label>
-                <input name="amount" className="input" type="number" placeholder="12500" required />
+                <label className="label">Product & Variant</label>
+                <select name="product" className="select" value={orderForm.variantId} onChange={handleProductChange} required>
+                  {flatVariants.map(v => (
+                    <option key={v.id} value={v.id}>{v.displayName} - {formatNaira(v.price)}</option>
+                  ))}
+                </select>
+              </div>
+              <div style={{ display: "flex", gap: 12 }}>
+                <div style={{ flex: 1 }}>
+                  <label className="label">Quantity</label>
+                  <input name="qty" className="input" type="number" min="1" value={orderForm.qty} onChange={handleQtyChange} required />
+                </div>
+                <div style={{ flex: 1 }}>
+                  <label className="label">Total Amount (₦)</label>
+                  <input name="amount" className="input" type="number" value={orderForm.amount} readOnly style={{ background: "var(--color-surface-muted)", cursor: "not-allowed" }} required />
+                </div>
               </div>
               <div style={{ display: "flex", gap: 12 }}>
                 <div style={{ flex: 1 }}>
                   <label className="label">Status</label>
-                  <select name="status" className="select" defaultValue="Pending">
+                  <select name="status" className="select" value={orderForm.status} onChange={(e) => setOrderForm({...orderForm, status: e.target.value})}>
                     <option value="Pending">Pending</option>
                     <option value="Confirmed">Confirmed</option>
                   </select>
                 </div>
                 <div style={{ flex: 1 }}>
                   <label className="label">Payment Method</label>
-                  <select name="paymentMethod" className="select" defaultValue="Transfer">
+                  <select name="paymentMethod" className="select" value={orderForm.paymentMethod} onChange={(e) => setOrderForm({...orderForm, paymentMethod: e.target.value})}>
                     <option value="Transfer">Bank Transfer</option>
                     <option value="Cash">Cash</option>
                     <option value="POS">POS</option>

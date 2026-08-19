@@ -13,6 +13,7 @@ export async function getExpensesAction() {
 
 export async function createExpenseAction(formData: FormData) {
   const name = formData.get("name")?.toString();
+  const type = formData.get("type")?.toString() || "Operating";
   const category = formData.get("category")?.toString();
   const amount = parseFloat(formData.get("amount")?.toString() || "0");
   const description = formData.get("description")?.toString() || "";
@@ -21,11 +22,12 @@ export async function createExpenseAction(formData: FormData) {
     return { error: "Name, category, and valid amount are required" };
   }
 
+  const expenseId = `EXP-${Math.floor(1000 + Math.random() * 9000)}`;
+
   try {
-    const id = `EXP-${Math.floor(1000 + Math.random() * 9000)}`;
-    await db.prepare('INSERT INTO Expense (id, name, category, amount, description) VALUES (?, ?, ?, ?, ?)')
-      .run(id, name, category, amount, description);
-    return { success: true };
+    await db.prepare('INSERT INTO Expense (id, name, type, category, amount, description) VALUES (?, ?, ?, ?, ?, ?)')
+      .run(expenseId, name, type, category, amount, description);
+    return { success: true, expenseId };
   } catch (error) {
     return { error: "Failed to create expense" };
   }
@@ -42,6 +44,7 @@ export async function deleteExpenseAction(id: string) {
 
 export async function updateExpenseAction(id: string, formData: FormData) {
   const name = formData.get("name")?.toString();
+  const type = formData.get("type")?.toString() || "Operating";
   const category = formData.get("category")?.toString();
   const amount = parseFloat(formData.get("amount")?.toString() || "0");
   const description = formData.get("description")?.toString() || "";
@@ -51,8 +54,8 @@ export async function updateExpenseAction(id: string, formData: FormData) {
   }
 
   try {
-    await db.prepare('UPDATE Expense SET name = ?, category = ?, amount = ?, description = ? WHERE id = ?')
-      .run(name, category, amount, description, id);
+    await db.prepare('UPDATE Expense SET name = ?, type = ?, category = ?, amount = ?, description = ? WHERE id = ?')
+      .run(name, type, category, amount, description, id);
     return { success: true };
   } catch (error) {
     return { error: "Failed to update expense" };
