@@ -31,10 +31,15 @@ export default async function DashboardPage() {
   const stats = res.success ? res.stats : {
     totalRevenue: 0,
     totalProfit: 0,
+    grossProfit: 0,
+    operatingExpenses: 0,
     totalSales: 0,
     pairsSold: 0,
     inventoryValue: 0,
     lowStockCount: 0,
+    totalExpenses: 0,
+    totalRawMaterialsCost: 0,
+    cogs: 0,
   };
   const charts = res.success ? res.charts : {
     revenueTrend: [],
@@ -45,8 +50,7 @@ export default async function DashboardPage() {
     salesByColor: [],
   };
 
-  // Safe destructuring with fallbacks for the new fields if they aren't returned yet
-  const { totalExpenses = 0, totalRawMaterialsCost = 0 } = stats as any;
+  const { totalExpenses = 0, totalRawMaterialsCost = 0 } = stats;
 
   return (
     <div style={{ animation: "fade-in 0.3s ease-out" }}>
