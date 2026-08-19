@@ -25,6 +25,7 @@ export default function KPICard({
   icon: Icon,
   accentColor = "var(--color-accent)",
   id,
+  href,
 }: KPICardProps) {
   const displayValue = isCurrency
     ? compact
