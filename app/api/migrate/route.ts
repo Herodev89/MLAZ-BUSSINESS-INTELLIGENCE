@@ -48,5 +48,24 @@ export async function GET() {
     results.push({ task: 'initDb', status: 'Failed', error: e.message });
   }
 
+  // 6. Recalculate Sales COGS and Profit based on current ProductVariant costPrice
+  try {
+    const sales = await db.prepare("SELECT * FROM Sale").all() as any[];
+    for (const sale of sales) {
+      if (sale.variantId) {
+        const variant = await db.prepare("SELECT costPrice FROM ProductVariant WHERE id = ?").get(sale.variantId) as any;
+        if (variant) {
+          const unitCost = variant.costPrice || 0;
+          const totalCostPrice = unitCost * sale.quantity;
+          const profit = sale.amount - totalCostPrice;
+          await db.prepare("UPDATE Sale SET costPrice = ?, profit = ? WHERE id = ?").run(totalCostPrice, profit, sale.id);
+        }
+      }
+    }
+    results.push({ table: 'Sale', column: 'costPrice, profit', status: 'Recalculated based on current variants' });
+  } catch (e: any) {
+    results.push({ table: 'Sale', column: 'costPrice, profit', status: 'Recalculation failed', error: e.message });
+  }
+
   return NextResponse.json({ success: true, results });
 }
