@@ -52,14 +52,30 @@ export async function GET() {
   try {
     const sales = await db.prepare("SELECT * FROM Sale").all() as any[];
     for (const sale of sales) {
+      // First try to find by exact variantId
+      let variant = null;
       if (sale.variantId) {
-        const variant = await db.prepare("SELECT costPrice FROM ProductVariant WHERE id = ?").get(sale.variantId) as any;
-        if (variant) {
-          const unitCost = variant.costPrice || 0;
-          const totalCostPrice = unitCost * sale.quantity;
-          const profit = sale.amount - totalCostPrice;
-          await db.prepare("UPDATE Sale SET costPrice = ?, profit = ? WHERE id = ?").run(totalCostPrice, profit, sale.id);
+        variant = await db.prepare("SELECT costPrice FROM ProductVariant WHERE id = ?").get(sale.variantId) as any;
+      }
+      
+      // If not found (because updateProduct deletes and recreates variants), try to find by productName, size, and color
+      if (!variant) {
+        const product = await db.prepare("SELECT id FROM Product WHERE name = ?").get(sale.productName) as any;
+        if (product) {
+           variant = await db.prepare("SELECT costPrice FROM ProductVariant WHERE productId = ? AND size = ? AND color = ?").get(product.id, sale.size || '', sale.color || '') as any;
+           
+           // If STILL not found, just grab any variant for that product as a last resort
+           if (!variant) {
+             variant = await db.prepare("SELECT costPrice FROM ProductVariant WHERE productId = ?").get(product.id) as any;
+           }
         }
+      }
+
+      if (variant) {
+        const unitCost = variant.costPrice || 0;
+        const totalCostPrice = unitCost * sale.quantity;
+        const profit = sale.amount - totalCostPrice;
+        await db.prepare("UPDATE Sale SET costPrice = ?, profit = ? WHERE id = ?").run(totalCostPrice, profit, sale.id);
       }
     }
     results.push({ table: 'Sale', column: 'costPrice, profit', status: 'Recalculated based on current variants' });
