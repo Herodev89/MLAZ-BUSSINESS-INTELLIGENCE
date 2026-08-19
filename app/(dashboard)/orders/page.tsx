@@ -212,7 +212,7 @@ export default function OrdersPage() {
                 <tr key={o.id}>
                   <td><span style={{ fontSize: "12px", fontWeight: 700, color: "var(--color-accent)", fontFamily: "monospace" }}>{o.id}</span></td>
                   <td style={{ fontWeight: 600, color: "var(--color-text-primary)" }}>{o.customer}</td>
-                  <td style={{ color: "var(--color-text-secondary)" }}>{o.items.length} item(s)</td>
+                  <td style={{ color: "var(--color-text-secondary)" }}>1 item(s)</td>
                   <td style={{ fontWeight: 700, color: "var(--color-text-primary)" }}>{formatNaira(o.totalAmount)}</td>
                   <td>
                     <span className={`badge ${o.paymentStatus === "Paid" ? "badge-success" : o.paymentStatus === "Partial" ? "badge-warning" : "badge-error"}`}>
