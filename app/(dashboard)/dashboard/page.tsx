@@ -5,6 +5,7 @@ import {
   Package,
   BarChart3,
   AlertTriangle,
+  Activity,
 } from "lucide-react";
 import KPICard from "@/components/dashboard/KPICard";
 import RevenueChart from "@/components/dashboard/RevenueChart";
