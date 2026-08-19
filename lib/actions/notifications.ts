@@ -4,8 +4,8 @@ import db from "@/lib/db";
 
 export async function getNotificationsAction() {
   try {
-    const notifications = await db.prepare('SELECT * FROM Notification ORDER BY createdAt DESC').all();
-    return { success: true, notifications };
+    const rawNotifications = await db.prepare('SELECT * FROM Notification ORDER BY createdAt DESC').all() as any[];
+    return { success: true, notifications: rawNotifications.map(n => ({ ...n })) };
   } catch (error) {
     return { error: "Failed to fetch notifications" };
   }

@@ -5,8 +5,8 @@ import { randomUUID } from "crypto";
 
 export async function getInventoryMovementsAction() {
   try {
-    const movements = await db.prepare('SELECT * FROM InventoryMovement ORDER BY date DESC').all();
-    return { success: true, movements };
+    const rawMovements = await db.prepare('SELECT * FROM InventoryMovement ORDER BY date DESC').all() as any[];
+    return { success: true, movements: rawMovements.map(m => ({ ...m })) };
   } catch (error) {
     return { error: "Failed to fetch movements" };
   }

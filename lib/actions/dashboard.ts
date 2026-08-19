@@ -143,7 +143,7 @@ export async function getDashboardStatsAction() {
       },
       charts: {
         revenueTrend: revenueTrendData,
-        salesByProduct: productSalesRows,
+        salesByProduct: productSalesRows.map(r => ({ ...r })),
         salesByPayment: salesByPaymentData,
         salesByCategory: salesByCategoryData,
         salesBySize: salesBySizeData,

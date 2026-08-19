@@ -4,8 +4,8 @@ import db from "@/lib/db";
 
 export async function getExpensesAction() {
   try {
-    const expenses = await db.prepare('SELECT * FROM Expense ORDER BY date DESC').all();
-    return { success: true, expenses };
+    const rawExpenses = await db.prepare('SELECT * FROM Expense ORDER BY date DESC').all() as any[];
+    return { success: true, expenses: rawExpenses.map(e => ({ ...e })) };
   } catch (error) {
     return { error: "Failed to fetch expenses" };
   }

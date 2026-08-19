@@ -10,7 +10,7 @@ export async function getProductsAction() {
     
     // Attach variants to products
     const productsWithVariants = products.map(p => {
-      const pVariants = variants.filter(v => v.productId === p.id);
+      const pVariants = variants.filter(v => v.productId === p.id).map(v => ({...v}));
       // Compute total stock and base price for the parent product based on variants
       const totalStock = pVariants.reduce((sum, v) => sum + v.stock, 0);
       const basePrice = pVariants.length > 0 ? pVariants[0].price : 0;
@@ -32,7 +32,7 @@ export async function getProductByIdAction(id: string) {
     const totalStock = variants.reduce((sum, v) => sum + v.stock, 0);
     const basePrice = variants.length > 0 ? variants[0].price : 0;
     
-    return { success: true, product: { ...p, variants, stock: totalStock, price: basePrice } };
+    return { success: true, product: { ...p, variants: variants.map(v => ({...v})), stock: totalStock, price: basePrice } };
   } catch (error) {
     return { error: "Failed to fetch product" };
   }

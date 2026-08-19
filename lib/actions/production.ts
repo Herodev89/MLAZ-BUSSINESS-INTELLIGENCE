@@ -5,8 +5,8 @@ import { randomUUID } from "crypto";
 
 export async function getRawMaterialsAction() {
   try {
-    const materials = await db.prepare('SELECT * FROM RawMaterial ORDER BY name ASC').all();
-    return { success: true, materials };
+    const rawMaterials = await db.prepare('SELECT * FROM RawMaterial ORDER BY name ASC').all() as any[];
+    return { success: true, materials: rawMaterials.map(m => ({ ...m })) };
   } catch (error) {
     return { error: "Failed to fetch raw materials" };
   }
@@ -14,8 +14,8 @@ export async function getRawMaterialsAction() {
 
 export async function getProductionRunsAction() {
   try {
-    const runs = await db.prepare('SELECT * FROM ProductionRun ORDER BY productionDate DESC').all();
-    return { success: true, runs };
+    const rawRuns = await db.prepare('SELECT * FROM ProductionRun ORDER BY productionDate DESC').all() as any[];
+    return { success: true, runs: rawRuns.map(r => ({ ...r })) };
   } catch (error) {
     return { error: "Failed to fetch production runs" };
   }

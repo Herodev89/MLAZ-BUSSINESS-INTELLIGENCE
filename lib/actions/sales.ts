@@ -6,7 +6,8 @@ import { randomUUID } from "crypto";
 
 export async function getSalesAction() {
   try {
-    const sales = await db.prepare('SELECT * FROM Sale ORDER BY createdAt DESC').all();
+    const rawSales = await db.prepare('SELECT * FROM Sale ORDER BY createdAt DESC').all() as any[];
+    const sales = rawSales.map(r => ({ ...r }));
     return { success: true, sales };
   } catch (error) {
     return { error: "Failed to fetch sales" };
@@ -81,7 +82,7 @@ export async function getSaleByIdAction(id: string) {
   try {
     const sale = await db.prepare('SELECT * FROM Sale WHERE id = ?').get(id);
     if (!sale) return { error: "Sale not found" };
-    return { success: true, sale };
+    return { success: true, sale: { ...(sale as any) } };
   } catch (error) {
     return { error: "Failed to fetch sale" };
   }

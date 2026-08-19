@@ -73,8 +73,8 @@ export async function createSalesRepAction(formData: FormData) {
 
 export async function getUsersAction() {
   try {
-    const users = await db.prepare('SELECT id, name, email, role, createdAt FROM User ORDER BY createdAt DESC').all();
-    return { success: true, users };
+    const rawUsers = await db.prepare('SELECT id, name, email, role, createdAt FROM User ORDER BY createdAt DESC').all() as any[];
+    return { success: true, users: rawUsers.map(u => ({ ...u })) };
   } catch (error) {
     return { error: "Failed to fetch users" };
   }

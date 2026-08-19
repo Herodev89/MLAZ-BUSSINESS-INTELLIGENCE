@@ -23,7 +23,7 @@ export async function getOrdersAction() {
       paymentStatus: "Paid" // Mocking this since we didn't add it to DB schema explicitly
     }));
 
-    return { success: true, orders: formattedOrders };
+    return { success: true, orders: formattedOrders.map(o => ({...o})) };
   } catch (error) {
     console.error(error);
     return { error: "Failed to fetch orders" };

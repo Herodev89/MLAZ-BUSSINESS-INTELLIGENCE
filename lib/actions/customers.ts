@@ -5,8 +5,8 @@ import { randomUUID } from "crypto";
 
 export async function getCustomersAction() {
   try {
-    const customers = await db.prepare('SELECT * FROM Customer ORDER BY name ASC').all();
-    return { success: true, customers };
+    const rawCustomers = await db.prepare('SELECT * FROM Customer ORDER BY name ASC').all() as any[];
+    return { success: true, customers: rawCustomers.map(c => ({ ...c })) };
   } catch (error) {
     return { error: "Failed to fetch customers" };
   }
