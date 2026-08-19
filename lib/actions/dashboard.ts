@@ -8,7 +8,7 @@ export async function getDashboardStatsAction() {
     const grossProfitRow: any = await db.prepare("SELECT SUM(profit) as total FROM Sale WHERE status = 'Confirmed'").get();
     const salesCountRow: any = await db.prepare("SELECT COUNT(*) as total FROM Sale WHERE status = 'Confirmed'").get();
     const pairsSoldRow: any = await db.prepare("SELECT SUM(quantity) as total FROM Sale WHERE status = 'Confirmed'").get();
-    const inventoryValRow: any = await db.prepare('SELECT SUM(costPrice * stock) as total FROM ProductVariant').get();
+    const inventoryValRow: any = await db.prepare('SELECT SUM(price * stock) as total FROM ProductVariant').get();
     const lowStockRow: any = await db.prepare('SELECT COUNT(*) as total FROM ProductVariant WHERE stock < 10').get();
     
     // Expenses
@@ -22,7 +22,7 @@ export async function getDashboardStatsAction() {
     const totalExpenses = allExpensesRow?.total || 0;
     const totalRawMaterialsCost = rawMaterialsRow?.total || 0;
     
-    const cogsRow: any = await db.prepare("SELECT SUM(costPrice * quantity) as total FROM Sale WHERE status = 'Confirmed'").get();
+    const cogsRow: any = await db.prepare("SELECT SUM(costPrice) as total FROM Sale WHERE status = 'Confirmed'").get();
     const cogs = cogsRow?.total || 0;
 
     const grossProfit = grossProfitRow?.total || 0;

@@ -59,7 +59,7 @@ export async function getInventoryStatsAction() {
 
     variants.forEach(v => {
       totalPairs += v.stock;
-      inventoryValue += (v.stock * (v.costPrice || 0));
+      inventoryValue += (v.stock * v.price);
       if (v.stock === 0) outOfStockCount++;
       else if (v.stock <= 10) lowStockCount++;
     });
