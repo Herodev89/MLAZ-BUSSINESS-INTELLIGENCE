@@ -22,10 +22,15 @@ export default function NewProductPage() {
     setIsSubmitting(true);
     const formData = new FormData();
     formData.append("name", form.name);
-    formData.append("price", form.sellingPrice);
-    
-    // In a real app we would map other fields here if the DB supported them
-    
+    const variants = [{
+      size: "Standard",
+      color: "Default",
+      price: parseFloat(form.sellingPrice) || 0,
+      costPrice: parseFloat(form.costPrice) || 0,
+      stock: 0,
+      sku: form.sku
+    }];
+    formData.append("variants", JSON.stringify(variants));
     const res = await createProductAction(formData);
     if (res.success) {
       router.push("/products");

@@ -121,6 +121,19 @@ export default async function DashboardPage() {
         </Link>
         <Link href="/reports" style={{ textDecoration: 'none' }}>
           <KPICard
+            id="kpi-cogs"
+            title="Cost of Goods (COGS)"
+            value={stats.cogs || 0}
+            isCurrency
+            compact
+            change={0}
+            changePeriod={"vs last month"}
+            icon={Activity}
+            accentColor="var(--color-warning)"
+          />
+        </Link>
+        <Link href="/reports" style={{ textDecoration: 'none' }}>
+          <KPICard
             id="kpi-profit"
             title="Net Profit"
             value={stats.totalProfit}

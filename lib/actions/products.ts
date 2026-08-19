@@ -57,9 +57,9 @@ export async function createProductAction(formData: FormData) {
 
   try {
     await db.prepare('INSERT INTO Product (id, name) VALUES (?, ?)').run(productId, name);
-    const insertVariant = await db.prepare('INSERT INTO ProductVariant (id, productId, size, color, price, stock, sku) VALUES (?, ?, ?, ?, ?, ?, ?)');
+    const insertVariant = await db.prepare('INSERT INTO ProductVariant (id, productId, size, color, price, costPrice, stock, sku) VALUES (?, ?, ?, ?, ?, ?, ?, ?)');
     for (const v of variants) {
-      await insertVariant.run(randomUUID(), productId, v.size || '', v.color || '', parseFloat(v.price) || 0, parseInt(v.stock) || 0, v.sku || '');
+      await insertVariant.run(randomUUID(), productId, v.size || '', v.color || '', parseFloat(v.price) || 0, parseFloat(v.costPrice) || 0, parseInt(v.stock) || 0, v.sku || '');
     }
     return { success: true, productId };
   } catch (error) {
@@ -87,9 +87,9 @@ export async function updateProductAction(id: string, formData: FormData) {
     
     // Replace all variants
     await db.prepare('DELETE FROM ProductVariant WHERE productId = ?').run(id);
-    const insertVariant = await db.prepare('INSERT INTO ProductVariant (id, productId, size, color, price, stock, sku) VALUES (?, ?, ?, ?, ?, ?, ?)');
+    const insertVariant = await db.prepare('INSERT INTO ProductVariant (id, productId, size, color, price, costPrice, stock, sku) VALUES (?, ?, ?, ?, ?, ?, ?, ?)');
     for (const v of variants) {
-      await insertVariant.run(randomUUID(), id, v.size || '', v.color || '', parseFloat(v.price) || 0, parseInt(v.stock) || 0, v.sku || '');
+      await insertVariant.run(randomUUID(), id, v.size || '', v.color || '', parseFloat(v.price) || 0, parseFloat(v.costPrice) || 0, parseInt(v.stock) || 0, v.sku || '');
     }
     return { success: true };
   } catch (error) {

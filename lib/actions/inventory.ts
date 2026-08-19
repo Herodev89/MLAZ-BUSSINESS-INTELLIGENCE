@@ -54,12 +54,17 @@ export async function getInventoryStatsAction() {
     let lowStockCount = 0;
     let outOfStockCount = 0;
 
+    const rawMaterialsRow: any = await db.prepare("SELECT SUM(quantity * costPerUnit) as total FROM RawMaterial").get();
+    const totalRawMaterialsCost = rawMaterialsRow?.total || 0;
+
     variants.forEach(v => {
       totalPairs += v.stock;
-      inventoryValue += (v.stock * v.price);
+      inventoryValue += (v.stock * (v.costPrice || 0));
       if (v.stock === 0) outOfStockCount++;
       else if (v.stock <= 10) lowStockCount++;
     });
+
+    inventoryValue += totalRawMaterialsCost;
 
     return { 
       success: true, 

@@ -5,7 +5,7 @@ import db from "@/lib/db";
 export async function getProfitAnalysisAction() {
   try {
     const revenueRow: any = await db.prepare("SELECT SUM(amount) as total FROM Sale WHERE status = 'Confirmed'").get();
-    const cogsRow: any = await db.prepare("SELECT SUM(costPrice) as total FROM Sale WHERE status = 'Confirmed'").get();
+    const cogsRow: any = await db.prepare("SELECT SUM(costPrice * quantity) as total FROM Sale WHERE status = 'Confirmed'").get();
     const opexRow: any = await db.prepare("SELECT SUM(amount) as total FROM Expense").get();
 
     const revenue = revenueRow?.total || 0;

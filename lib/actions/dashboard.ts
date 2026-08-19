@@ -21,8 +21,12 @@ export async function getDashboardStatsAction() {
     const operatingExpenses = operatingExpensesRow?.total || 0;
     const totalExpenses = allExpensesRow?.total || 0;
     const totalRawMaterialsCost = rawMaterialsRow?.total || 0;
+    
+    const cogsRow: any = await db.prepare("SELECT SUM(costPrice * quantity) as total FROM Sale WHERE status = 'Confirmed'").get();
+    const cogs = cogsRow?.total || 0;
+
     const grossProfit = grossProfitRow?.total || 0;
-    const netProfit = grossProfit - operatingExpenses;
+    const netProfit = grossProfit - totalExpenses;
     const inventoryValue = (inventoryValRow?.total || 0) + totalRawMaterialsCost;
 
     // Chart Data
@@ -140,6 +144,7 @@ export async function getDashboardStatsAction() {
         lowStockCount: lowStockRow?.total || 0,
         totalExpenses: totalExpenses,
         totalRawMaterialsCost: totalRawMaterialsCost,
+        cogs: cogs,
       },
       charts: {
         revenueTrend: revenueTrendData,

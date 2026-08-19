@@ -239,7 +239,7 @@ export default function ProductsPage() {
                 <div><strong>Variants & Stock Levels:</strong></div>
                 <table className="table" style={{ fontSize: 13 }}>
                   <thead>
-                    <tr><th>Size</th><th>Color</th><th>SKU</th><th>Price</th><th>Stock</th></tr>
+                    <tr><th>Size</th><th>Color</th><th>SKU</th><th>Cost Price</th><th>Selling Price</th><th>Stock</th></tr>
                   </thead>
                   <tbody>
                     {(selectedProduct as any).variants?.map((v: any) => (
@@ -247,6 +247,7 @@ export default function ProductsPage() {
                         <td>{v.size}</td>
                         <td>{v.color}</td>
                         <td>{v.sku}</td>
+                        <td>{formatNaira(v.costPrice)}</td>
                         <td>{formatNaira(v.price)}</td>
                         <td>{v.stock} pcs</td>
                       </tr>
@@ -288,18 +289,20 @@ export default function ProductsPage() {
                   <div style={{ display: "flex", gap: 8, marginBottom: 4, paddingLeft: 2 }}>
                     <div style={{ width: 80, fontSize: 12, fontWeight: 600, color: "var(--color-text-muted)" }}>Size</div>
                     <div style={{ width: 80, fontSize: 12, fontWeight: 600, color: "var(--color-text-muted)" }}>Color</div>
+                    <div style={{ flex: 1, fontSize: 12, fontWeight: 600, color: "var(--color-text-muted)" }}>Cost (₦)</div>
                     <div style={{ flex: 1, fontSize: 12, fontWeight: 600, color: "var(--color-text-muted)" }}>Price (₦)</div>
-                    <div style={{ width: 80, fontSize: 12, fontWeight: 600, color: "var(--color-text-muted)" }}>Stock</div>
+                    <div style={{ width: 60, fontSize: 12, fontWeight: 600, color: "var(--color-text-muted)" }}>Stock</div>
                   </div>
                   {editForm.variants.map((v, idx) => (
                     <div key={v.id || idx} style={{ display: "flex", gap: 8, marginBottom: 8, alignItems: "center" }}>
                       <input className="input" style={{ width: 80 }} value={v.size} onChange={e => handleUpdateVariant(idx, "size", e.target.value)} placeholder="Size" />
                       <input className="input" style={{ width: 80 }} value={v.color} onChange={e => handleUpdateVariant(idx, "color", e.target.value)} placeholder="Color" />
+                      <input className="input" style={{ flex: 1 }} type="number" value={v.costPrice || ""} onChange={e => handleUpdateVariant(idx, "costPrice", parseFloat(e.target.value) || 0)} placeholder="Cost" />
                       <input className="input" style={{ flex: 1 }} type="number" value={v.price} onChange={e => handleUpdateVariant(idx, "price", parseFloat(e.target.value) || 0)} placeholder="Price" />
-                      <input className="input" style={{ width: 80 }} type="number" value={v.stock} onChange={e => handleUpdateVariant(idx, "stock", parseInt(e.target.value) || 0)} placeholder="Stock" />
+                      <input className="input" style={{ width: 60 }} type="number" value={v.stock} onChange={e => handleUpdateVariant(idx, "stock", parseInt(e.target.value) || 0)} placeholder="Stock" />
                     </div>
                   ))}
-                  <button type="button" className="btn-outline btn-sm" onClick={handleAddVariant} style={{ marginTop: 8 }}>
+                  <button type="button" className="btn-ghost btn-sm" onClick={() => setEditForm({ ...editForm, variants: [...editForm.variants, { size: "", color: "", price: editForm.basePrice, costPrice: 0, stock: 0 }] })} style={{ alignSelf: "flex-start", marginTop: 4 }}>
                     <Plus size={14} /> Add Variant
                   </button>
                 </div>
