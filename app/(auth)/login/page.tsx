@@ -49,9 +49,9 @@ export default function LoginPage() {
     >
       {/* ── Top/Left Panel — Branding ── */}
       <div
-        className="flex flex-col justify-center items-center py-12 px-6 lg:p-12 relative overflow-hidden"
+        className="flex flex-col justify-center items-center py-12 px-6 lg:p-12 relative overflow-hidden lg:w-1/2"
         style={{
-          flex: 1,
+          minHeight: "35vh",
           background: "linear-gradient(145deg, #1E0C04 0%, #3D1F0E 45%, #2A1208 100%)",
         }}
       >
@@ -161,12 +161,13 @@ export default function LoginPage() {
 
       {/* ── Bottom/Right Panel — Login Form ── */}
       <div
-        className="w-full lg:max-w-[480px] flex flex-col justify-center p-6 sm:p-10 lg:p-12 mx-auto lg:mx-0 z-20 login-card"
+        className="w-full lg:w-1/2 flex flex-col justify-center items-center p-6 sm:p-10 lg:p-12 z-20 login-card"
         style={{ 
           background: "var(--color-surface)",
           flex: 1
         }}
       >
+        <div className="w-full max-w-[440px]">
         <style>{`
           .login-card {
             border-top-left-radius: 32px;
@@ -341,6 +342,7 @@ export default function LoginPage() {
         <p style={{ textAlign: "center", fontSize: "12px", color: "var(--color-text-muted)", marginTop: 32 }}>
           © 2026 MLAZ Limited. All rights reserved.
         </p>
+        </div>
       </div>
 
       {/* Spin animation */}

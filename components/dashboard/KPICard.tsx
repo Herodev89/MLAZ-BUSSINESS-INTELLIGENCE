@@ -1,5 +1,6 @@
 import { TrendingUp, TrendingDown, Minus } from "lucide-react";
 import { formatNaira, formatNairaCompact } from "@/lib/utils";
+import Link from "next/link";
 
 interface KPICardProps {
   title: string;
@@ -11,6 +12,7 @@ interface KPICardProps {
   icon: React.ElementType;
   accentColor?: string;
   id: string;
+  href?: string;
 }
 
 export default function KPICard({
@@ -34,8 +36,8 @@ export default function KPICard({
   const isNegative = change !== undefined && change < 0;
   const isNeutral  = change === undefined || change === 0;
 
-  return (
-    <div className="kpi-card" id={id}>
+  const cardContent = (
+    <>
       {/* Top row: icon + title */}
       <div style={{ display: "flex", alignItems: "flex-start", justifyContent: "space-between", marginBottom: 12 }}>
         <div>
@@ -123,6 +125,20 @@ export default function KPICard({
           {changePeriod}
         </div>
       )}
+    </>
+  );
+
+  if (href) {
+    return (
+      <Link href={href} className="kpi-card" id={id} style={{ textDecoration: 'none', display: 'block' }}>
+        {cardContent}
+      </Link>
+    );
+  }
+
+  return (
+    <div className="kpi-card" id={id}>
+      {cardContent}
     </div>
   );
 }
