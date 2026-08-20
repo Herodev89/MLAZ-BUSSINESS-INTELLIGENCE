@@ -1,10 +1,10 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import { Plus, Search, Eye, X, CheckCircle, Printer } from "lucide-react";
+import { Plus, Search, Eye, X, CheckCircle, Printer, Trash2 } from "lucide-react";
 import { formatNaira, formatDate } from "@/lib/utils";
 import { Receipt } from "@/components/pos/Receipt";
-import { getSalesAction, createSaleAction, confirmSaleAction } from "@/lib/actions/sales";
+import { getSalesAction, createSaleAction, confirmSaleAction, deleteSaleAction } from "@/lib/actions/sales";
 import { getProductsAction } from "@/lib/actions/products";
 
 const PAYMENT_BADGE: Record<string, string> = {
@@ -156,6 +156,17 @@ export default function SalesPage() {
     }
   };
 
+  const handleDeleteSale = async (saleId: string) => {
+    if (!confirm("Are you sure you want to delete this sale? This cannot be undone.")) return;
+    const res = await deleteSaleAction(saleId);
+    if (res.success) {
+      setSalesList(prev => prev.filter(s => s.id !== saleId));
+      if (selectedSale?.id === saleId) setSelectedSale(null);
+    } else {
+      alert(res.error || "Failed to delete sale");
+    }
+  };
+
   return (
     <div style={{ animation: "fade-in 0.3s ease-out" }}>
       <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", marginBottom: 24, flexWrap: "wrap", gap: 12 }}>
@@ -209,7 +220,19 @@ export default function SalesPage() {
                   <td><span className={`badge ${sale.status === "Confirmed" ? "badge-success" : "badge-warning"}`}>{sale.status || "Pending"}</span></td>
                   <td style={{ color: "var(--color-text-muted)", fontSize: "12px" }}>{formatDate(sale.createdAt)}</td>
                   <td>
-                    <button className="btn-ghost btn-sm" onClick={() => setSelectedSale(sale)} title="View"><Eye size={14} /></button>
+                    <div style={{ display: "flex", gap: 4 }}>
+                      <button className="btn-ghost btn-sm" onClick={() => setSelectedSale(sale)} title="View">
+                        <Eye size={14} />
+                      </button>
+                      <button
+                        className="btn-ghost btn-sm"
+                        onClick={() => handleDeleteSale(sale.id)}
+                        title="Delete Sale"
+                        style={{ color: "var(--color-error)" }}
+                      >
+                        <Trash2 size={14} />
+                      </button>
+                    </div>
                   </td>
                 </tr>
               ))

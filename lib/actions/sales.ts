@@ -87,3 +87,12 @@ export async function getSaleByIdAction(id: string) {
     return { error: "Failed to fetch sale" };
   }
 }
+
+export async function deleteSaleAction(id: string) {
+  try {
+    await db.prepare('DELETE FROM Sale WHERE id = ?').run(id);
+    return { success: true };
+  } catch (error) {
+    return { error: "Failed to delete sale" };
+  }
+}
