@@ -75,9 +75,9 @@ export async function createOrderAction(formData: FormData) {
     }
     
     return { success: true, orderId };
-  } catch (error) {
+  } catch (error: any) {
     console.error(error);
-    return { error: "Failed to create order" };
+    return { error: "Failed to create order: " + error.message };
   }
 }
 
@@ -95,9 +95,9 @@ export async function updateOrderStatusAction(id: string, formData: FormData) {
     }
     
     return { success: true };
-  } catch (error) {
+  } catch (error: any) {
     console.error(error);
-    return { error: "Failed to update order status" };
+    return { error: "Failed to update order status: " + error.message };
   }
 }
 

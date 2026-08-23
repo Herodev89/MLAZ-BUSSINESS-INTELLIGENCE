@@ -10,64 +10,65 @@ interface ReceiptProps {
 
 export function Receipt({ saleId, items, total, date, salesRep }: ReceiptProps) {
   return (
-    <div id="receipt-print-area" className="hidden print:block p-8 bg-white text-black font-mono text-sm max-w-[300px] mx-auto border-dashed border-2 border-gray-300">
+    <div id="receipt-print-area" className="hidden print:block p-10 bg-white text-black font-sans mx-auto border border-gray-300 shadow-md" style={{ maxWidth: '400px', width: '100%' }}>
       <div className="text-center mb-6">
-        <h2 className="text-2xl font-bold uppercase tracking-wider mb-1">MLAZ</h2>
-        <p className="text-gray-500 text-xs">Business Intelligence</p>
+        <div style={{ display: 'inline-block', padding: '10px 20px', border: '3px solid #3D1F0E', marginBottom: '8px' }}>
+          <h2 className="text-2xl font-black uppercase tracking-widest" style={{ color: '#3D1F0E' }}>MLAZ</h2>
+        </div>
+        <h3 className="text-lg font-bold" style={{ color: '#3D1F0E', marginBottom: '2px' }}>MLAZ LIMITED</h3>
+        <p className="text-xs italic" style={{ color: '#B8860B', fontWeight: 600 }}>Guaranteed amble across the globe</p>
       </div>
 
-      <div className="mb-4 text-xs border-b border-dashed border-gray-300 pb-4">
-        <div className="flex justify-between mb-1">
-          <span>Date:</span>
+      <div className="mb-6 text-sm border-b-2 border-dashed border-gray-300 pb-4">
+        <div className="flex justify-between mb-2">
+          <span className="font-semibold text-gray-600">Date:</span>
           <span>{date}</span>
         </div>
-        <div className="flex justify-between mb-1">
-          <span>Sale ID:</span>
-          <span>{saleId.slice(0, 8)}...</span>
+        <div className="flex justify-between mb-2">
+          <span className="font-semibold text-gray-600">Receipt No:</span>
+          <span className="font-mono">{saleId}</span>
         </div>
         <div className="flex justify-between">
-          <span>Rep:</span>
+          <span className="font-semibold text-gray-600">Sales Rep:</span>
           <span>{salesRep}</span>
         </div>
       </div>
 
-      <div className="mb-4 border-b border-dashed border-gray-300 pb-4">
-        <div className="flex justify-between font-bold mb-2">
-          <span>Item</span>
-          <span>Total</span>
+      <div className="mb-6 border-b-2 border-dashed border-gray-300 pb-4">
+        <div className="flex justify-between font-bold text-gray-800 mb-3 border-b border-gray-200 pb-2">
+          <span>Item Details</span>
+          <span>Amount</span>
         </div>
         {items.map((item, idx) => (
-          <div key={idx} className="flex justify-between mb-1 text-xs">
-            <span>{item.quantity}x {item.name}</span>
-            <span>₦{(item.quantity * item.price).toFixed(2)}</span>
+          <div key={idx} className="flex justify-between mb-2 text-sm">
+            <span>{item.quantity} x {item.name}</span>
+            <span className="font-semibold">₦{(item.quantity * item.price).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
           </div>
         ))}
       </div>
 
-      <div className="flex justify-between font-bold text-lg mb-6">
-        <span>TOTAL</span>
-        <span>₦{total.toFixed(2)}</span>
+      <div className="flex justify-between items-center mb-8">
+        <span className="font-bold text-gray-800 text-lg uppercase tracking-wider">Total</span>
+        <span className="font-black text-2xl" style={{ color: '#3D1F0E' }}>₦{total.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
       </div>
 
-      <div className="text-center text-xs text-gray-500 mt-8">
-        <p>Thank you for your business!</p>
-        <p className="mt-1">Powered by MLAZ</p>
+      <div className="text-center text-sm text-gray-600 mt-8">
+        <p className="font-semibold italic mb-1">Thank you for shopping with MLAZ!</p>
+        <p className="text-xs mt-2" style={{ color: '#B8860B' }}>Quality Guaranteed.</p>
       </div>
 
       <style dangerouslySetInnerHTML={{__html: `
         @media print {
-          body * {
-            visibility: hidden;
-          }
-          #receipt-print-area, #receipt-print-area * {
-            visibility: visible;
-          }
+          body * { visibility: hidden; }
+          #receipt-print-area, #receipt-print-area * { visibility: visible; }
           #receipt-print-area {
             position: absolute;
-            left: 0;
-            top: 0;
-            width: 100%;
+            left: 50%;
+            top: 20px;
+            transform: translateX(-50%);
+            width: 350px;
             border: none;
+            box-shadow: none;
             padding: 0;
           }
         }

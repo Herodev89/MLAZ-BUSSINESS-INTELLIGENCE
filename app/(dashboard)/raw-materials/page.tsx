@@ -99,6 +99,7 @@ export default function RawMaterialsPage() {
               <th>Reorder Level</th>
               <th>Cost per Unit</th>
               <th>Supplier</th>
+              <th>Date</th>
               <th>Status</th>
               <th></th>
             </tr>
@@ -114,6 +115,7 @@ export default function RawMaterialsPage() {
                   <td style={{ color: "var(--color-text-secondary)" }}>{mat.reorderLevel} {mat.unit}</td>
                   <td style={{ fontWeight: 600 }}>{formatNaira(mat.costPerUnit)}</td>
                   <td style={{ color: "var(--color-text-secondary)" }}>{mat.supplier}</td>
+                  <td style={{ color: "var(--color-text-muted)", fontSize: "12px" }}>{mat.date ? new Date(mat.date).toLocaleDateString() : ""}</td>
                   <td>
                     <span className={`badge ${mat.status === "In Stock" ? "badge-success" : mat.status === "Low Stock" ? "badge-warning" : "badge-error"}`}>
                       {mat.status}

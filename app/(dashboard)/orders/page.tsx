@@ -27,7 +27,8 @@ export default function OrdersPage() {
     qty: 1,
     amount: 0,
     status: "Pending",
-    paymentMethod: "Transfer"
+    paymentMethod: "Transfer",
+    date: ""
   });
 
   const flatVariants = products.flatMap(p => 
@@ -95,6 +96,7 @@ export default function OrdersPage() {
     formData.append("amount", orderForm.amount.toString());
     formData.append("status", orderForm.status);
     formData.append("paymentMethod", orderForm.paymentMethod);
+    if (orderForm.date) formData.append("date", orderForm.date);
 
     const res = await createOrderAction(formData);
     
@@ -340,7 +342,7 @@ export default function OrdersPage() {
               </div>
               <div>
                 <label className="label">Date</label>
-                <input name="date" className="input" type="date" />
+                <input name="date" className="input" type="date" value={orderForm.date} onChange={(e) => setOrderForm({...orderForm, date: e.target.value})} />
               </div>
               <div style={{ display: "flex", justifyContent: "flex-end", gap: 8, marginTop: 12 }}>
                 <button type="button" className="btn-outline" onClick={() => setShowCreateModal(false)}>Cancel</button>

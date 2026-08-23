@@ -1,10 +1,10 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import { Plus, Search, Eye, X, CheckCircle, Printer, Trash2 } from "lucide-react";
+import { Plus, Search, Eye, X, CheckCircle, Printer, Trash2, Edit } from "lucide-react";
 import { formatNaira, formatDate } from "@/lib/utils";
 import { Receipt } from "@/components/pos/Receipt";
-import { getSalesAction, createSaleAction, confirmSaleAction, deleteSaleAction } from "@/lib/actions/sales";
+import { getSalesAction, createSaleAction, confirmSaleAction, deleteSaleAction, updateSaleAction } from "@/lib/actions/sales";
 import { getProductsAction } from "@/lib/actions/products";
 
 const PAYMENT_BADGE: Record<string, string> = {
@@ -19,6 +19,7 @@ export default function SalesPage() {
   const [search, setSearch] = useState("");
   const [selectedSale, setSelectedSale] = useState<any | null>(null);
   const [showRecordModal, setShowRecordModal] = useState(false);
+  const [showEditModal, setShowEditModal] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [products, setProducts] = useState<any[]>([]);
   
@@ -33,7 +34,8 @@ export default function SalesPage() {
     qty: 1,
     amount: 0,
     status: "Pending",
-    paymentMethod: "Transfer"
+    paymentMethod: "Transfer",
+    date: ""
   });
   
   // Flatten variants for easy selection
@@ -108,6 +110,7 @@ export default function SalesPage() {
     formData.append("amount", saleForm.amount.toString());
     formData.append("status", saleForm.status);
     formData.append("paymentMethod", saleForm.paymentMethod);
+    if (saleForm.date) formData.append("date", saleForm.date);
 
     const res = await createSaleAction(formData);
     if (res.success) {
@@ -115,6 +118,26 @@ export default function SalesPage() {
       loadSales();
     } else {
       alert(res.error);
+    }
+    setIsSubmitting(false);
+  };
+
+  const handleOpenEdit = (sale: any) => {
+    setSelectedSale(sale);
+    setShowEditModal(true);
+  };
+
+  const handleSaveEdit = async (e: React.FormEvent<HTMLFormElement>) => {
+    e.preventDefault();
+    if (!selectedSale) return;
+    setIsSubmitting(true);
+    const formData = new FormData(e.currentTarget);
+    const res = await updateSaleAction(selectedSale.id, formData);
+    if (res.success) {
+      setShowEditModal(false);
+      loadSales();
+    } else {
+      alert(res.error || "Failed to update sale");
     }
     setIsSubmitting(false);
   };
@@ -224,6 +247,9 @@ export default function SalesPage() {
                       <button className="btn-ghost btn-sm" onClick={() => setSelectedSale(sale)} title="View">
                         <Eye size={14} />
                       </button>
+                      <button className="btn-ghost btn-sm" onClick={() => handleOpenEdit(sale)} title="Edit Sale">
+                        <Edit size={14} />
+                      </button>
                       <button
                         className="btn-ghost btn-sm"
                         onClick={() => handleDeleteSale(sale.id)}
@@ -327,11 +353,53 @@ export default function SalesPage() {
               </div>
               <div>
                 <label className="label">Date</label>
-                <input name="date" className="input" type="date" />
+                <input name="date" className="input" type="date" value={saleForm.date} onChange={(e) => setSaleForm({...saleForm, date: e.target.value})} />
               </div>
               <div style={{ display: "flex", justifyContent: "flex-end", gap: 8, marginTop: 12 }}>
                 <button type="button" className="btn-outline" onClick={() => setShowRecordModal(false)}>Cancel</button>
                 <button type="submit" className="btn-accent" disabled={isSubmitting}>{isSubmitting ? "Saving..." : "Confirm & Save Sale"}</button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+
+      {showEditModal && selectedSale && (
+        <div style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.5)", display: "flex", alignItems: "center", justifyContent: "center", zIndex: 1000 }}>
+          <div className="card" style={{ width: 450, padding: 24, background: "var(--color-surface-card)" }}>
+            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 16 }}>
+              <h3 style={{ fontWeight: 700, fontSize: 18 }}>Edit Sale Details</h3>
+              <button className="btn-ghost" onClick={() => setShowEditModal(false)}><X size={18} /></button>
+            </div>
+            <form onSubmit={handleSaveEdit} style={{ display: "flex", flexDirection: "column", gap: 14 }}>
+              <div>
+                <label className="label">Customer Name</label>
+                <input name="customer" className="input" defaultValue={selectedSale.customerName} required />
+              </div>
+              <div style={{ display: "flex", gap: 12 }}>
+                <div style={{ flex: 1 }}>
+                  <label className="label">Status</label>
+                  <select name="status" className="select" defaultValue={selectedSale.status}>
+                    <option value="Pending">Pending</option>
+                    <option value="Confirmed">Confirmed</option>
+                  </select>
+                </div>
+                <div style={{ flex: 1 }}>
+                  <label className="label">Payment Method</label>
+                  <select name="paymentMethod" className="select" defaultValue={selectedSale.paymentMethod}>
+                    <option value="Transfer">Bank Transfer</option>
+                    <option value="Cash">Cash</option>
+                    <option value="POS">POS</option>
+                  </select>
+                </div>
+              </div>
+              <div>
+                <label className="label">Date</label>
+                <input name="date" className="input" type="date" defaultValue={selectedSale.createdAt ? new Date(selectedSale.createdAt).toISOString().split('T')[0] : ""} />
+              </div>
+              <div style={{ display: "flex", justifyContent: "flex-end", gap: 8, marginTop: 12 }}>
+                <button type="button" className="btn-outline" onClick={() => setShowEditModal(false)}>Cancel</button>
+                <button type="submit" className="btn-accent" disabled={isSubmitting}>{isSubmitting ? "Saving..." : "Save Changes"}</button>
               </div>
             </form>
           </div>
