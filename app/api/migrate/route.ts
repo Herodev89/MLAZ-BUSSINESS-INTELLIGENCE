@@ -6,8 +6,11 @@ export async function GET() {
   
   // 1. Add date to RawMaterial
   try {
-    await db.prepare('ALTER TABLE RawMaterial ADD COLUMN date DATETIME DEFAULT CURRENT_TIMESTAMP').run();
+    await db.prepare('ALTER TABLE RawMaterial ADD COLUMN date DATETIME').run();
     results.push({ table: 'RawMaterial', column: 'date', status: 'Added' });
+    // Backfill existing records with a current timestamp so they aren't null
+    await db.prepare("UPDATE RawMaterial SET date = CURRENT_TIMESTAMP WHERE date IS NULL").run();
+    results.push({ table: 'RawMaterial', column: 'date', status: 'Backfilled' });
   } catch (e: any) {
     results.push({ table: 'RawMaterial', column: 'date', status: 'Failed or already exists', error: e.message });
   }
