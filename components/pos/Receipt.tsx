@@ -12,8 +12,18 @@ export function Receipt({ saleId, items, total, date, salesRep }: ReceiptProps) 
   return (
     <div id="receipt-print-area" className="hidden print:block p-10 bg-white text-black font-sans mx-auto border border-gray-300 shadow-md" style={{ maxWidth: '400px', width: '100%' }}>
       <div className="text-center mb-6">
-        <div style={{ display: 'inline-block', padding: '10px 20px', border: '3px solid #3D1F0E', marginBottom: '8px' }}>
-          <h2 className="text-2xl font-black uppercase tracking-widest" style={{ color: '#3D1F0E' }}>MLAZ</h2>
+        <div className="flex justify-center mb-4">
+          <div
+            style={{
+              width: 80,
+              height: 80,
+              borderRadius: "50%",
+              overflow: "hidden",
+              margin: "0 auto",
+            }}
+          >
+            <img src="/logo.jpg" alt="MLAZ Logo" style={{ width: "100%", height: "100%", objectFit: "cover" }} />
+          </div>
         </div>
         <h3 className="text-lg font-bold" style={{ color: '#3D1F0E', marginBottom: '2px' }}>MLAZ LIMITED</h3>
         <p className="text-xs italic" style={{ color: '#B8860B', fontWeight: 600 }}>Guaranteed amble across the globe</p>
