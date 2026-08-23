@@ -325,6 +325,10 @@ export default function SalesPage() {
                   </select>
                 </div>
               </div>
+              <div>
+                <label className="label">Date</label>
+                <input name="date" className="input" type="date" />
+              </div>
               <div style={{ display: "flex", justifyContent: "flex-end", gap: 8, marginTop: 12 }}>
                 <button type="button" className="btn-outline" onClick={() => setShowRecordModal(false)}>Cancel</button>
                 <button type="submit" className="btn-accent" disabled={isSubmitting}>{isSubmitting ? "Saving..." : "Confirm & Save Sale"}</button>

@@ -1,7 +1,7 @@
 "use server";
 
 import { cookies } from "next/headers";
-import { encrypt, clearSession } from "@/lib/auth";
+import { encrypt, clearSession, getSession } from "@/lib/auth";
 import db from "@/lib/db";
 import { randomUUID } from "crypto";
 import bcrypt from "bcryptjs";
@@ -44,6 +44,9 @@ export async function logoutAction() {
 }
 
 export async function createSalesRepAction(formData: FormData) {
+  const session = await getSession();
+  if (!session || session.role !== "ADMIN") return { error: "Forbidden: Admin access required" };
+
   const name = formData.get("name")?.toString();
   const email = formData.get("email")?.toString();
   const password = formData.get("password")?.toString();
@@ -81,6 +84,9 @@ export async function getUsersAction() {
 }
 
 export async function deleteUserAction(id: string) {
+  const session = await getSession();
+  if (!session || session.role !== "ADMIN") return { error: "Forbidden: Admin access required" };
+
   try {
     await db.prepare('DELETE FROM User WHERE id = ?').run(id);
     return { success: true };

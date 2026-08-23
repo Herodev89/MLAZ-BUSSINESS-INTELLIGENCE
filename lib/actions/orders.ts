@@ -36,6 +36,8 @@ export async function createOrderAction(formData: FormData) {
   const amount = parseFloat(formData.get("amount")?.toString() || "0");
   const paymentMethod = formData.get("paymentMethod")?.toString() || "Transfer";
   const status = formData.get("status")?.toString() || "Pending";
+  const dateStr = formData.get("date")?.toString();
+  const createdAt = dateStr ? new Date(dateStr).toISOString() : new Date().toISOString();
   const productName = formData.get("productName")?.toString();
   const variantId = formData.get("variantId")?.toString();
   const size = formData.get("size")?.toString() || "";
@@ -63,9 +65,9 @@ export async function createOrderAction(formData: FormData) {
 
   try {
     await db.prepare(`
-      INSERT INTO "Order" (id, customerId, productName, variantId, size, color, quantity, amount, paymentMethod, status)
-      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-    `).run(orderId, finalCustId, productName, variantId, size, color, quantity, amount, paymentMethod, status);
+      INSERT INTO "Order" (id, customerId, productName, variantId, size, color, quantity, amount, paymentMethod, status, createdAt)
+      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+    `).run(orderId, finalCustId, productName, variantId, size, color, quantity, amount, paymentMethod, status, createdAt);
     
     // If initially created as confirmed, trigger sale
     if (status === "Confirmed" || status === "Delivered") {

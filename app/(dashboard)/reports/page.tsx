@@ -35,14 +35,38 @@ export default function ReportsPage() {
     load();
   }, []);
 
-  const totalSalesRevenue = recentSales.reduce((acc, s) => acc + (s.amount || 0), 0);
-  const totalCOGS = recentSales.reduce((acc, s) => acc + (s.costPrice || 0), 0);
-  const totalSalesProfit = totalSalesRevenue - totalCOGS; // or recentSales.reduce((acc, s) => acc + (s.profit || 0), 0)
+  const filterByDate = (items: any[], dateField: string = "createdAt") => {
+    return items.filter(item => {
+      if (!item[dateField]) return true;
+      const itemDate = new Date(item[dateField]);
+      // set hours to 0 for proper day comparison
+      itemDate.setHours(0,0,0,0);
+      if (startDate) {
+        const start = new Date(startDate);
+        start.setHours(0,0,0,0);
+        if (start > itemDate) return false;
+      }
+      if (endDate) {
+        const end = new Date(endDate);
+        end.setHours(23,59,59,999);
+        if (end < itemDate) return false;
+      }
+      return true;
+    });
+  };
+
+  const filteredSales = filterByDate(recentSales, "createdAt");
+  const filteredProduction = filterByDate(productionRuns, "productionDate");
+  const filteredExpenses = filterByDate(expenses, "date");
+
+  const totalSalesRevenue = filteredSales.reduce((acc, s) => acc + (s.amount || 0), 0);
+  const totalCOGS = filteredSales.reduce((acc, s) => acc + (s.costPrice || 0), 0);
+  const totalSalesProfit = totalSalesRevenue - totalCOGS; 
   
-  const totalProductionCost = productionRuns.reduce((acc, r) => acc + (r.totalCost || 0), 0);
+  const totalProductionCost = filteredProduction.reduce((acc, r) => acc + (r.totalCost || 0), 0);
   
-  const operatingExpenses = expenses.filter(e => e.type !== 'Factory Overhead').reduce((acc, e) => acc + (e.amount || 0), 0);
-  const factoryOverhead = expenses.filter(e => e.type === 'Factory Overhead').reduce((acc, e) => acc + (e.amount || 0), 0);
+  const operatingExpenses = filteredExpenses.filter(e => e.type !== 'Factory Overhead').reduce((acc, e) => acc + (e.amount || 0), 0);
+  const factoryOverhead = filteredExpenses.filter(e => e.type === 'Factory Overhead').reduce((acc, e) => acc + (e.amount || 0), 0);
   const totalExpenses = operatingExpenses + factoryOverhead;
   
   const inventoryValuation = products.reduce((acc, p) => acc + ((p.costPrice || p.price || 0) * (p.stock || 0)), 0);
@@ -52,7 +76,7 @@ export default function ReportsPage() {
       title: selectedReport,
       date: new Date().toLocaleDateString(),
       range: startDate && endDate ? `${startDate} to ${endDate}` : "All Time Records",
-      salesCount: recentSales.length,
+      salesCount: filteredSales.length,
       revenue: totalSalesRevenue,
       cogs: totalCOGS,
       profit: totalSalesProfit,
@@ -61,6 +85,9 @@ export default function ReportsPage() {
       factoryOverhead: factoryOverhead,
       netProfit: totalSalesProfit - operatingExpenses,
       inventoryValuation,
+      filteredSales,
+      filteredProduction,
+      filteredExpenses
     });
   };
 
@@ -70,7 +97,7 @@ export default function ReportsPage() {
 
     if (type.includes("Sales")) {
       rows.push(["Transaction ID", "Customer", "Product", "Variant", "Quantity", "Amount", "Profit", "Payment Method", "Date"]);
-      recentSales.forEach(s => rows.push([s.id, s.customerName, s.productName, "Standard", s.quantity.toString(), s.amount.toString(), s.profit?.toString() || "0", s.paymentMethod, s.createdAt]));
+      generatedReport?.filteredSales.forEach((s: any) => rows.push([s.id, s.customerName, s.productName, s.size ? `${s.size} ${s.color}` : "-", s.quantity.toString(), s.amount.toString(), s.profit?.toString() || "0", s.paymentMethod, s.createdAt]));
     } else if (type.includes("Inventory")) {
       rows.push(["Product ID", "Product Name", "Price", "Total Stock Units", "Valuation"]);
       products.forEach(p => {
@@ -79,10 +106,10 @@ export default function ReportsPage() {
       });
     } else if (type.includes("Production")) {
       rows.push(["Run ID", "Product", "Variant", "Quantity Produced", "Total Cost", "Status", "Production Date"]);
-      productionRuns.forEach(r => rows.push([r.id, r.productName, "Standard", r.qtyProduced.toString(), r.totalCost.toString(), r.status, r.productionDate]));
+      generatedReport?.filteredProduction.forEach((r: any) => rows.push([r.id, r.productName, "Standard", r.qtyProduced.toString(), r.totalCost.toString(), r.status, r.productionDate]));
     } else {
       rows.push(["Expense Name", "Category", "Description", "Amount", "Date"]);
-      expenses.forEach(e => rows.push([e.name, e.category, e.description || "", e.amount.toString(), e.date]));
+      generatedReport?.filteredExpenses.forEach((e: any) => rows.push([e.name, e.category, e.description || "", e.amount.toString(), e.date]));
     }
 
     const csvContent = "data:text/csv;charset=utf-8," + rows.map(r => r.map(c => `"${c.replace(/"/g, '""')}"`).join(",")).join("\n");
@@ -101,13 +128,13 @@ export default function ReportsPage() {
 
     let tableRows = "";
     if (type.includes("Sales")) {
-      tableRows = recentSales.map(s => `<tr><td>${s.id}</td><td>${s.customerName}</td><td>${s.productName}</td><td>${s.quantity}</td><td>${formatNaira(s.amount)}</td><td>${formatNaira(s.profit || 0)}</td><td>${formatDate(s.createdAt)}</td></tr>`).join("");
+      tableRows = generatedReport?.filteredSales.map((s: any) => `<tr><td>${s.id}</td><td>${s.customerName}</td><td>${s.productName}</td><td>${s.quantity}</td><td>${formatNaira(s.amount)}</td><td>${formatNaira(s.profit || 0)}</td><td>${formatDate(s.createdAt)}</td></tr>`).join("");
     } else if (type.includes("Production")) {
-      tableRows = productionRuns.map(r => `<tr><td>${r.id}</td><td>${r.productName}</td><td>${r.qtyProduced}</td><td>${formatNaira(r.totalCost)}</td><td>${r.status}</td><td>${formatDate(r.productionDate)}</td></tr>`).join("");
+      tableRows = generatedReport?.filteredProduction.map((r: any) => `<tr><td>${r.id}</td><td>${r.productName}</td><td>${r.qtyProduced}</td><td>${formatNaira(r.totalCost)}</td><td>${r.status}</td><td>${formatDate(r.productionDate)}</td></tr>`).join("");
     } else {
       tableRows = products.map(p => {
         const stock = p.stock || 0;
-        return `<tr><td>${p.id}</td><td>${p.name}</td><td>Standard</td><td>${stock} pcs</td><td>${formatNaira((p.price || 0) * stock)}</td></tr>`;
+        return `<tr><td>${p.id}</td><td>${p.name}</td><td>-</td><td>${stock} pcs</td><td>${formatNaira((p.price || 0) * stock)}</td></tr>`;
       }).join("");
     }
 
@@ -244,7 +271,7 @@ export default function ReportsPage() {
                 </tr>
               </thead>
               <tbody>
-                {recentSales.map((s) => (
+                {generatedReport.filteredSales?.slice(0, 10).map((s: any) => (
                   <tr key={s.id}>
                     <td style={{ fontWeight: 600 }}>{s.productName} ({s.customerName})</td>
                     <td>Sale Transaction</td>
@@ -253,7 +280,7 @@ export default function ReportsPage() {
                     <td><span className={`badge ${s.status === "Confirmed" ? "badge-success" : "badge-warning"}`}>{s.status}</span></td>
                   </tr>
                 ))}
-                {productionRuns.map((r) => (
+                {generatedReport.filteredProduction?.slice(0, 10).map((r: any) => (
                   <tr key={r.id}>
                     <td style={{ fontWeight: 600 }}>{r.productName} (Run #{r.id})</td>
                     <td>Production Run</td>

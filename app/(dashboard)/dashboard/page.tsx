@@ -20,15 +20,22 @@ import RecentSalesTable from "@/components/dashboard/RecentSalesTable";
 import { formatDate } from "@/lib/utils";
 import Link from "next/link";
 import { getDashboardStatsAction } from "@/lib/actions/dashboard";
+import MonthFilter from "@/components/dashboard/MonthFilter";
 
 export const dynamic = 'force-dynamic';
 
-export default async function DashboardPage() {
+export default async function DashboardPage({
+  searchParams,
+}: {
+  searchParams: { month?: string };
+}) {
   const today = new Date().toLocaleDateString("en-NG", {
     weekday: "long", day: "numeric", month: "long", year: "numeric",
   });
+  
+  const monthStr = searchParams?.month || "";
 
-  const res = await getDashboardStatsAction();
+  const res = await getDashboardStatsAction(monthStr);
   const stats = res.success ? res.stats : {
     totalRevenue: 0,
     totalProfit: 0,
@@ -60,9 +67,10 @@ export default async function DashboardPage() {
         <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", flexWrap: "wrap", gap: 12 }}>
           <div>
             <h1 className="page-title">Dashboard</h1>
-            <p className="page-subtitle">{today} — Business overview at a glance</p>
+            <p className="page-subtitle">{monthStr ? `Viewing data for ${new Date(monthStr + "-01").toLocaleDateString("en-NG", { month: "long", year: "numeric" })}` : `${today} — Business overview at a glance`}</p>
           </div>
-          <div style={{ display: "flex", gap: 10 }}>
+          <div style={{ display: "flex", gap: 10, alignItems: "flex-end" }}>
+            <MonthFilter />
             <Link href="/sales/new" className="btn-accent btn-sm" id="quick-add-sale-btn">
               + Record Sale
             </Link>

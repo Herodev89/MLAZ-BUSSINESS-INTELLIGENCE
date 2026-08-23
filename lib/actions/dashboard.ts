@@ -2,27 +2,33 @@
 
 import db from "@/lib/db";
 
-export async function getDashboardStatsAction() {
+export async function getDashboardStatsAction(monthStr?: string) {
   try {
-    const revenueRow: any = await db.prepare("SELECT SUM(amount) as total FROM Sale WHERE status = 'Confirmed'").get();
-    const grossProfitRow: any = await db.prepare("SELECT SUM(profit) as total FROM Sale WHERE status = 'Confirmed'").get();
-    const salesCountRow: any = await db.prepare("SELECT COUNT(*) as total FROM Sale WHERE status = 'Confirmed'").get();
-    const pairsSoldRow: any = await db.prepare("SELECT SUM(quantity) as total FROM Sale WHERE status = 'Confirmed'").get();
+    const monthFilter = monthStr ? `AND createdAt LIKE '${monthStr}%'` : "";
+    const expenseDateFilter = monthStr ? `AND date LIKE '${monthStr}%'` : "";
+    const rmDateFilter = monthStr ? `AND date LIKE '${monthStr}%'` : "";
+
+    const revenueRow: any = await db.prepare(`SELECT SUM(amount) as total FROM Sale WHERE status = 'Confirmed' ${monthFilter}`).get();
+    const grossProfitRow: any = await db.prepare(`SELECT SUM(profit) as total FROM Sale WHERE status = 'Confirmed' ${monthFilter}`).get();
+    const salesCountRow: any = await db.prepare(`SELECT COUNT(*) as total FROM Sale WHERE status = 'Confirmed' ${monthFilter}`).get();
+    const pairsSoldRow: any = await db.prepare(`SELECT SUM(quantity) as total FROM Sale WHERE status = 'Confirmed' ${monthFilter}`).get();
+    
+    // Inventory and Low Stock are current snapshots, don't filter by month
     const inventoryValRow: any = await db.prepare('SELECT SUM(price * stock) as total FROM ProductVariant').get();
     const lowStockRow: any = await db.prepare('SELECT COUNT(*) as total FROM ProductVariant WHERE stock < 10').get();
     
     // Expenses
-    const operatingExpensesRow: any = await db.prepare("SELECT SUM(amount) as total FROM Expense WHERE type = 'Operating'").get();
-    const allExpensesRow: any = await db.prepare("SELECT SUM(amount) as total FROM Expense").get();
+    const operatingExpensesRow: any = await db.prepare(`SELECT SUM(amount) as total FROM Expense WHERE type = 'Operating' ${expenseDateFilter}`).get();
+    const allExpensesRow: any = await db.prepare(`SELECT SUM(amount) as total FROM Expense WHERE 1=1 ${expenseDateFilter}`).get();
     
     // Raw Materials Value
-    const rawMaterialsRow: any = await db.prepare("SELECT SUM(quantity * costPerUnit) as total FROM RawMaterial").get();
+    const rawMaterialsRow: any = await db.prepare(`SELECT SUM(quantity * costPerUnit) as total FROM RawMaterial WHERE 1=1 ${rmDateFilter}`).get();
 
     const operatingExpenses = operatingExpensesRow?.total || 0;
     const totalExpenses = allExpensesRow?.total || 0;
     const totalRawMaterialsCost = rawMaterialsRow?.total || 0;
     
-    const cogsRow: any = await db.prepare("SELECT SUM(costPrice) as total FROM Sale WHERE status = 'Confirmed'").get();
+    const cogsRow: any = await db.prepare(`SELECT SUM(costPrice) as total FROM Sale WHERE status = 'Confirmed' ${monthFilter}`).get();
     const cogs = cogsRow?.total || 0;
 
     const grossProfit = grossProfitRow?.total || 0;
@@ -33,7 +39,7 @@ export async function getDashboardStatsAction() {
     // 1. Revenue & Profit Trend (Monthly)
     // We group by month (YYYY-MM) and sum amount and profit.
     // For simplicity, we just pull all confirmed sales and group them in JS, or we can group in SQL.
-    const sales = await db.prepare("SELECT amount, profit, quantity, productName, paymentMethod, createdAt FROM Sale WHERE status = 'Confirmed'").all() as any[];
+    const sales = await db.prepare(`SELECT amount, profit, quantity, productName, paymentMethod, createdAt FROM Sale WHERE status = 'Confirmed' ${monthFilter}`).all() as any[];
     
     const monthlyMap: Record<string, { revenue: number, profit: number }> = {};
     const months = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
@@ -42,15 +48,15 @@ export async function getDashboardStatsAction() {
     const d = new Date();
     for (let i = 5; i >= 0; i--) {
       const pastMonth = new Date(d.getFullYear(), d.getMonth() - i, 1);
-      const label = months[pastMonth.getMonth()];
+      const label = `${months[pastMonth.getMonth()]} '${pastMonth.getFullYear().toString().slice(-2)}`;
       monthlyMap[label] = { revenue: 0, profit: 0 };
     }
 
     sales.forEach(sale => {
       if (!sale.createdAt) return;
       const date = new Date(sale.createdAt);
-      const label = months[date.getMonth()];
-      if (monthlyMap[label]) {
+      const label = `${months[date.getMonth()]} '${date.getFullYear().toString().slice(-2)}`;
+      if (monthlyMap[label] !== undefined) {
         monthlyMap[label].revenue += (sale.amount || 0);
         monthlyMap[label].profit += (sale.profit || 0);
       }
@@ -66,7 +72,7 @@ export async function getDashboardStatsAction() {
     const productSalesRows = await db.prepare(`
       SELECT productName as product, SUM(quantity) as sales
       FROM Sale
-      WHERE status = 'Confirmed'
+      WHERE status = 'Confirmed' ${monthFilter}
       GROUP BY productName
       ORDER BY sales DESC
       LIMIT 5
@@ -76,7 +82,7 @@ export async function getDashboardStatsAction() {
     const paymentMethodRows = await db.prepare(`
       SELECT paymentMethod as name, COUNT(*) as value
       FROM Sale
-      WHERE status = 'Confirmed'
+      WHERE status = 'Confirmed' ${monthFilter}
       GROUP BY paymentMethod
     `).all() as any[];
 

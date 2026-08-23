@@ -9,14 +9,15 @@ import { getProfitAnalysisAction } from "@/lib/actions/profit-analysis";
 
 export default function ProfitAnalysisPage() {
   const [data, setData] = useState<any>(null);
+  const [month, setMonth] = useState<string>("");
   
   useEffect(() => {
     async function load() {
-      const res = await getProfitAnalysisAction();
+      const res = await getProfitAnalysisAction(month || undefined);
       if (res.success) setData(res);
     }
     load();
-  }, []);
+  }, [month]);
 
   const currentMonth = new Date().toLocaleDateString('en-US', { month: 'long', year: 'numeric' });
   
@@ -29,9 +30,15 @@ export default function ProfitAnalysisPage() {
 
   return (
     <div style={{ animation: "fade-in 0.3s ease-out" }}>
-      <div style={{ marginBottom: 24 }}>
-        <h1 className="page-title">Profit Analysis</h1>
-        <p className="page-subtitle">Detailed financial performance for {currentMonth}</p>
+      <div style={{ marginBottom: 24, display: "flex", justifyContent: "space-between", alignItems: "flex-end" }}>
+        <div>
+          <h1 className="page-title">Profit Analysis</h1>
+          <p className="page-subtitle">Detailed financial performance for {month ? new Date(month + "-01").toLocaleDateString('en-US', { month: 'long', year: 'numeric' }) : "All Time"}</p>
+        </div>
+        <div>
+          <label className="label" style={{ marginBottom: 4, display: "block" }}>Filter by Month</label>
+          <input type="month" className="input" value={month} onChange={(e) => setMonth(e.target.value)} />
+        </div>
       </div>
 
       <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(220px, 1fr))", gap: 16, marginBottom: 24 }}>

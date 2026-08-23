@@ -2,6 +2,7 @@
 
 import db from "@/lib/db";
 import { randomUUID } from "crypto";
+import { getSession } from "@/lib/auth";
 
 export async function getRawMaterialsAction() {
   try {
@@ -27,16 +28,21 @@ export async function createRawMaterialAction(formData: FormData) {
   const quantity = parseFloat(formData.get("quantity")?.toString() || "0");
   const costPerUnit = parseFloat(formData.get("costPerUnit")?.toString() || "0");
   const reorderLevel = parseFloat(formData.get("reorderLevel")?.toString() || "0");
+  const session = await getSession();
+  if (!session || session.role !== "ADMIN") return { error: "Forbidden: Admin access required" };
+
   const supplier = formData.get("supplier")?.toString() || "";
+  const dateStr = formData.get("date")?.toString();
+  const createdAt = dateStr ? new Date(dateStr).toISOString() : new Date().toISOString();
 
   if (!name) return { error: "Name is required" };
 
   const status = quantity <= reorderLevel ? (quantity === 0 ? "Out of Stock" : "Low Stock") : "In Stock";
 
   try {
-    const id = `RM-${Math.floor(1000 + Math.random() * 9000)}`;
-    await db.prepare('INSERT INTO RawMaterial (id, name, unit, quantity, costPerUnit, reorderLevel, supplier, status) VALUES (?, ?, ?, ?, ?, ?, ?, ?)')
-      .run(id, name, unit, quantity, costPerUnit, reorderLevel, supplier, status);
+    const id = `RM-${randomUUID().slice(0, 8).toUpperCase()}`;
+    await db.prepare('INSERT INTO RawMaterial (id, name, unit, quantity, costPerUnit, reorderLevel, supplier, status, date) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)')
+      .run(id, name, unit, quantity, costPerUnit, reorderLevel, supplier, status, createdAt);
     return { success: true };
   } catch (error) {
     return { error: "Failed to create raw material" };
@@ -49,15 +55,20 @@ export async function updateRawMaterialAction(id: string, formData: FormData) {
   const quantity = parseFloat(formData.get("quantity")?.toString() || "0");
   const costPerUnit = parseFloat(formData.get("costPerUnit")?.toString() || "0");
   const reorderLevel = parseFloat(formData.get("reorderLevel")?.toString() || "0");
+  const session = await getSession();
+  if (!session || session.role !== "ADMIN") return { error: "Forbidden: Admin access required" };
+
   const supplier = formData.get("supplier")?.toString() || "";
+  const dateStr = formData.get("date")?.toString();
+  const createdAt = dateStr ? new Date(dateStr).toISOString() : new Date().toISOString();
 
   if (!name) return { error: "Name is required" };
 
   const status = quantity <= reorderLevel ? (quantity === 0 ? "Out of Stock" : "Low Stock") : "In Stock";
 
   try {
-    await db.prepare('UPDATE RawMaterial SET name = ?, unit = ?, quantity = ?, costPerUnit = ?, reorderLevel = ?, supplier = ?, status = ? WHERE id = ?')
-      .run(name, unit, quantity, costPerUnit, reorderLevel, supplier, status, id);
+    await db.prepare('UPDATE RawMaterial SET name = ?, unit = ?, quantity = ?, costPerUnit = ?, reorderLevel = ?, supplier = ?, status = ?, date = ? WHERE id = ?')
+      .run(name, unit, quantity, costPerUnit, reorderLevel, supplier, status, createdAt, id);
     return { success: true };
   } catch (error) {
     return { error: "Failed to update raw material" };
@@ -65,6 +76,9 @@ export async function updateRawMaterialAction(id: string, formData: FormData) {
 }
 
 export async function deleteRawMaterialAction(id: string) {
+  const session = await getSession();
+  if (!session || session.role !== "ADMIN") return { error: "Forbidden: Admin access required" };
+
   try {
     await db.prepare('DELETE FROM RawMaterial WHERE id = ?').run(id);
     return { success: true };
@@ -83,26 +97,31 @@ export async function createProductionRunAction(formData: FormData) {
   const materialCost = parseFloat(formData.get("materialCost")?.toString() || "0");
   const otherCosts = parseFloat(formData.get("otherCosts")?.toString() || "0");
   const status = formData.get("status")?.toString() || "In Progress";
+  const session = await getSession();
+  if (!session || session.role !== "ADMIN") return { error: "Forbidden: Admin access required" };
+
   const notes = formData.get("notes")?.toString() || "";
+  const dateStr = formData.get("date")?.toString();
+  const productionDate = dateStr ? new Date(dateStr).toISOString() : new Date().toISOString();
 
   if (!productName || !variantId || qtyProduced <= 0) return { error: "Product variant and valid quantity required" };
 
   const totalCost = labourCost + materialCost + otherCosts;
 
   try {
-    const id = `PRD-${Math.floor(1000 + Math.random() * 9000)}`;
+    const id = `PRD-${randomUUID().slice(0, 8).toUpperCase()}`;
     
-    await db.prepare('INSERT INTO ProductionRun (id, productName, variantId, qtyProduced, labourCost, materialCost, otherCosts, totalCost, status, notes) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)')
-      .run(id, productName, variantId, qtyProduced, labourCost, materialCost, otherCosts, totalCost, status, notes);
+    await db.prepare('INSERT INTO ProductionRun (id, productName, variantId, qtyProduced, labourCost, materialCost, otherCosts, totalCost, status, notes, productionDate) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)')
+      .run(id, productName, variantId, qtyProduced, labourCost, materialCost, otherCosts, totalCost, status, notes, productionDate);
 
     // If completed, add to inventory and update variant cost
     if (status === "Completed") {
        const costPerPair = totalCost / qtyProduced;
        await db.prepare('UPDATE ProductVariant SET stock = stock + ?, costPrice = ? WHERE id = ?').run(qtyProduced, costPerPair, variantId);
        
-       const movId = `IM-${Math.floor(1000 + Math.random() * 9000)}`;
-       await db.prepare('INSERT INTO InventoryMovement (id, productName, variantId, size, color, quantity, type, reference, note) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)')
-         .run(movId, productName, variantId, size, color, qtyProduced, 'Production', id, notes);
+       const movId = `IM-${randomUUID().slice(0, 8).toUpperCase()}`;
+       await db.prepare('INSERT INTO InventoryMovement (id, productName, variantId, size, color, quantity, type, reference, note, date) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)')
+         .run(movId, productName, variantId, size, color, qtyProduced, 'Production', id, notes, productionDate);
     }
 
     return { success: true };
@@ -112,6 +131,9 @@ export async function createProductionRunAction(formData: FormData) {
 }
 
 export async function updateProductionRunAction(id: string, formData: FormData) {
+  const session = await getSession();
+  if (!session || session.role !== "ADMIN") return { error: "Forbidden: Admin access required" };
+
   const status = formData.get("status")?.toString() || "In Progress";
   
   try {
@@ -126,9 +148,9 @@ export async function updateProductionRunAction(id: string, formData: FormData) 
         const costPerPair = existing.totalCost / existing.qtyProduced;
         await db.prepare('UPDATE ProductVariant SET stock = stock + ?, costPrice = ? WHERE id = ?').run(existing.qtyProduced, costPerPair, existing.variantId);
         
-        const movId = `IM-${Math.floor(1000 + Math.random() * 9000)}`;
-        await db.prepare('INSERT INTO InventoryMovement (id, productName, variantId, quantity, type, reference, note) VALUES (?, ?, ?, ?, ?, ?, ?)')
-          .run(movId, existing.productName, existing.variantId, existing.qtyProduced, 'Production', id, "Completed via status update");
+        const movId = `IM-${randomUUID().slice(0, 8).toUpperCase()}`;
+        await db.prepare('INSERT INTO InventoryMovement (id, productName, variantId, quantity, type, reference, note, date) VALUES (?, ?, ?, ?, ?, ?, ?, ?)')
+          .run(movId, existing.productName, existing.variantId, existing.qtyProduced, 'Production', id, "Completed via status update", existing.productionDate);
       }
     }
 
@@ -139,6 +161,9 @@ export async function updateProductionRunAction(id: string, formData: FormData) 
 }
 
 export async function deleteProductionRunAction(id: string) {
+  const session = await getSession();
+  if (!session || session.role !== "ADMIN") return { error: "Forbidden: Admin access required" };
+
   try {
     await db.prepare('DELETE FROM ProductionRun WHERE id = ?').run(id);
     return { success: true };

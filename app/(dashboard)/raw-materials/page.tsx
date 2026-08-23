@@ -164,9 +164,15 @@ export default function RawMaterialsPage() {
                   <input name="costPerUnit" className="input" type="number" defaultValue={modalType === "edit" ? selectedMat?.costPerUnit : ""} placeholder="1200" required />
                 </div>
               </div>
-              <div>
-                <label className="label">Supplier Name</label>
-                <input name="supplier" className="input" defaultValue={modalType === "edit" ? selectedMat?.supplier : ""} placeholder="Abuja Organics Ltd" />
+              <div style={{ display: "flex", gap: 12 }}>
+                <div style={{ flex: 1 }}>
+                  <label className="label">Supplier Name</label>
+                  <input name="supplier" className="input" defaultValue={modalType === "edit" ? selectedMat?.supplier : ""} placeholder="Abuja Organics Ltd" />
+                </div>
+                <div style={{ flex: 1 }}>
+                  <label className="label">Date Purchased</label>
+                  <input name="date" className="input" type="date" defaultValue={modalType === "edit" && selectedMat?.date ? new Date(selectedMat.date).toISOString().split('T')[0] : ""} />
+                </div>
               </div>
               <div style={{ display: "flex", justifyContent: "flex-end", gap: 8, marginTop: 12 }}>
                 <button type="button" className="btn-outline" onClick={() => setModalType(null)}>Cancel</button>

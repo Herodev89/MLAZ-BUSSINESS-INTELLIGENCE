@@ -178,6 +178,10 @@ export default function ExpensesPage() {
                 <label className="label">Description / Note</label>
                 <input name="description" className="input" defaultValue={selectedExpense?.description || ""} placeholder="Purchased 20L diesel" />
               </div>
+              <div>
+                <label className="label">Date</label>
+                <input name="date" className="input" type="date" defaultValue={selectedExpense?.date ? new Date(selectedExpense.date).toISOString().split('T')[0] : ""} />
+              </div>
               <div style={{ display: "flex", justifyContent: "flex-end", gap: 8, marginTop: 12 }}>
                 <button type="button" className="btn-outline" onClick={() => setShowModal(false)}>Cancel</button>
                 <button type="submit" className="btn-accent" disabled={isSubmitting}>{isSubmitting ? "Saving..." : "Save Expense"}</button>

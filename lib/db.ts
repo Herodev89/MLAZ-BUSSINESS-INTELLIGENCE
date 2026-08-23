@@ -140,7 +140,8 @@ export async function initDb() {
       costPerUnit REAL DEFAULT 0,
       reorderLevel REAL DEFAULT 0,
       supplier TEXT,
-      status TEXT DEFAULT 'In Stock'
+      status TEXT DEFAULT 'In Stock',
+      date DATETIME DEFAULT CURRENT_TIMESTAMP
     );
 
     CREATE TABLE IF NOT EXISTS ProductionRun (

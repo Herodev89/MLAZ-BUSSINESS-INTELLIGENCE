@@ -77,7 +77,7 @@ export default function InventoryMovementsPage() {
                   <td>
                      <div style={{ fontWeight: 600, color: "var(--color-text-primary)" }}>{m.productName}</div>
                   </td>
-                  <td>Standard</td>
+                  <td style={{ color: "var(--color-text-secondary)" }}>{m.size} {m.color}</td>
                   <td>
                     <span style={{ fontWeight: 700, color: m.quantity > 0 ? "var(--color-success)" : "var(--color-error)" }}>
                       {m.quantity > 0 ? `+${m.quantity}` : m.quantity}

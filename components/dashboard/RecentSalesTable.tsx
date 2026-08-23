@@ -109,7 +109,7 @@ export default function RecentSalesTable() {
                   </td>
                   <td>
                     <span style={{ color: "var(--color-text-secondary)" }}>
-                      Standard
+                      {sale.size} {sale.color}
                     </span>
                   </td>
                   <td>

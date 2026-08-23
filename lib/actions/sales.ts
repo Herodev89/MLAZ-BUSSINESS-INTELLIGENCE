@@ -27,6 +27,8 @@ export async function createSaleAction(formData: FormData) {
   const amount = parseFloat(formData.get("amount")?.toString() || "0");
   const paymentMethod = formData.get("paymentMethod")?.toString() || "Transfer";
   const status = formData.get("status")?.toString() || "Pending";
+  const dateStr = formData.get("date")?.toString();
+  const createdAt = dateStr ? new Date(dateStr).toISOString() : new Date().toISOString();
 
   if (!customerName || !productName || !amount || !variantId) {
     return { error: "Missing required fields" };
@@ -49,9 +51,9 @@ export async function createSaleAction(formData: FormData) {
     const profit = amount - totalCostPrice;
 
     await db.prepare(`
-      INSERT INTO Sale (id, userId, customerName, productName, variantId, size, color, quantity, amount, costPrice, profit, paymentMethod, status)
-      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-    `).run(saleId, session.id, customerName, productName, variantId, size, color, quantity, amount, totalCostPrice, profit, paymentMethod, status);
+      INSERT INTO Sale (id, userId, customerName, productName, variantId, size, color, quantity, amount, costPrice, profit, paymentMethod, status, createdAt)
+      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+    `).run(saleId, session.id, customerName, productName, variantId, size, color, quantity, amount, totalCostPrice, profit, paymentMethod, status, createdAt);
     
     // Update variant stock
     await db.prepare('UPDATE ProductVariant SET stock = stock - ? WHERE id = ?').run(quantity, variantRecord.id);

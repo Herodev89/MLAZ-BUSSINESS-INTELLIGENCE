@@ -226,6 +226,10 @@ export default function ProductionPage() {
                     <option value="Completed">Completed</option>
                   </select>
                 </div>
+                <div style={{ flex: 1 }}>
+                  <label className="label">Date</label>
+                  <input name="date" className="input" type="date" />
+                </div>
               </div>
               <div style={{ display: "flex", justifyContent: "flex-end", gap: 8, marginTop: 12 }}>
                 <button type="button" className="btn-outline" onClick={() => setShowRecordModal(false)}>Cancel</button>

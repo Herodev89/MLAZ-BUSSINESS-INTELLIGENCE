@@ -30,8 +30,8 @@ export async function createExpenseAction(formData: FormData) {
   const expenseId = `EXP-${randomUUID().slice(0, 8).toUpperCase()}`;
 
   try {
-    await db.prepare('INSERT INTO Expense (id, name, type, category, amount, description) VALUES (?, ?, ?, ?, ?, ?)')
-      .run(expenseId, name, type, category, amount, description);
+    await db.prepare('INSERT INTO Expense (id, name, type, category, amount, description, date) VALUES (?, ?, ?, ?, ?, ?, ?)')
+      .run(expenseId, name, type, category, amount, description, expenseDate);
     return { success: true, expenseId };
   } catch (error) {
     return { error: "Failed to create expense" };
@@ -62,8 +62,8 @@ export async function updateExpenseAction(id: string, formData: FormData) {
   }
 
   try {
-    await db.prepare('UPDATE Expense SET name = ?, type = ?, category = ?, amount = ?, description = ? WHERE id = ?')
-      .run(name, type, category, amount, description, id);
+    await db.prepare('UPDATE Expense SET name = ?, type = ?, category = ?, amount = ?, description = ?, date = ? WHERE id = ?')
+      .run(name, type, category, amount, description, expenseDate, id);
     return { success: true };
   } catch (error) {
     return { error: "Failed to update expense" };
