@@ -1,6 +1,7 @@
 "use server";
 
 import db from "@/lib/db";
+import { randomUUID } from "crypto";
 
 export async function getOrdersAction() {
   try {
@@ -54,11 +55,11 @@ export async function createOrderAction(formData: FormData) {
   let finalCustId = cust?.id;
   
   if (!finalCustId) {
-    finalCustId = require("crypto").randomUUID();
+    finalCustId = randomUUID();
     await db.prepare('INSERT INTO Customer (id, name, type) VALUES (?, ?, ?)').run(finalCustId, customerName, 'Retail');
   }
 
-  const orderId = `ORD-${Math.floor(1000 + Math.random() * 9000)}`;
+  const orderId = `ORD-${randomUUID().slice(0, 8).toUpperCase()}`;
 
   try {
     await db.prepare(`
@@ -121,9 +122,14 @@ async function processOrderToSale(orderId: string) {
   const variantRecord = await db.prepare('SELECT id, costPrice FROM ProductVariant WHERE id = ?').get(order.variantId) as any;
   if (!variantRecord) return;
 
+  // Deduplication guard: Check if a sale for this order already exists
+  const existingSale = await db.prepare('SELECT id FROM Sale WHERE id LIKE ? || "%"').get(`TX-${orderId}`);
+  if (existingSale) return;
+
   const costPrice = (variantRecord.costPrice || 0) * order.quantity;
   const profit = order.amount - costPrice;
-  const saleId = `TX-${Math.floor(1000 + Math.random() * 9000)}`;
+  // Prefix the saleId with TX-<orderId> so we can track it
+  const saleId = `TX-${orderId}-${randomUUID().slice(0, 4).toUpperCase()}`;
 
   await db.prepare(`
     INSERT INTO Sale (id, userId, customerName, productName, variantId, size, color, quantity, amount, costPrice, profit, paymentMethod, status)

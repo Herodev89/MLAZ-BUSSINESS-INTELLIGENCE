@@ -41,7 +41,7 @@ export async function createSaleAction(formData: FormData) {
     return { error: "Low stock: Not enough product available to record this sale." };
   }
 
-  const saleId = `TX-${Math.floor(1000 + Math.random() * 9000)}`;
+  const saleId = `TX-${randomUUID().slice(0, 8).toUpperCase()}`;
 
   try {
     const unitCost = variantRecord.costPrice || 0;

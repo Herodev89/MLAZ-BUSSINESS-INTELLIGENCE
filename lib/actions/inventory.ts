@@ -2,6 +2,7 @@
 
 import db from "@/lib/db";
 import { randomUUID } from "crypto";
+import { getSession } from "@/lib/auth";
 
 export async function getInventoryMovementsAction() {
   try {
@@ -22,12 +23,15 @@ export async function recordInventoryMovementAction(formData: FormData) {
   const reference = formData.get("reference")?.toString() || "";
   const note = formData.get("note")?.toString() || "";
 
+  const session = await getSession();
+  if (!session || session.role !== "ADMIN") return { error: "Forbidden: Admin access required" };
+
   if (!productName || !type || quantity === 0 || !variantId) {
     return { error: "Product variant, type, and valid quantity are required" };
   }
 
   try {
-    const movId = `IM-${Math.floor(1000 + Math.random() * 9000)}`;
+    const movId = `IM-${randomUUID().slice(0, 8).toUpperCase()}`;
     
     await db.prepare(`
       INSERT INTO InventoryMovement (id, productName, variantId, size, color, quantity, type, reference, note)

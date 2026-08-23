@@ -1,6 +1,8 @@
 "use server";
 
 import db from "@/lib/db";
+import { getSession } from "@/lib/auth";
+import { randomUUID } from "crypto";
 
 export async function getExpensesAction() {
   try {
@@ -18,11 +20,14 @@ export async function createExpenseAction(formData: FormData) {
   const amount = parseFloat(formData.get("amount")?.toString() || "0");
   const description = formData.get("description")?.toString() || "";
 
+  const session = await getSession();
+  if (!session || session.role !== "ADMIN") return { error: "Forbidden: Admin access required" };
+
   if (!name || !category || amount <= 0) {
     return { error: "Name, category, and valid amount are required" };
   }
 
-  const expenseId = `EXP-${Math.floor(1000 + Math.random() * 9000)}`;
+  const expenseId = `EXP-${randomUUID().slice(0, 8).toUpperCase()}`;
 
   try {
     await db.prepare('INSERT INTO Expense (id, name, type, category, amount, description) VALUES (?, ?, ?, ?, ?, ?)')
@@ -34,6 +39,9 @@ export async function createExpenseAction(formData: FormData) {
 }
 
 export async function deleteExpenseAction(id: string) {
+  const session = await getSession();
+  if (!session || session.role !== "ADMIN") return { error: "Forbidden: Admin access required" };
+
   try {
     await db.prepare('DELETE FROM Expense WHERE id = ?').run(id);
     return { success: true };
