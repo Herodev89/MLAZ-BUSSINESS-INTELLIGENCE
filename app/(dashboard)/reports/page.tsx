@@ -7,6 +7,7 @@ import { getSalesAction } from "@/lib/actions/sales";
 import { getProductionRunsAction } from "@/lib/actions/production";
 import { getExpensesAction } from "@/lib/actions/expenses";
 import { getProductsAction } from "@/lib/actions/products";
+import { getOrdersAction } from "@/lib/actions/orders";
 
 export default function ReportsPage() {
   const [selectedReport, setSelectedReport] = useState("Monthly Sales Summary");
@@ -18,19 +19,22 @@ export default function ReportsPage() {
   const [productionRuns, setProductionRuns] = useState<any[]>([]);
   const [expenses, setExpenses] = useState<any[]>([]);
   const [products, setProducts] = useState<any[]>([]);
+  const [orders, setOrders] = useState<any[]>([]);
 
   useEffect(() => {
     async function load() {
-      const [s, pr, e, p] = await Promise.all([
+      const [s, pr, e, p, o] = await Promise.all([
         getSalesAction(),
         getProductionRunsAction(),
         getExpensesAction(),
-        getProductsAction()
+        getProductsAction(),
+        getOrdersAction()
       ]);
       if (s.success) setRecentSales(s.sales || []);
       if (pr.success) setProductionRuns(pr.runs || []);
       if (e.success) setExpenses(e.expenses || []);
       if (p.success) setProducts(p.products || []);
+      if (o.success) setOrders(o.orders || []);
     }
     load();
   }, []);
@@ -58,6 +62,7 @@ export default function ReportsPage() {
   const filteredSales = filterByDate(recentSales, "createdAt");
   const filteredProduction = filterByDate(productionRuns, "productionDate");
   const filteredExpenses = filterByDate(expenses, "date");
+  const filteredOrders = filterByDate(orders, "date");
 
   const totalSalesRevenue = filteredSales.reduce((acc, s) => acc + (s.amount || 0), 0);
   const totalCOGS = filteredSales.reduce((acc, s) => acc + (s.costPrice || 0), 0);
@@ -87,7 +92,8 @@ export default function ReportsPage() {
       inventoryValuation,
       filteredSales,
       filteredProduction,
-      filteredExpenses
+      filteredExpenses,
+      filteredOrders
     });
   };
 
@@ -107,6 +113,9 @@ export default function ReportsPage() {
     } else if (type.includes("Production")) {
       rows.push(["Run ID", "Product", "Variant", "Quantity Produced", "Total Cost", "Status", "Production Date"]);
       generatedReport?.filteredProduction.forEach((r: any) => rows.push([r.id, r.productName, "Standard", r.qtyProduced.toString(), r.totalCost.toString(), r.status, r.productionDate]));
+    } else if (type.includes("Order")) {
+      rows.push(["Order ID", "Customer", "Product", "Variant", "Quantity", "Amount", "Status", "Payment", "Date"]);
+      generatedReport?.filteredOrders.forEach((o: any) => rows.push([o.id, o.customer, o.productName, o.size ? `${o.size} ${o.color}` : "-", o.quantity?.toString() || "1", o.totalAmount?.toString() || "0", o.orderStatus, o.paymentStatus, o.date]));
     } else {
       rows.push(["Expense Name", "Category", "Description", "Amount", "Date"]);
       generatedReport?.filteredExpenses.forEach((e: any) => rows.push([e.name, e.category, e.description || "", e.amount.toString(), e.date]));
@@ -129,6 +138,8 @@ export default function ReportsPage() {
     let tableRows = "";
     if (type.includes("Sales")) {
       tableRows = generatedReport?.filteredSales.map((s: any) => `<tr><td>${s.id}</td><td>${s.customerName}</td><td>${s.productName}</td><td>${s.quantity}</td><td>${formatNaira(s.amount)}</td><td>${formatNaira(s.profit || 0)}</td><td>${formatDate(s.createdAt)}</td></tr>`).join("");
+    } else if (type.includes("Order")) {
+      tableRows = generatedReport?.filteredOrders.map((o: any) => `<tr><td>${o.id}</td><td>${o.customer}</td><td>${o.productName}</td><td>${o.quantity || 1}</td><td>${formatNaira(o.totalAmount)}</td><td>${o.orderStatus}</td><td>${formatDate(o.date)}</td></tr>`).join("");
     } else if (type.includes("Production")) {
       tableRows = generatedReport?.filteredProduction.map((r: any) => `<tr><td>${r.id}</td><td>${r.productName}</td><td>${r.qtyProduced}</td><td>${formatNaira(r.totalCost)}</td><td>${r.status}</td><td>${formatDate(r.productionDate)}</td></tr>`).join("");
     } else {
@@ -170,7 +181,7 @@ export default function ReportsPage() {
 
           <table>
             <thead>
-              <tr>${type.includes("Sales") ? "<th>ID</th><th>Customer</th><th>Product</th><th>Qty</th><th>Amount</th><th>Profit</th><th>Date</th>" : "<th>Code</th><th>Name</th><th>Category/Qty</th><th>Status/Qty</th><th>Total Value</th>"}</tr>
+              <tr>${type.includes("Sales") ? "<th>ID</th><th>Customer</th><th>Product</th><th>Qty</th><th>Amount</th><th>Profit</th><th>Date</th>" : type.includes("Order") ? "<th>ID</th><th>Customer</th><th>Product</th><th>Qty</th><th>Amount</th><th>Status</th><th>Date</th>" : "<th>Code</th><th>Name</th><th>Category/Qty</th><th>Status/Qty</th><th>Total Value</th>"}</tr>
             </thead>
             <tbody>${tableRows}</tbody>
           </table>
@@ -299,6 +310,7 @@ export default function ReportsPage() {
         {[
           { title: "Monthly Sales Summary", desc: "Aggregated sales data, customer breakdown, and revenue by day.", type: "Sales" },
           { title: "Inventory Valuation", desc: "Current stock snapshot with estimated cost and retail value.", type: "Inventory" },
+          { title: "Order Report", desc: "Track customer orders, status, and payment collection.", type: "Order" },
           { title: "Profit & Loss Statement", desc: "Detailed breakdown of revenue, COGS, and operating expenses.", type: "Finance" },
           { title: "Production Yield", desc: "Analysis of raw material usage vs. finished goods produced.", type: "Production" },
         ].map((report, idx) => (

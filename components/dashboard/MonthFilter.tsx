@@ -21,6 +21,7 @@ export default function MonthFilter() {
     const search = current.toString();
     const query = search ? `?${search}` : "";
     router.push(`/dashboard${query}`);
+    router.refresh();
   };
 
   return (

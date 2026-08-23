@@ -44,8 +44,9 @@ export async function createRawMaterialAction(formData: FormData) {
     await db.prepare('INSERT INTO RawMaterial (id, name, unit, quantity, costPerUnit, reorderLevel, supplier, status, date) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)')
       .run(id, name, unit, quantity, costPerUnit, reorderLevel, supplier, status, createdAt);
     return { success: true };
-  } catch (error) {
-    return { error: "Failed to create raw material" };
+  } catch (error: any) {
+    console.error(error);
+    return { error: "Failed to create raw material: " + error.message };
   }
 }
 
@@ -70,8 +71,9 @@ export async function updateRawMaterialAction(id: string, formData: FormData) {
     await db.prepare('UPDATE RawMaterial SET name = ?, unit = ?, quantity = ?, costPerUnit = ?, reorderLevel = ?, supplier = ?, status = ?, date = ? WHERE id = ?')
       .run(name, unit, quantity, costPerUnit, reorderLevel, supplier, status, createdAt, id);
     return { success: true };
-  } catch (error) {
-    return { error: "Failed to update raw material" };
+  } catch (error: any) {
+    console.error(error);
+    return { error: "Failed to update raw material: " + error.message };
   }
 }
 

@@ -4,7 +4,15 @@ import db from '@/lib/db';
 export async function GET() {
   const results = [];
   
-  // 1. Add type to Expense
+  // 1. Add date to RawMaterial
+  try {
+    await db.prepare('ALTER TABLE RawMaterial ADD COLUMN date DATETIME DEFAULT CURRENT_TIMESTAMP').run();
+    results.push({ table: 'RawMaterial', column: 'date', status: 'Added' });
+  } catch (e: any) {
+    results.push({ table: 'RawMaterial', column: 'date', status: 'Failed or already exists', error: e.message });
+  }
+
+  // 1b. Add type to Expense
   try {
     await db.prepare('ALTER TABLE Expense ADD COLUMN type TEXT DEFAULT "Operating"').run();
     results.push({ table: 'Expense', column: 'type', status: 'Added' });
