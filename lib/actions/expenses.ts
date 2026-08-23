@@ -19,6 +19,8 @@ export async function createExpenseAction(formData: FormData) {
   const category = formData.get("category")?.toString();
   const amount = parseFloat(formData.get("amount")?.toString() || "0");
   const description = formData.get("description")?.toString() || "";
+  const dateStr = formData.get("date")?.toString();
+  const expenseDate = dateStr ? new Date(dateStr).toISOString() : new Date().toISOString();
 
   const session = await getSession();
   if (!session || session.role !== "ADMIN") return { error: "Forbidden: Admin access required" };
@@ -56,6 +58,8 @@ export async function updateExpenseAction(id: string, formData: FormData) {
   const category = formData.get("category")?.toString();
   const amount = parseFloat(formData.get("amount")?.toString() || "0");
   const description = formData.get("description")?.toString() || "";
+  const dateStr = formData.get("date")?.toString();
+  const expenseDate = dateStr ? new Date(dateStr).toISOString() : new Date().toISOString();
 
   if (!name || !category || amount <= 0) {
     return { error: "Name, category, and valid amount are required" };
