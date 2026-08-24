@@ -135,18 +135,97 @@ export default function ReportsPage() {
     const printWindow = window.open("", "_blank");
     if (!printWindow) return;
 
-    let tableRows = "";
-    if (type.includes("Sales")) {
-      tableRows = generatedReport?.filteredSales.map((s: any) => `<tr><td>${s.id}</td><td>${s.customerName}</td><td>${s.productName}</td><td>${s.quantity}</td><td>${formatNaira(s.amount)}</td><td>${formatNaira(s.profit || 0)}</td><td>${formatDate(s.createdAt)}</td></tr>`).join("");
-    } else if (type.includes("Order")) {
-      tableRows = generatedReport?.filteredOrders.map((o: any) => `<tr><td>${o.id}</td><td>${o.customer}</td><td>${o.productName}</td><td>${o.quantity || 1}</td><td>${formatNaira(o.totalAmount)}</td><td>${o.orderStatus}</td><td>${formatDate(o.date)}</td></tr>`).join("");
-    } else if (type.includes("Production")) {
-      tableRows = generatedReport?.filteredProduction.map((r: any) => `<tr><td>${r.id}</td><td>${r.productName}</td><td>${r.qtyProduced}</td><td>${formatNaira(r.totalCost)}</td><td>${r.status}</td><td>${formatDate(r.productionDate)}</td></tr>`).join("");
+    let contentHtml = "";
+
+    if (type.includes("Profit & Loss Statement")) {
+      // Group sales by product for Revenues and COGS
+      const revByProduct: Record<string, number> = {};
+      const cogsByProduct: Record<string, number> = {};
+      
+      generatedReport?.filteredSales.forEach((s: any) => {
+        const prod = s.productName || "Unknown Product";
+        revByProduct[prod] = (revByProduct[prod] || 0) + (s.amount || 0);
+        cogsByProduct[prod] = (cogsByProduct[prod] || 0) + (s.costPrice || 0);
+      });
+
+      // Group expenses by category
+      const expByCategory: Record<string, number> = {};
+      generatedReport?.filteredExpenses.forEach((e: any) => {
+        const cat = e.category || "Other Expenses";
+        expByCategory[cat] = (expByCategory[cat] || 0) + (e.amount || 0);
+      });
+
+      const totalRev = generatedReport.revenue || 0;
+      const totalCogs = generatedReport.cogs || 0;
+      const grossProfit = totalRev - totalCogs;
+      const totalExp = (generatedReport.operatingExpenses || 0) + (generatedReport.factoryOverhead || 0);
+      const netIncome = grossProfit - totalExp;
+
+      contentHtml = `
+        <h1 style="text-align: center; margin-bottom: 2px;">Income Statement</h1>
+        <div style="text-align: center; margin-bottom: 24px; color: #555;">For the Period: ${startDate || "All Time"} to ${endDate || "Present"}</div>
+        
+        <table style="width: 100%; max-width: 700px; margin: 0 auto; border: none; font-size: 14px;">
+          <tr><td colspan="2" style="font-weight: bold; border-bottom: 1px solid #ccc; padding-top: 16px;">Revenues</td></tr>
+          ${Object.entries(revByProduct).map(([prod, val]) => `
+            <tr><td style="padding-left: 16px; padding-top: 4px;">${prod}</td><td style="text-align: right; padding-top: 4px;">${formatNaira(val)}</td></tr>
+          `).join("")}
+          <tr><td style="padding-top: 8px;"><strong>Total Revenues</strong></td><td style="text-align: right; border-top: 1px solid #000; padding-top: 8px;"><strong>${formatNaira(totalRev)}</strong></td></tr>
+          
+          <tr><td colspan="2" style="font-weight: bold; border-bottom: 1px solid #ccc; padding-top: 24px;">Cost of Sales</td></tr>
+          ${Object.entries(cogsByProduct).map(([prod, val]) => `
+            <tr><td style="padding-left: 16px; padding-top: 4px;">${prod}</td><td style="text-align: right; padding-top: 4px;">${formatNaira(val)}</td></tr>
+          `).join("")}
+          <tr><td style="padding-top: 8px;"><strong>Total Cost of Sales</strong></td><td style="text-align: right; border-top: 1px solid #000; padding-top: 8px;"><strong>${formatNaira(totalCogs)}</strong></td></tr>
+          
+          <tr><td style="padding-top: 16px;"><strong>Gross Profit</strong></td><td style="text-align: right; padding-top: 16px; border-bottom: 2px solid #000;"><strong>${formatNaira(grossProfit)}</strong></td></tr>
+
+          <tr><td colspan="2" style="font-weight: bold; border-bottom: 1px solid #ccc; padding-top: 24px;">Expenses</td></tr>
+          ${Object.entries(expByCategory).map(([cat, val]) => `
+            <tr><td style="padding-left: 16px; padding-top: 4px;">${cat}</td><td style="text-align: right; padding-top: 4px;">${formatNaira(val)}</td></tr>
+          `).join("")}
+          <tr><td style="padding-top: 8px;"><strong>Total Expenses</strong></td><td style="text-align: right; border-top: 1px solid #000; padding-top: 8px;"><strong>${formatNaira(totalExp)}</strong></td></tr>
+
+          <tr><td style="padding-top: 16px; font-size: 16px;"><strong>Net Income</strong></td><td style="text-align: right; padding-top: 16px; font-size: 16px; border-bottom: 4px double #000;"><strong>${formatNaira(netIncome)}</strong></td></tr>
+        </table>
+      `;
     } else {
-      tableRows = products.map(p => {
-        const stock = p.stock || 0;
-        return `<tr><td>${p.id}</td><td>${p.name}</td><td>-</td><td>${stock} pcs</td><td>${formatNaira((p.price || 0) * stock)}</td></tr>`;
-      }).join("");
+      let tableRows = "";
+      let thead = "";
+      if (type.includes("Sales")) {
+        thead = "<tr><th>ID</th><th>Customer Name</th><th>Product</th><th>Qty</th><th>Amount</th><th>Profit</th><th>Date</th></tr>";
+        tableRows = generatedReport?.filteredSales.map((s: any) => `<tr><td>${s.id}</td><td>${s.customerName}</td><td>${s.productName}</td><td>${s.quantity}</td><td>${formatNaira(s.amount)}</td><td>${formatNaira(s.profit || 0)}</td><td>${formatDate(s.createdAt)}</td></tr>`).join("");
+      } else if (type.includes("Order")) {
+        thead = "<tr><th>Order ID</th><th>Customer Name</th><th>Product</th><th>Qty</th><th>Amount</th><th>Status</th><th>Date</th></tr>";
+        tableRows = generatedReport?.filteredOrders.map((o: any) => `<tr><td>${o.id}</td><td>${o.customer}</td><td>${o.productName}</td><td>${o.quantity || 1}</td><td>${formatNaira(o.totalAmount)}</td><td>${o.orderStatus}</td><td>${formatDate(o.date)}</td></tr>`).join("");
+      } else if (type.includes("Production")) {
+        thead = "<tr><th>Run ID</th><th>Product</th><th>Qty Produced</th><th>Total Cost</th><th>Status</th><th>Date</th></tr>";
+        tableRows = generatedReport?.filteredProduction.map((r: any) => `<tr><td>${r.id}</td><td>${r.productName}</td><td>${r.qtyProduced}</td><td>${formatNaira(r.totalCost)}</td><td>${r.status}</td><td>${formatDate(r.productionDate)}</td></tr>`).join("");
+      } else {
+        thead = "<tr><th>Product ID</th><th>Name</th><th>-</th><th>Total Stock</th><th>Valuation</th></tr>";
+        tableRows = products.map(p => {
+          const stock = p.stock || 0;
+          return `<tr><td>${p.id}</td><td>${p.name}</td><td>-</td><td>${stock} pcs</td><td>${formatNaira((p.price || 0) * stock)}</td></tr>`;
+        }).join("");
+      }
+
+      contentHtml = `
+        <h1>${type}</h1>
+        <div class="header-info">Generated on: ${new Date().toLocaleString()} | Period: ${startDate || "All Time"} to ${endDate || "Present"}</div>
+        
+        <div class="stats-grid">
+          <div class="stat-box"><div>Total Revenue</div><div class="stat-val">${formatNaira(totalSalesRevenue)}</div></div>
+          <div class="stat-box"><div>COGS</div><div class="stat-val" style="color: #9C5A35;">${formatNaira(totalCOGS)}</div></div>
+          <div class="stat-box"><div>Gross Profit</div><div class="stat-val">${formatNaira(totalSalesProfit)}</div></div>
+          <div class="stat-box"><div>Operating Exp.</div><div class="stat-val" style="color: #8B0000;">${formatNaira(operatingExpenses)}</div></div>
+          <div class="stat-box"><div>Net Profit</div><div class="stat-val" style="color: #006400;">${formatNaira(totalSalesProfit - operatingExpenses)}</div></div>
+        </div>
+
+        <table style="width: 100%; border-collapse: collapse; margin-top: 16px;">
+          <thead>${thead}</thead>
+          <tbody>${tableRows}</tbody>
+        </table>
+      `;
     }
 
     printWindow.document.write(`
@@ -160,9 +239,9 @@ export default function ReportsPage() {
             .stats-grid { display: flex; gap: 16px; margin-bottom: 24px; }
             .stat-box { border: 1px solid #E8DDD0; padding: 12px 16px; border-radius: 8px; flex: 1; }
             .stat-val { font-size: 20px; font-weight: bold; color: #B8860B; }
-            table { width: 100%; border-collapse: collapse; margin-top: 16px; }
             th, td { border: 1px solid #E8DDD0; padding: 10px; text-align: left; font-size: 13px; }
             th { background: #F5EFE6; color: #3D1F0E; }
+            td { border-bottom: 1px solid #eee; }
           </style>
         </head>
         <body>
@@ -175,23 +254,7 @@ export default function ReportsPage() {
               <div style="font-size: 13px; font-style: italic; color: #B8860B; margin-top: 4px;">Guaranteed amble across the globe</div>
             </div>
           </div>
-          <h1>${type}</h1>
-          <div class="header-info">Generated on: ${new Date().toLocaleString()} | Period: ${startDate || "All Time"} to ${endDate || "Present"}</div>
-          
-          <div class="stats-grid">
-            <div class="stat-box"><div>Total Revenue</div><div class="stat-val">${formatNaira(totalSalesRevenue)}</div></div>
-            <div class="stat-box"><div>COGS</div><div class="stat-val" style="color: #9C5A35;">${formatNaira(totalCOGS)}</div></div>
-            <div class="stat-box"><div>Gross Profit</div><div class="stat-val">${formatNaira(totalSalesProfit)}</div></div>
-            <div class="stat-box"><div>Operating Exp.</div><div class="stat-val" style="color: #8B0000;">${formatNaira(operatingExpenses)}</div></div>
-            <div class="stat-box"><div>Net Profit</div><div class="stat-val" style="color: #006400;">${formatNaira(totalSalesProfit - operatingExpenses)}</div></div>
-          </div>
-
-          <table>
-            <thead>
-              <tr>${type.includes("Sales") ? "<th>ID</th><th>Customer</th><th>Product</th><th>Qty</th><th>Amount</th><th>Profit</th><th>Date</th>" : type.includes("Order") ? "<th>ID</th><th>Customer</th><th>Product</th><th>Qty</th><th>Amount</th><th>Status</th><th>Date</th>" : "<th>Code</th><th>Name</th><th>Category/Qty</th><th>Status/Qty</th><th>Total Value</th>"}</tr>
-            </thead>
-            <tbody>${tableRows}</tbody>
-          </table>
+          ${contentHtml}
         </body>
       </html>
     `);
