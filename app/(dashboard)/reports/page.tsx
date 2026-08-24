@@ -166,8 +166,15 @@ export default function ReportsPage() {
           </style>
         </head>
         <body>
-          <h2 style="font-weight: 800; font-style: italic;">MLAZ LIMITED</h2>
-          <div style="font-size: 13px; font-style: italic; color: #B8860B; margin-top: -4px; margin-bottom: 24px;">Guaranteed amble across the globe</div>
+          <div style="display: flex; align-items: center; gap: 16px; margin-bottom: 24px;">
+            <div style="width: 80px; height: 80px; border-radius: 50%; overflow: hidden; flex-shrink: 0; box-shadow: 0 4px 12px rgba(0,0,0,0.1);">
+              <img src="${window.location.origin}/logo.jpg" alt="MLAZ Logo" style="width: 100%; height: 100%; object-fit: cover;" />
+            </div>
+            <div>
+              <h2 style="font-weight: 800; font-style: italic; margin: 0; color: #3D1F0E; font-size: 24px;">MLAZ LIMITED</h2>
+              <div style="font-size: 13px; font-style: italic; color: #B8860B; margin-top: 4px;">Guaranteed amble across the globe</div>
+            </div>
+          </div>
           <h1>${type}</h1>
           <div class="header-info">Generated on: ${new Date().toLocaleString()} | Period: ${startDate || "All Time"} to ${endDate || "Present"}</div>
           
