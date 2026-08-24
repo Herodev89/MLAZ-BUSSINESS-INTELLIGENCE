@@ -103,7 +103,7 @@ export default function ReportsPage() {
 
     if (type.includes("Sales")) {
       rows.push(["Transaction ID", "Customer", "Product", "Variant", "Quantity", "Amount", "Profit", "Payment Method", "Date"]);
-      generatedReport?.filteredSales.forEach((s: any) => rows.push([s.id, s.customerName, s.productName, s.size ? `${s.size} ${s.color}` : "-", s.quantity.toString(), s.amount.toString(), s.profit?.toString() || "0", s.paymentMethod, s.createdAt]));
+      filteredSales.forEach((s: any) => rows.push([s.id, s.customerName, s.productName, s.size ? `${s.size} ${s.color}` : "-", s.quantity.toString(), s.amount.toString(), s.profit?.toString() || "0", s.paymentMethod, s.createdAt]));
     } else if (type.includes("Inventory")) {
       rows.push(["Product ID", "Product Name", "Price", "Total Stock Units", "Valuation"]);
       products.forEach(p => {
@@ -112,13 +112,13 @@ export default function ReportsPage() {
       });
     } else if (type.includes("Production")) {
       rows.push(["Run ID", "Product", "Variant", "Quantity Produced", "Total Cost", "Status", "Production Date"]);
-      generatedReport?.filteredProduction.forEach((r: any) => rows.push([r.id, r.productName, "Standard", r.qtyProduced.toString(), r.totalCost.toString(), r.status, r.productionDate]));
+      filteredProduction.forEach((r: any) => rows.push([r.id, r.productName, "Standard", r.qtyProduced.toString(), r.totalCost.toString(), r.status, r.productionDate]));
     } else if (type.includes("Order")) {
       rows.push(["Order ID", "Customer", "Product", "Variant", "Quantity", "Amount", "Status", "Payment", "Date"]);
-      generatedReport?.filteredOrders.forEach((o: any) => rows.push([o.id, o.customer, o.productName, o.size ? `${o.size} ${o.color}` : "-", o.quantity?.toString() || "1", o.totalAmount?.toString() || "0", o.orderStatus, o.paymentStatus, o.date]));
+      filteredOrders.forEach((o: any) => rows.push([o.id, o.customer, o.productName, o.size ? `${o.size} ${o.color}` : "-", o.quantity?.toString() || "1", o.totalAmount?.toString() || "0", o.orderStatus, o.paymentStatus, o.date]));
     } else {
       rows.push(["Expense Name", "Category", "Description", "Amount", "Date"]);
-      generatedReport?.filteredExpenses.forEach((e: any) => rows.push([e.name, e.category, e.description || "", e.amount.toString(), e.date]));
+      filteredExpenses.forEach((e: any) => rows.push([e.name, e.category, e.description || "", e.amount.toString(), e.date]));
     }
 
     const csvContent = "data:text/csv;charset=utf-8," + rows.map(r => r.map(c => `"${c.replace(/"/g, '""')}"`).join(",")).join("\n");
@@ -142,7 +142,7 @@ export default function ReportsPage() {
       const revByProduct: Record<string, number> = {};
       const cogsByProduct: Record<string, number> = {};
       
-      generatedReport?.filteredSales.forEach((s: any) => {
+      filteredSales.forEach((s: any) => {
         const prod = s.productName || "Unknown Product";
         revByProduct[prod] = (revByProduct[prod] || 0) + (s.amount || 0);
         cogsByProduct[prod] = (cogsByProduct[prod] || 0) + (s.costPrice || 0);
@@ -150,15 +150,15 @@ export default function ReportsPage() {
 
       // Group expenses by category
       const expByCategory: Record<string, number> = {};
-      generatedReport?.filteredExpenses.forEach((e: any) => {
+      filteredExpenses.forEach((e: any) => {
         const cat = e.category || "Other Expenses";
         expByCategory[cat] = (expByCategory[cat] || 0) + (e.amount || 0);
       });
 
-      const totalRev = generatedReport.revenue || 0;
-      const totalCogs = generatedReport.cogs || 0;
-      const grossProfit = totalRev - totalCogs;
-      const totalExp = (generatedReport.operatingExpenses || 0) + (generatedReport.factoryOverhead || 0);
+      const totalRev = totalSalesRevenue || 0;
+      const totalCogs = totalCOGS || 0;
+      const grossProfit = totalSalesProfit || 0;
+      const totalExp = totalExpenses || 0;
       const netIncome = grossProfit - totalExp;
 
       contentHtml = `
@@ -194,13 +194,13 @@ export default function ReportsPage() {
       let thead = "";
       if (type.includes("Sales")) {
         thead = "<tr><th>ID</th><th>Customer Name</th><th>Product</th><th>Qty</th><th>Amount</th><th>Profit</th><th>Date</th></tr>";
-        tableRows = generatedReport?.filteredSales.map((s: any) => `<tr><td>${s.id}</td><td>${s.customerName}</td><td>${s.productName}</td><td>${s.quantity}</td><td>${formatNaira(s.amount)}</td><td>${formatNaira(s.profit || 0)}</td><td>${formatDate(s.createdAt)}</td></tr>`).join("");
+        tableRows = filteredSales.map((s: any) => `<tr><td>${s.id}</td><td>${s.customerName}</td><td>${s.productName}</td><td>${s.quantity}</td><td>${formatNaira(s.amount)}</td><td>${formatNaira(s.profit || 0)}</td><td>${formatDate(s.createdAt)}</td></tr>`).join("");
       } else if (type.includes("Order")) {
         thead = "<tr><th>Order ID</th><th>Customer Name</th><th>Product</th><th>Qty</th><th>Amount</th><th>Status</th><th>Date</th></tr>";
-        tableRows = generatedReport?.filteredOrders.map((o: any) => `<tr><td>${o.id}</td><td>${o.customer}</td><td>${o.productName}</td><td>${o.quantity || 1}</td><td>${formatNaira(o.totalAmount)}</td><td>${o.orderStatus}</td><td>${formatDate(o.date)}</td></tr>`).join("");
+        tableRows = filteredOrders.map((o: any) => `<tr><td>${o.id}</td><td>${o.customer}</td><td>${o.productName}</td><td>${o.quantity || 1}</td><td>${formatNaira(o.totalAmount)}</td><td>${o.orderStatus}</td><td>${formatDate(o.date)}</td></tr>`).join("");
       } else if (type.includes("Production")) {
         thead = "<tr><th>Run ID</th><th>Product</th><th>Qty Produced</th><th>Total Cost</th><th>Status</th><th>Date</th></tr>";
-        tableRows = generatedReport?.filteredProduction.map((r: any) => `<tr><td>${r.id}</td><td>${r.productName}</td><td>${r.qtyProduced}</td><td>${formatNaira(r.totalCost)}</td><td>${r.status}</td><td>${formatDate(r.productionDate)}</td></tr>`).join("");
+        tableRows = filteredProduction.map((r: any) => `<tr><td>${r.id}</td><td>${r.productName}</td><td>${r.qtyProduced}</td><td>${formatNaira(r.totalCost)}</td><td>${r.status}</td><td>${formatDate(r.productionDate)}</td></tr>`).join("");
       } else {
         thead = "<tr><th>Product ID</th><th>Name</th><th>-</th><th>Total Stock</th><th>Valuation</th></tr>";
         tableRows = products.map(p => {
