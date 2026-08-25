@@ -33,7 +33,10 @@ export async function getOrdersAction() {
 
 export async function createOrderAction(formData: FormData) {
   const customerId = formData.get("customer")?.toString(); // Actually sending ID or Name? Let's assume ID if we use select, but for now the UI uses text input. Let's just create customer if they don't exist.
-  const amount = parseFloat(formData.get("amount")?.toString() || "0");
+  const amountStr = formData.get("amount")?.toString() || "0";
+  const discountStr = formData.get("discount")?.toString() || "0";
+  const amount = parseFloat(amountStr);
+  const discount = parseFloat(discountStr);
   const paymentMethod = formData.get("paymentMethod")?.toString() || "Transfer";
   const status = formData.get("status")?.toString() || "Pending";
   const dateStr = formData.get("date")?.toString();
@@ -48,9 +51,8 @@ export async function createOrderAction(formData: FormData) {
     return { error: "Amount is required" };
   }
 
-  // Handle customer (if the UI sends a string name instead of ID, we can look it up or create a dummy ID)
-  // But wait, the schema expects customerId.
-  // The UI currently just takes `customer` name as a text input.
+  const finalAmount = amount - discount;
+
   const customerName = formData.get("customer")?.toString() || "Unknown";
   
   let cust = await db.prepare('SELECT id FROM Customer WHERE name = ?').get(customerName) as any;
@@ -58,16 +60,16 @@ export async function createOrderAction(formData: FormData) {
   
   if (!finalCustId) {
     finalCustId = randomUUID();
-    await db.prepare('INSERT INTO Customer (id, name, type) VALUES (?, ?, ?)').run(finalCustId, customerName, 'Retail');
+    await db.prepare('INSERT INTO Customer (id, name, type, totalSpent) VALUES (?, ?, ?, ?)').run(finalCustId, customerName, 'Retail', 0); // Spent is updated when converted to sale
   }
 
   const orderId = `ORD-${randomUUID().slice(0, 8).toUpperCase()}`;
 
   try {
     await db.prepare(`
-      INSERT INTO "Order" (id, customerId, productName, variantId, size, color, quantity, amount, paymentMethod, status, createdAt)
-      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-    `).run(orderId, finalCustId, productName, variantId, size, color, quantity, amount, paymentMethod, status, createdAt);
+      INSERT INTO "Order" (id, customerId, productName, variantId, size, color, quantity, amount, discount, paymentMethod, status, createdAt)
+      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+    `).run(orderId, finalCustId, productName, variantId, size, color, quantity, finalAmount, discount, paymentMethod, status, createdAt);
     
     // If initially created as confirmed, trigger sale
     if (status === "Confirmed" || status === "Delivered") {

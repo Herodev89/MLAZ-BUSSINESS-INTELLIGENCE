@@ -85,15 +85,12 @@ export async function updateProductAction(id: string, formData: FormData) {
   try {
     await db.prepare('UPDATE Product SET name = ? WHERE id = ?').run(name, id);
     
-    // Preserve existing stock
-    const existingVariants = await db.prepare('SELECT id, size, color, stock FROM ProductVariant WHERE productId = ?').all(id) as any[];
+    // We completely replace variants to respect manual edits
     await db.prepare('DELETE FROM ProductVariant WHERE productId = ?').run(id);
     const insertVariant = await db.prepare('INSERT INTO ProductVariant (id, productId, size, color, price, costPrice, stock, sku) VALUES (?, ?, ?, ?, ?, ?, ?, ?)');
     for (const v of variants) {
-      const existing = existingVariants.find(ev => ev.id === v.id || (ev.size === v.size && ev.color === v.color));
-      const preservedStock = existing ? existing.stock : (parseInt(v.stock) || 0);
-      const vId = v.id || randomUUID();
-      await insertVariant.run(vId, id, v.size || '', v.color || '', parseFloat(v.price) || 0, parseFloat(v.costPrice) || 0, preservedStock, v.sku || '');
+      const vId = v.id && !v.id.toString().startsWith("new-") ? v.id : randomUUID();
+      await insertVariant.run(vId, id, v.size || '', v.color || '', parseFloat(v.price) || 0, parseFloat(v.costPrice) || 0, parseInt(v.stock) || 0, v.sku || '');
     }
     return { success: true };
   } catch (error) {

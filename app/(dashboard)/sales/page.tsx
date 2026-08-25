@@ -6,6 +6,7 @@ import { formatNaira, formatDate } from "@/lib/utils";
 import { Receipt } from "@/components/pos/Receipt";
 import { getSalesAction, createSaleAction, confirmSaleAction, deleteSaleAction, updateSaleAction } from "@/lib/actions/sales";
 import { getProductsAction } from "@/lib/actions/products";
+import { getCustomersAction } from "@/lib/actions/customers";
 
 const PAYMENT_BADGE: Record<string, string> = {
   Cash: "badge-success",
@@ -33,6 +34,7 @@ export default function SalesPage() {
     color: "",
     qty: 1,
     amount: 0,
+    discount: 0,
     status: "Pending",
     paymentMethod: "Transfer",
     date: ""
@@ -59,7 +61,8 @@ export default function SalesPage() {
   };
 
   const loadCustomers = async () => {
-    setCustomers([{ id: '1', name: 'Walk-in Customer' }]);
+    const res = await getCustomersAction();
+    if (res.success) setCustomers(res.customers || []);
   };
 
   const loadProducts = async () => {
@@ -108,6 +111,7 @@ export default function SalesPage() {
     formData.append("color", saleForm.color);
     formData.append("qty", saleForm.qty.toString());
     formData.append("amount", saleForm.amount.toString());
+    formData.append("discount", saleForm.discount.toString());
     formData.append("status", saleForm.status);
     formData.append("paymentMethod", saleForm.paymentMethod);
     if (saleForm.date) formData.append("date", saleForm.date);
@@ -314,7 +318,10 @@ export default function SalesPage() {
             <form onSubmit={handleRecordSale} style={{ display: "flex", flexDirection: "column", gap: 14 }}>
               <div>
                 <label className="label">Customer Name</label>
-                <input name="customer" className="input" placeholder="Walk-in Customer" value={saleForm.customer} onChange={(e) => setSaleForm({...saleForm, customer: e.target.value})} required />
+                <input name="customer" list="customers-list" className="input" placeholder="Walk-in Customer" value={saleForm.customer} onChange={(e) => setSaleForm({...saleForm, customer: e.target.value})} required />
+                <datalist id="customers-list">
+                  {customers.map(c => <option key={c.id} value={c.name} />)}
+                </datalist>
               </div>
               <div>
                 <label className="label">Product & Variant</label>
@@ -330,8 +337,12 @@ export default function SalesPage() {
                   <input name="qty" className="input" type="number" min="1" value={saleForm.qty} onChange={handleQtyChange} required />
                 </div>
                 <div style={{ flex: 1 }}>
-                  <label className="label">Total Amount (₦)</label>
+                  <label className="label">Base Amount (₦)</label>
                   <input name="amount" className="input" type="number" value={saleForm.amount} readOnly style={{ background: "var(--color-surface-muted)", cursor: "not-allowed" }} required />
+                </div>
+                <div style={{ flex: 1 }}>
+                  <label className="label">Discount (₦)</label>
+                  <input name="discount" className="input" type="number" min="0" value={saleForm.discount} onChange={(e) => setSaleForm({...saleForm, discount: parseFloat(e.target.value) || 0})} />
                 </div>
               </div>
               <div style={{ display: "flex", gap: 12 }}>

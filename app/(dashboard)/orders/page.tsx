@@ -5,9 +5,11 @@ import { Plus, Search, Eye, X, Edit, Trash2 } from "lucide-react";
 import { formatNaira, formatDate, getOrderStatusClass } from "@/lib/utils";
 import { getOrdersAction, createOrderAction, updateOrderStatusAction, deleteOrderAction } from "@/lib/actions/orders";
 import { getProductsAction } from "@/lib/actions/products";
+import { getCustomersAction } from "@/lib/actions/customers";
 
 export default function OrdersPage() {
   const [orderList, setOrderList] = useState<any[]>([]);
+  const [customers, setCustomers] = useState<any[]>([]);
   const [search, setSearch] = useState("");
   const [statusFilter, setStatusFilter] = useState<string>("All");
 
@@ -26,6 +28,7 @@ export default function OrdersPage() {
     color: "",
     qty: 1,
     amount: 0,
+    discount: 0,
     status: "Pending",
     paymentMethod: "Transfer",
     date: ""
@@ -41,8 +44,14 @@ export default function OrdersPage() {
 
   useEffect(() => {
     loadOrders();
+    loadCustomers();
     loadProducts();
   }, []);
+
+  const loadCustomers = async () => {
+    const res = await getCustomersAction();
+    if (res.success) setCustomers(res.customers || []);
+  };
 
   const loadOrders = async () => {
     const res = await getOrdersAction();
@@ -94,6 +103,7 @@ export default function OrdersPage() {
     formData.append("color", orderForm.color);
     formData.append("qty", orderForm.qty.toString());
     formData.append("amount", orderForm.amount.toString());
+    formData.append("discount", orderForm.discount.toString());
     formData.append("status", orderForm.status);
     formData.append("paymentMethod", orderForm.paymentMethod);
     if (orderForm.date) formData.append("date", orderForm.date);
@@ -303,7 +313,10 @@ export default function OrdersPage() {
             <form onSubmit={handleCreateOrder} style={{ display: "flex", flexDirection: "column", gap: 14 }}>
               <div>
                 <label className="label">Customer Name</label>
-                <input name="customer" className="input" placeholder="John Doe" value={orderForm.customer} onChange={(e) => setOrderForm({...orderForm, customer: e.target.value})} required />
+                <input name="customer" list="order-customers-list" className="input" placeholder="John Doe" value={orderForm.customer} onChange={(e) => setOrderForm({...orderForm, customer: e.target.value})} required />
+                <datalist id="order-customers-list">
+                  {customers.map(c => <option key={c.id} value={c.name} />)}
+                </datalist>
               </div>
               <div>
                 <label className="label">Product & Variant</label>
@@ -319,8 +332,12 @@ export default function OrdersPage() {
                   <input name="qty" className="input" type="number" min="1" value={orderForm.qty} onChange={handleQtyChange} required />
                 </div>
                 <div style={{ flex: 1 }}>
-                  <label className="label">Total Amount (₦)</label>
+                  <label className="label">Base Amount (₦)</label>
                   <input name="amount" className="input" type="number" value={orderForm.amount} readOnly style={{ background: "var(--color-surface-muted)", cursor: "not-allowed" }} required />
+                </div>
+                <div style={{ flex: 1 }}>
+                  <label className="label">Discount (₦)</label>
+                  <input name="discount" className="input" type="number" min="0" value={orderForm.discount} onChange={(e) => setOrderForm({...orderForm, discount: parseFloat(e.target.value) || 0})} />
                 </div>
               </div>
               <div style={{ display: "flex", gap: 12 }}>

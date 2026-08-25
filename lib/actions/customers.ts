@@ -54,3 +54,25 @@ export async function deleteCustomerAction(id: string) {
     return { error: "Failed to delete customer" };
   }
 }
+
+export async function getCustomerHistoryAction(customerName: string, customerId?: string) {
+  try {
+    const sales = await db.prepare('SELECT * FROM Sale WHERE customerName = ? ORDER BY createdAt DESC').all(customerName) as any[];
+    // Fallback to customerId for orders if needed, but schema uses customerId. Wait, Order uses customerId. Sale uses customerName.
+    // We should fetch orders by customerId if provided, else attempt by name via join.
+    let orders = [];
+    if (customerId) {
+      orders = await db.prepare('SELECT * FROM "Order" WHERE customerId = ? ORDER BY createdAt DESC').all(customerId) as any[];
+    } else {
+      orders = await db.prepare('SELECT o.* FROM "Order" o JOIN Customer c ON o.customerId = c.id WHERE c.name = ? ORDER BY o.createdAt DESC').all(customerName) as any[];
+    }
+    
+    return { 
+      success: true, 
+      sales: sales.map(s => ({...s})),
+      orders: orders.map(o => ({...o}))
+    };
+  } catch (error) {
+    return { error: "Failed to fetch customer history" };
+  }
+}

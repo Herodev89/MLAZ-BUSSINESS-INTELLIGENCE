@@ -93,6 +93,7 @@ export async function initDb() {
       color TEXT,
       quantity INTEGER DEFAULT 1,
       amount REAL NOT NULL,
+      discount REAL DEFAULT 0,
       paymentMethod TEXT DEFAULT 'Transfer',
       status TEXT DEFAULT 'Pending',
       createdAt DATETIME DEFAULT CURRENT_TIMESTAMP
@@ -117,6 +118,7 @@ export async function initDb() {
       color TEXT,
       quantity INTEGER DEFAULT 1,
       amount REAL NOT NULL,
+      discount REAL DEFAULT 0,
       costPrice REAL DEFAULT 0,
       profit REAL DEFAULT 0,
       paymentMethod TEXT DEFAULT 'Transfer',

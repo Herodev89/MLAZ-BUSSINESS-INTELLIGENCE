@@ -24,7 +24,10 @@ export async function createSaleAction(formData: FormData) {
   const size = formData.get("size")?.toString() || "";
   const color = formData.get("color")?.toString() || "";
   const quantity = parseInt(formData.get("qty")?.toString() || "1", 10);
-  const amount = parseFloat(formData.get("amount")?.toString() || "0");
+  const amountStr = formData.get("amount")?.toString() || "0";
+  const discountStr = formData.get("discount")?.toString() || "0";
+  const amount = parseFloat(amountStr);
+  const discount = parseFloat(discountStr);
   const paymentMethod = formData.get("paymentMethod")?.toString() || "Transfer";
   const status = formData.get("status")?.toString() || "Pending";
   const dateStr = formData.get("date")?.toString();
@@ -48,20 +51,23 @@ export async function createSaleAction(formData: FormData) {
   try {
     const unitCost = variantRecord.costPrice || 0;
     const totalCostPrice = unitCost * quantity;
-    const profit = amount - totalCostPrice;
+    const finalAmount = amount - discount;
+    const profit = finalAmount - totalCostPrice;
 
     await db.prepare(`
-      INSERT INTO Sale (id, userId, customerName, productName, variantId, size, color, quantity, amount, costPrice, profit, paymentMethod, status, createdAt)
-      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-    `).run(saleId, session.id, customerName, productName, variantId, size, color, quantity, amount, totalCostPrice, profit, paymentMethod, status, createdAt);
+      INSERT INTO Sale (id, userId, customerName, productName, variantId, size, color, quantity, amount, discount, costPrice, profit, paymentMethod, status, createdAt)
+      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+    `).run(saleId, session.id, customerName, productName, variantId, size, color, quantity, finalAmount, discount, totalCostPrice, profit, paymentMethod, status, createdAt);
     
     // Update variant stock
     await db.prepare('UPDATE ProductVariant SET stock = stock - ? WHERE id = ?').run(quantity, variantRecord.id);
 
-    // Also update totalSpent if customer exists
-    const customer = await db.prepare('SELECT id FROM Customer WHERE name = ?').get(customerName) as any;
+    // Update or create customer
+    let customer = await db.prepare('SELECT id FROM Customer WHERE name = ?').get(customerName) as any;
     if (customer) {
-      await db.prepare('UPDATE Customer SET totalSpent = totalSpent + ? WHERE id = ?').run(amount, customer.id);
+      await db.prepare('UPDATE Customer SET totalSpent = totalSpent + ? WHERE id = ?').run(finalAmount, customer.id);
+    } else {
+      await db.prepare('INSERT INTO Customer (id, name, totalSpent, type) VALUES (?, ?, ?, ?)').run(randomUUID(), customerName, finalAmount, 'Retail');
     }
 
     return { success: true, saleId };
