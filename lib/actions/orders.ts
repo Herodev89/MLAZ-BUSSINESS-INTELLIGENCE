@@ -134,9 +134,9 @@ async function processOrderToSale(orderId: string) {
   const saleId = `TX-${orderId}-${randomUUID().slice(0, 4).toUpperCase()}`;
 
   await db.prepare(`
-    INSERT INTO Sale (id, userId, customerName, productName, variantId, size, color, quantity, amount, costPrice, profit, paymentMethod, status)
-    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-  `).run(saleId, "system", order.customerName || "Walk-in", order.productName, order.variantId, order.size, order.color, order.quantity, order.amount, costPrice, profit, order.paymentMethod, order.status);
+    INSERT INTO Sale (id, userId, customerName, productName, variantId, size, color, quantity, amount, costPrice, profit, paymentMethod, status, createdAt)
+    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+  `).run(saleId, "system", order.customerName || "Walk-in", order.productName, order.variantId, order.size, order.color, order.quantity, order.amount, costPrice, profit, order.paymentMethod, order.status, order.createdAt);
   
   await db.prepare('UPDATE ProductVariant SET stock = stock - ? WHERE id = ?').run(order.quantity, order.variantId);
 }
