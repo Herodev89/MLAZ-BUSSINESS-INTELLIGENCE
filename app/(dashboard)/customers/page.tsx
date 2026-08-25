@@ -1,9 +1,9 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import { Search, Eye, Users, TrendingUp, Package } from "lucide-react";
+import { Search, Eye, Users, TrendingUp, Package, Edit, Trash2, X } from "lucide-react";
 import { formatNaira, formatDate } from "@/lib/utils";
-import { getCustomersAction, getCustomerHistoryAction } from "@/lib/actions/customers";
+import { getCustomersAction, getCustomerHistoryAction, deleteCustomerAction, updateCustomerAction } from "@/lib/actions/customers";
 
 export default function CustomersPage() {
   const [customers, setCustomers] = useState<any[]>([]);
@@ -11,6 +11,8 @@ export default function CustomersPage() {
   const [selectedCustomer, setSelectedCustomer] = useState<any | null>(null);
   const [history, setHistory] = useState<{ sales: any[], orders: any[] }>({ sales: [], orders: [] });
   const [isLoadingHistory, setIsLoadingHistory] = useState(false);
+  const [showEditModal, setShowEditModal] = useState(false);
+  const [isSubmitting, setIsSubmitting] = useState(false);
 
   useEffect(() => {
     loadCustomers();
@@ -35,6 +37,37 @@ export default function CustomersPage() {
     c.name.toLowerCase().includes(search.toLowerCase()) || 
     (c.phone && c.phone.includes(search))
   );
+
+  const handleDeleteCustomer = async (id: string) => {
+    if (!confirm("Are you sure you want to delete this customer? All their associated data will be removed!")) return;
+    const res = await deleteCustomerAction(id);
+    if (res.success) {
+      loadCustomers();
+    } else {
+      alert(res.error || "Failed to delete customer");
+    }
+  };
+
+  const handleEditCustomer = (customer: any) => {
+    setSelectedCustomer(customer);
+    setShowEditModal(true);
+  };
+
+  const handleSaveEdit = async (e: React.FormEvent<HTMLFormElement>) => {
+    e.preventDefault();
+    if (!selectedCustomer) return;
+    setIsSubmitting(true);
+    const formData = new FormData(e.currentTarget);
+    const res = await updateCustomerAction(selectedCustomer.id, formData);
+    if (res.success) {
+      setShowEditModal(false);
+      setSelectedCustomer(null);
+      loadCustomers();
+    } else {
+      alert(res.error || "Failed to update customer");
+    }
+    setIsSubmitting(false);
+  };
 
   const totalRevenue = customers.reduce((acc, c) => acc + (c.totalSpent || 0), 0);
 
@@ -96,9 +129,17 @@ export default function CustomersPage() {
                   <td style={{ fontWeight: 700, color: "var(--color-accent)" }}>{formatNaira(c.totalSpent)}</td>
                   <td style={{ color: "var(--color-text-muted)", fontSize: "12px" }}>{formatDate(c.createdAt)}</td>
                   <td>
-                    <button className="btn-outline btn-sm" onClick={() => handleViewHistory(c)}>
-                      <Eye size={14} /> View History
-                    </button>
+                    <div style={{ display: "flex", gap: 6 }}>
+                      <button className="btn-ghost btn-sm" onClick={() => handleViewHistory(c)} title="View History">
+                        <Eye size={14} />
+                      </button>
+                      <button className="btn-ghost btn-sm" onClick={() => handleEditCustomer(c)} title="Edit Customer">
+                        <Edit size={14} />
+                      </button>
+                      <button className="btn-ghost btn-sm" onClick={() => handleDeleteCustomer(c.id)} title="Delete Customer" style={{ color: "var(--color-error)" }}>
+                        <Trash2 size={14} />
+                      </button>
+                    </div>
                   </td>
                 </tr>
               ))
@@ -194,6 +235,42 @@ export default function CustomersPage() {
                 </div>
               </>
             )}
+          </div>
+        </div>
+      )}
+
+      {showEditModal && selectedCustomer && (
+        <div style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.5)", display: "flex", alignItems: "center", justifyContent: "center", zIndex: 1000 }}>
+          <div className="card" style={{ width: 400, padding: 24, background: "var(--color-surface-card)" }}>
+            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 16 }}>
+              <h3 style={{ fontWeight: 700, fontSize: 18 }}>Edit Customer</h3>
+              <button className="btn-ghost" onClick={() => setShowEditModal(false)}><X size={18} /></button>
+            </div>
+            <form onSubmit={handleSaveEdit} style={{ display: "flex", flexDirection: "column", gap: 14 }}>
+              <div>
+                <label className="label">Full Name</label>
+                <input name="name" className="input" defaultValue={selectedCustomer.name} required />
+              </div>
+              <div>
+                <label className="label">Phone Number</label>
+                <input name="phone" className="input" defaultValue={selectedCustomer.phone} />
+              </div>
+              <div>
+                <label className="label">Email Address</label>
+                <input name="email" type="email" className="input" defaultValue={selectedCustomer.email} />
+              </div>
+              <div>
+                <label className="label">Customer Type</label>
+                <select name="type" className="select" defaultValue={selectedCustomer.type || "Retail"}>
+                  <option value="Retail">Retail</option>
+                  <option value="Wholesale">Wholesale</option>
+                </select>
+              </div>
+              <div style={{ display: "flex", justifyContent: "flex-end", gap: 8, marginTop: 12 }}>
+                <button type="button" className="btn-outline" onClick={() => setShowEditModal(false)}>Cancel</button>
+                <button type="submit" className="btn-accent" disabled={isSubmitting}>{isSubmitting ? "Saving..." : "Save Changes"}</button>
+              </div>
+            </form>
           </div>
         </div>
       )}
