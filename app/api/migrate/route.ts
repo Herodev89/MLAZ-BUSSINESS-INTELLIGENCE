@@ -59,6 +59,36 @@ export async function GET() {
     results.push({ task: 'initDb', status: 'Failed', error: e.message });
   }
 
+  // 5. Add discount to Sale and Order
+  try {
+    await db.prepare('ALTER TABLE Sale ADD COLUMN discount REAL DEFAULT 0').run();
+    results.push({ table: 'Sale', column: 'discount', status: 'Added' });
+  } catch (e: any) {
+    results.push({ table: 'Sale', column: 'discount', status: 'Failed or already exists', error: e.message });
+  }
+  try {
+    await db.prepare('ALTER TABLE "Order" ADD COLUMN discount REAL DEFAULT 0').run();
+    results.push({ table: 'Order', column: 'discount', status: 'Added' });
+  } catch (e: any) {
+    results.push({ table: 'Order', column: 'discount', status: 'Failed or already exists', error: e.message });
+  }
+
+  // 5b. Sync Customer totalSpent
+  try {
+    // Ensure totalSpent is not null
+    await db.prepare('UPDATE Customer SET totalSpent = 0 WHERE totalSpent IS NULL').run();
+    
+    const customers = await db.prepare('SELECT * FROM Customer').all() as any[];
+    for (const c of customers) {
+      const salesRes = await db.prepare('SELECT SUM(amount) as total FROM Sale WHERE customerName = ?').get(c.name) as any;
+      const sum = salesRes?.total || 0;
+      await db.prepare('UPDATE Customer SET totalSpent = ? WHERE id = ?').run(sum, c.id);
+    }
+    results.push({ task: 'syncCustomers', status: 'Success' });
+  } catch (e: any) {
+    results.push({ task: 'syncCustomers', status: 'Failed', error: e.message });
+  }
+
   // 6. Recalculate Sales COGS and Profit based on current ProductVariant costPrice
   try {
     const sales = await db.prepare("SELECT * FROM Sale").all() as any[];
