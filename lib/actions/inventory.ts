@@ -24,7 +24,7 @@ export async function recordInventoryMovementAction(formData: FormData) {
   const note = formData.get("note")?.toString() || "";
 
   const session = await getSession();
-  if (!session || session.role !== "ADMIN") return { error: "Forbidden: Admin access required" };
+  if (!session || (session.role !== "ADMIN" && session.role !== "STORE_MANAGER")) return { error: "Forbidden: Access denied" };
 
   if (!productName || !type || quantity === 0 || !variantId) {
     return { error: "Product variant, type, and valid quantity are required" };

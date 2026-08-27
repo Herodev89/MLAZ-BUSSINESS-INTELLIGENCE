@@ -23,7 +23,7 @@ export async function createExpenseAction(formData: FormData) {
   const expenseDate = dateStr ? new Date(dateStr).toISOString() : new Date().toISOString();
 
   const session = await getSession();
-  if (!session || session.role !== "ADMIN") return { error: "Forbidden: Admin access required" };
+  if (!session || (session.role !== "ADMIN" && session.role !== "STORE_MANAGER")) return { error: "Forbidden: Access denied" };
 
   if (!name || !category || amount <= 0) {
     return { error: "Name, category, and valid amount are required" };
@@ -42,7 +42,7 @@ export async function createExpenseAction(formData: FormData) {
 
 export async function deleteExpenseAction(id: string) {
   const session = await getSession();
-  if (!session || session.role !== "ADMIN") return { error: "Forbidden: Admin access required" };
+  if (!session || (session.role !== "ADMIN" && session.role !== "STORE_MANAGER")) return { error: "Forbidden: Access denied" };
 
   try {
     await db.prepare('DELETE FROM Expense WHERE id = ?').run(id);

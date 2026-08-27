@@ -29,7 +29,7 @@ export async function createRawMaterialAction(formData: FormData) {
   const costPerUnit = parseFloat(formData.get("costPerUnit")?.toString() || "0");
   const reorderLevel = parseFloat(formData.get("reorderLevel")?.toString() || "0");
   const session = await getSession();
-  if (!session || session.role !== "ADMIN") return { error: "Forbidden: Admin access required" };
+  if (!session || (session.role !== "ADMIN" && session.role !== "STORE_MANAGER")) return { error: "Forbidden: Access denied" };
 
   const supplier = formData.get("supplier")?.toString() || "";
   const dateStr = formData.get("date")?.toString();
@@ -57,7 +57,7 @@ export async function updateRawMaterialAction(id: string, formData: FormData) {
   const costPerUnit = parseFloat(formData.get("costPerUnit")?.toString() || "0");
   const reorderLevel = parseFloat(formData.get("reorderLevel")?.toString() || "0");
   const session = await getSession();
-  if (!session || session.role !== "ADMIN") return { error: "Forbidden: Admin access required" };
+  if (!session || (session.role !== "ADMIN" && session.role !== "STORE_MANAGER")) return { error: "Forbidden: Access denied" };
 
   const supplier = formData.get("supplier")?.toString() || "";
   const dateStr = formData.get("date")?.toString();
@@ -79,7 +79,7 @@ export async function updateRawMaterialAction(id: string, formData: FormData) {
 
 export async function deleteRawMaterialAction(id: string) {
   const session = await getSession();
-  if (!session || session.role !== "ADMIN") return { error: "Forbidden: Admin access required" };
+  if (!session || (session.role !== "ADMIN" && session.role !== "STORE_MANAGER")) return { error: "Forbidden: Access denied" };
 
   try {
     await db.prepare('DELETE FROM RawMaterial WHERE id = ?').run(id);
@@ -100,7 +100,7 @@ export async function createProductionRunAction(formData: FormData) {
   const otherCosts = parseFloat(formData.get("otherCosts")?.toString() || "0");
   const status = formData.get("status")?.toString() || "In Progress";
   const session = await getSession();
-  if (!session || session.role !== "ADMIN") return { error: "Forbidden: Admin access required" };
+  if (!session || (session.role !== "ADMIN" && session.role !== "STORE_MANAGER")) return { error: "Forbidden: Access denied" };
 
   const notes = formData.get("notes")?.toString() || "";
   const dateStr = formData.get("date")?.toString();
@@ -134,7 +134,7 @@ export async function createProductionRunAction(formData: FormData) {
 
 export async function updateProductionRunAction(id: string, formData: FormData) {
   const session = await getSession();
-  if (!session || session.role !== "ADMIN") return { error: "Forbidden: Admin access required" };
+  if (!session || (session.role !== "ADMIN" && session.role !== "STORE_MANAGER")) return { error: "Forbidden: Access denied" };
 
   const status = formData.get("status")?.toString() || "In Progress";
   
@@ -164,7 +164,7 @@ export async function updateProductionRunAction(id: string, formData: FormData) 
 
 export async function deleteProductionRunAction(id: string) {
   const session = await getSession();
-  if (!session || session.role !== "ADMIN") return { error: "Forbidden: Admin access required" };
+  if (!session || (session.role !== "ADMIN" && session.role !== "STORE_MANAGER")) return { error: "Forbidden: Access denied" };
 
   try {
     await db.prepare('DELETE FROM ProductionRun WHERE id = ?').run(id);
