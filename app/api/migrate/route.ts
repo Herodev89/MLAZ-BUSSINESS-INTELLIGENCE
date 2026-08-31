@@ -59,7 +59,14 @@ export async function GET() {
     results.push({ task: 'initDb', status: 'Failed', error: e.message });
   }
 
-  // 5. Add discount to Sale and Order
+  // 5. Add discount to Sale and Order, and status to Product
+  try {
+    await db.prepare('ALTER TABLE Product ADD COLUMN status TEXT DEFAULT "Active"').run();
+    results.push({ table: 'Product', column: 'status', status: 'Added' });
+  } catch (e: any) {
+    results.push({ table: 'Product', column: 'status', status: 'Failed or already exists', error: e.message });
+  }
+  
   try {
     await db.prepare('ALTER TABLE Sale ADD COLUMN discount REAL DEFAULT 0').run();
     results.push({ table: 'Sale', column: 'discount', status: 'Added' });

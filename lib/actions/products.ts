@@ -40,6 +40,7 @@ export async function getProductByIdAction(id: string) {
 
 export async function createProductAction(formData: FormData) {
   const name = formData.get("name")?.toString();
+  const status = formData.get("status")?.toString() || "Active";
   const variantsJson = formData.get("variants")?.toString() || "[]";
   
   if (!name) {
@@ -56,7 +57,7 @@ export async function createProductAction(formData: FormData) {
   const productId = randomUUID();
 
   try {
-    await db.prepare('INSERT INTO Product (id, name) VALUES (?, ?)').run(productId, name);
+    await db.prepare('INSERT INTO Product (id, name, status) VALUES (?, ?, ?)').run(productId, name, status);
     const insertVariant = await db.prepare('INSERT INTO ProductVariant (id, productId, size, color, price, costPrice, stock, sku) VALUES (?, ?, ?, ?, ?, ?, ?, ?)');
     for (const v of variants) {
       await insertVariant.run(randomUUID(), productId, v.size || '', v.color || '', parseFloat(v.price) || 0, parseFloat(v.costPrice) || 0, parseInt(v.stock) || 0, v.sku || '');
@@ -69,6 +70,7 @@ export async function createProductAction(formData: FormData) {
 
 export async function updateProductAction(id: string, formData: FormData) {
   const name = formData.get("name")?.toString();
+  const status = formData.get("status")?.toString() || "Active";
   const variantsJson = formData.get("variants")?.toString() || "[]";
   
   if (!name) {
@@ -83,7 +85,7 @@ export async function updateProductAction(id: string, formData: FormData) {
   }
 
   try {
-    await db.prepare('UPDATE Product SET name = ? WHERE id = ?').run(name, id);
+    await db.prepare('UPDATE Product SET name = ?, status = ? WHERE id = ?').run(name, status, id);
     
     // We completely replace variants to respect manual edits
     await db.prepare('DELETE FROM ProductVariant WHERE productId = ?').run(id);

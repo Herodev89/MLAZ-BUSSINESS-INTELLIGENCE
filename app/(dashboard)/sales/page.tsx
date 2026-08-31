@@ -41,7 +41,9 @@ export default function SalesPage() {
   });
   
   // Flatten variants for easy selection
-  const flatVariants = products.flatMap(p => 
+  const flatVariants = products
+    .filter(p => p.status !== 'Inactive')
+    .flatMap(p => 
     (p.variants || []).map((v: any) => ({
       ...v,
       productName: p.name,

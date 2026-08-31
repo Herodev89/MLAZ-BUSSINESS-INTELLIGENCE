@@ -56,6 +56,7 @@ export async function initDb() {
     CREATE TABLE IF NOT EXISTS Product (
       id TEXT PRIMARY KEY,
       name TEXT NOT NULL,
+      status TEXT DEFAULT 'Active',
       createdAt DATETIME DEFAULT CURRENT_TIMESTAMP,
       updatedAt DATETIME DEFAULT CURRENT_TIMESTAMP
     );

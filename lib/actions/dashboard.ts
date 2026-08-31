@@ -22,7 +22,7 @@ export async function getDashboardStatsAction(monthStr?: string) {
     const allExpensesRow: any = await db.prepare(`SELECT SUM(amount) as total FROM Expense WHERE 1=1 ${expenseDateFilter}`).get();
     
     // Raw Materials Value
-    const rawMaterialsRow: any = await db.prepare(`SELECT SUM(quantity * costPerUnit) as total FROM RawMaterial WHERE 1=1 ${rmDateFilter}`).get();
+    const rawMaterialsRow: any = await db.prepare(`SELECT SUM(quantity * costPerUnit) as total FROM RawMaterial`).get();
 
     const operatingExpenses = operatingExpensesRow?.total || 0;
     const totalExpenses = allExpensesRow?.total || 0;

@@ -23,14 +23,14 @@ export default function ProductsPage() {
 
   const [selectedProduct, setSelectedProduct] = useState<any | null>(null);
   const [modalType, setModalType] = useState<"view" | "edit" | null>(null);
-  const [editForm, setEditForm] = useState<{ name: string; sku: string; category: string; basePrice: number; imageUrl: string; variants: any[] }>({
-    name: "", sku: "", category: "Shea Butter", basePrice: 0, imageUrl: "", variants: []
+  const [editForm, setEditForm] = useState<{ name: string; sku: string; category: string; basePrice: number; imageUrl: string; status: string; variants: any[] }>({
+    name: "", sku: "", category: "Shea Butter", basePrice: 0, imageUrl: "", status: "Active", variants: []
   });
 
   const filtered = productList.filter((p) => {
-    const matchSearch =
-      p.name.toLowerCase().includes(search.toLowerCase());
-    return matchSearch;
+    const matchSearch = p.name.toLowerCase().includes(search.toLowerCase());
+    const matchStatus = statusFilter === "All" || p.status === statusFilter;
+    return matchSearch && matchStatus;
   });
 
   const totalStock = (productId: string) => {
@@ -53,6 +53,7 @@ export default function ProductsPage() {
       category: "Shea Butter",
       basePrice: p.price,
       imageUrl: "",
+      status: p.status || "Active",
       variants: p.variants || [],
     });
     setModalType("edit");
@@ -67,6 +68,7 @@ export default function ProductsPage() {
     
     const formData = new FormData();
     formData.append("name", editForm.name);
+    formData.append("status", editForm.status);
     formData.append("variants", JSON.stringify(editForm.variants));
     
     const res = await updateProductAction(selectedProduct.id, formData);
@@ -200,7 +202,13 @@ export default function ProductsPage() {
                   <td style={{ fontWeight: 700 }}>{formatNaira(p.price)}</td>
                   <td style={{ fontWeight: 600 }}>{p.stock} units</td>
                   <td style={{ color: "var(--color-text-secondary)", fontSize: 13 }}>{p.variants?.length || 0} variant(s)</td>
-                  <td><span className="badge-success">Active</span></td>
+                  <td>
+                    {p.status === 'Inactive' ? (
+                      <span className="badge-error">Inactive</span>
+                    ) : (
+                      <span className="badge-success">Active</span>
+                    )}
+                  </td>
                   <td>
                     <div style={{ display: "flex", gap: 6 }}>
                       <button className="btn-ghost btn-sm" onClick={() => { setSelectedProduct(p); setModalType("view"); }} title="View"><Eye size={14} /></button>
@@ -268,6 +276,13 @@ export default function ProductsPage() {
                   <div style={{ flex: 1 }}>
                     <label className="label">SKU</label>
                     <input className="input" value={editForm.sku} onChange={e => setEditForm({ ...editForm, sku: e.target.value })} required />
+                  </div>
+                  <div style={{ flex: 1 }}>
+                    <label className="label">Status</label>
+                    <select className="select" value={editForm.status} onChange={e => setEditForm({ ...editForm, status: e.target.value })}>
+                      <option value="Active">Active</option>
+                      <option value="Inactive">Inactive</option>
+                    </select>
                   </div>
                   <div style={{ flex: 1 }}>
                     <label className="label">Base Price (₦)</label>
