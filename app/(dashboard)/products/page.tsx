@@ -121,8 +121,8 @@ export default function ProductsPage() {
       {/* ── Stats ── */}
       <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(160px, 1fr))", gap: 12, marginBottom: 20 }}>
         {[
-          { label: "Total Products",   value: productList.length, color: "var(--color-accent)" },
-          { label: "Total Stock",      value: productList.reduce((s, p) => s + p.stock, 0), color: "var(--color-brand)" },
+          { label: "Total Active Products",   value: productList.filter(p => p.status !== 'Inactive').length, color: "var(--color-accent)" },
+          { label: "Total Active Stock",      value: productList.filter(p => p.status !== 'Inactive').reduce((s, p) => s + p.stock, 0), color: "var(--color-brand)" },
         ].map((stat) => (
           <div key={stat.label} className="card" style={{ padding: "14px 16px" }}>
             <div style={{ fontSize: "22px", fontWeight: 800, color: stat.color }}>{stat.value}</div>
