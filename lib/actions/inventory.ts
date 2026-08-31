@@ -49,8 +49,8 @@ export async function recordInventoryMovementAction(formData: FormData) {
 
 export async function getInventoryStatsAction() {
   try {
-    const products = await db.prepare('SELECT * FROM Product').all() as any[];
-    const variants = await db.prepare('SELECT * FROM ProductVariant').all() as any[];
+    const products = await db.prepare("SELECT * FROM Product WHERE status != 'Inactive'").all() as any[];
+    const variants = await db.prepare("SELECT v.* FROM ProductVariant v JOIN Product p ON v.productId = p.id WHERE p.status != 'Inactive'").all() as any[];
     
     const totalProducts = products.length;
     let totalPairs = 0;

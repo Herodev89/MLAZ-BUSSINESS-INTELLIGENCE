@@ -14,8 +14,8 @@ export async function getDashboardStatsAction(monthStr?: string) {
     const pairsSoldRow: any = await db.prepare(`SELECT SUM(quantity) as total FROM Sale WHERE status = 'Confirmed' ${monthFilter}`).get();
     
     // Inventory and Low Stock are current snapshots, don't filter by month
-    const inventoryValRow: any = await db.prepare('SELECT SUM(price * stock) as total FROM ProductVariant').get();
-    const lowStockRow: any = await db.prepare('SELECT COUNT(*) as total FROM ProductVariant WHERE stock < 10').get();
+    const inventoryValRow: any = await db.prepare("SELECT SUM(v.price * v.stock) as total FROM ProductVariant v JOIN Product p ON v.productId = p.id WHERE p.status != 'Inactive'").get();
+    const lowStockRow: any = await db.prepare("SELECT COUNT(*) as total FROM ProductVariant v JOIN Product p ON v.productId = p.id WHERE v.stock < 10 AND p.status != 'Inactive'").get();
     
     // Expenses
     const operatingExpensesRow: any = await db.prepare(`SELECT SUM(amount) as total FROM Expense WHERE type = 'Operating' ${expenseDateFilter}`).get();
