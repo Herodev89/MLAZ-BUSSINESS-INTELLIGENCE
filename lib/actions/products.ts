@@ -2,6 +2,7 @@
 
 import db from "@/lib/db";
 import { randomUUID } from "crypto";
+import { revalidatePath } from "next/cache";
 
 export async function getProductsAction() {
   try {
@@ -62,6 +63,7 @@ export async function createProductAction(formData: FormData) {
     for (const v of variants) {
       await insertVariant.run(randomUUID(), productId, v.size || '', v.color || '', parseFloat(v.price) || 0, parseFloat(v.costPrice) || 0, parseInt(v.stock) || 0, v.sku || '');
     }
+    revalidatePath("/", "layout");
     return { success: true, productId };
   } catch (error) {
     return { error: "Failed to create product" };
@@ -94,6 +96,7 @@ export async function updateProductAction(id: string, formData: FormData) {
       const vId = v.id && !v.id.toString().startsWith("new-") ? v.id : randomUUID();
       await insertVariant.run(vId, id, v.size || '', v.color || '', parseFloat(v.price) || 0, parseFloat(v.costPrice) || 0, parseInt(v.stock) || 0, v.sku || '');
     }
+    revalidatePath("/", "layout");
     return { success: true };
   } catch (error) {
     return { error: "Failed to update product" };
@@ -103,6 +106,7 @@ export async function updateProductAction(id: string, formData: FormData) {
 export async function deleteProductAction(id: string) {
   try {
     await db.prepare('DELETE FROM Product WHERE id = ?').run(id);
+    revalidatePath("/", "layout");
     return { success: true };
   } catch (error) {
     return { error: "Failed to delete product" };
