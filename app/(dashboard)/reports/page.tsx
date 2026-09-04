@@ -66,8 +66,7 @@ export default function ReportsPage() {
   const filteredProduction = filterByDate(productionRuns, "productionDate");
   const filteredExpenses = filterByDate(expenses, "date");
   const filteredOrders = filterByDate(orders, "date");
-  // Assuming raw materials don't have a strict date like sales, but they do have lastRestocked
-  const filteredRawMaterials = filterByDate(rawMaterials, "lastRestocked");
+  const filteredRawMaterials = filterByDate(rawMaterials, "date");
 
   const totalSalesRevenue = filteredSales.reduce((acc, s) => acc + (s.amount || 0), 0);
   const totalCOGS = filteredSales.reduce((acc, s) => acc + (s.costPrice || 0), 0);
@@ -123,8 +122,8 @@ export default function ReportsPage() {
       rows.push(["Order ID", "Customer", "Product", "Variant", "Quantity", "Amount", "Status", "Payment", "Date"]);
       filteredOrders.forEach((o: any) => rows.push([o.id, o.customer, o.productName, o.size ? `${o.size} ${o.color}` : "-", o.quantity?.toString() || "1", o.totalAmount?.toString() || "0", o.orderStatus, o.paymentStatus, o.date]));
     } else if (type.includes("Raw Materials")) {
-      rows.push(["Material ID", "Name", "Category", "Quantity", "Unit", "Cost Per Unit", "Total Value", "Last Restocked"]);
-      filteredRawMaterials.forEach((m: any) => rows.push([m.id, m.name, m.category, m.quantity.toString(), m.unit, m.costPerUnit.toString(), (m.quantity * m.costPerUnit).toString(), m.lastRestocked]));
+      rows.push(["Material ID", "Name", "Category", "Quantity", "Unit", "Cost Per Unit", "Total Value", "Date Added"]);
+      filteredRawMaterials.forEach((m: any) => rows.push([m.id, m.name, m.category || "", m.quantity.toString(), m.unit, m.costPerUnit.toString(), (m.quantity * m.costPerUnit).toString(), m.date]));
     } else {
       rows.push(["Expense Name", "Category", "Description", "Amount", "Date"]);
       filteredExpenses.forEach((e: any) => rows.push([e.name, e.category, e.description || "", e.amount.toString(), e.date]));
@@ -211,8 +210,8 @@ export default function ReportsPage() {
         thead = "<tr><th>Run ID</th><th>Product</th><th>Qty Produced</th><th>Total Cost</th><th>Status</th><th>Date</th></tr>";
         tableRows = filteredProduction.map((r: any) => `<tr><td>${r.id}</td><td>${r.productName}</td><td>${r.qtyProduced}</td><td>${formatNaira(r.totalCost)}</td><td>${r.status}</td><td>${formatDate(r.productionDate)}</td></tr>`).join("");
       } else if (type.includes("Raw Materials")) {
-        thead = "<tr><th>Material</th><th>Category</th><th>Quantity</th><th>Cost Per Unit</th><th>Total Value</th><th>Last Restocked</th></tr>";
-        tableRows = filteredRawMaterials.map((m: any) => `<tr><td>${m.name}</td><td>${m.category}</td><td>${m.quantity} ${m.unit}</td><td>${formatNaira(m.costPerUnit)}</td><td>${formatNaira(m.quantity * m.costPerUnit)}</td><td>${formatDate(m.lastRestocked)}</td></tr>`).join("");
+        thead = "<tr><th>Material</th><th>Category</th><th>Quantity</th><th>Cost Per Unit</th><th>Total Value</th><th>Date Added</th></tr>";
+        tableRows = filteredRawMaterials.map((m: any) => `<tr><td>${m.name}</td><td>${m.category || ""}</td><td>${m.quantity} ${m.unit}</td><td>${formatNaira(m.costPerUnit)}</td><td>${formatNaira(m.quantity * m.costPerUnit)}</td><td>${formatDate(m.date)}</td></tr>`).join("");
       } else if (type.includes("Expenses")) {
         thead = "<tr><th>Expense Name</th><th>Category</th><th>Amount</th><th>Date</th></tr>";
         tableRows = filteredExpenses.map((e: any) => `<tr><td>${e.name}</td><td>${e.category}</td><td>${formatNaira(e.amount)}</td><td>${formatDate(e.date)}</td></tr>`).join("");
