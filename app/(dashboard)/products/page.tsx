@@ -119,10 +119,12 @@ export default function ProductsPage() {
       </div>
 
       {/* ── Stats ── */}
-      <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(160px, 1fr))", gap: 12, marginBottom: 20 }}>
+      <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(200px, 1fr))", gap: 12, marginBottom: 20 }}>
         {[
+          { label: "Total System Products",   value: productList.length, color: "var(--color-text-secondary)" },
           { label: "Total Active Products",   value: productList.filter(p => p.status !== 'Inactive').length, color: "var(--color-accent)" },
           { label: "Total Active Stock",      value: productList.filter(p => p.status !== 'Inactive').reduce((s, p) => s + p.stock, 0), color: "var(--color-brand)" },
+          { label: "Active Stock Value",      value: formatNaira(productList.filter(p => p.status !== 'Inactive').reduce((s, p) => s + (p.stock * p.price), 0)), color: "var(--color-success)" },
         ].map((stat) => (
           <div key={stat.label} className="card" style={{ padding: "14px 16px" }}>
             <div style={{ fontSize: "22px", fontWeight: 800, color: stat.color }}>{stat.value}</div>
