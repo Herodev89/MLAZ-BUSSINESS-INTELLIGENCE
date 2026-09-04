@@ -33,7 +33,7 @@ export async function getDashboardStatsAction(monthStr?: string) {
 
     const grossProfit = grossProfitRow?.total || 0;
     const netProfit = grossProfit - totalExpenses;
-    const inventoryValue = (inventoryValRow?.total || 0) + totalRawMaterialsCost;
+    const inventoryValue = inventoryValRow?.total || 0;
 
     // Chart Data
     // 1. Revenue & Profit Trend (Monthly)

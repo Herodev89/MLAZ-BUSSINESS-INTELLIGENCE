@@ -68,7 +68,7 @@ export async function getInventoryStatsAction() {
       else if (v.stock <= 10) lowStockCount++;
     });
 
-    inventoryValue += totalRawMaterialsCost;
+    // inventoryValue += totalRawMaterialsCost;
 
     return { 
       success: true, 
