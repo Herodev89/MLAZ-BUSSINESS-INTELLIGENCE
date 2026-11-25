@@ -196,6 +196,7 @@ export async function initDb() {
       revaluationSurplus REAL DEFAULT 0,
       disposalDate DATETIME,
       disposalProceeds REAL DEFAULT 0,
+      disposalPaymentStatus TEXT DEFAULT 'Cash',
       paymentStatus TEXT DEFAULT 'Paid',
       notes TEXT,
       createdAt DATETIME DEFAULT CURRENT_TIMESTAMP
@@ -247,6 +248,7 @@ export async function ensureFinancialTables() {
       revaluationSurplus REAL DEFAULT 0,
       disposalDate DATETIME,
       disposalProceeds REAL DEFAULT 0,
+      disposalPaymentStatus TEXT DEFAULT 'Cash',
       paymentStatus TEXT DEFAULT 'Paid',
       notes TEXT,
       createdAt DATETIME DEFAULT CURRENT_TIMESTAMP
@@ -279,6 +281,12 @@ export async function ensureFinancialTables() {
       updatedAt DATETIME DEFAULT CURRENT_TIMESTAMP
     );
   `);
+
+  try {
+    await db.prepare("ALTER TABLE FixedAsset ADD COLUMN disposalPaymentStatus TEXT DEFAULT 'Cash'").run();
+  } catch {
+    // Column already exists
+  }
 
   const existingSettings = await db.prepare("SELECT id FROM FinancialSettings WHERE id = 'default'").get();
   if (!existingSettings) {

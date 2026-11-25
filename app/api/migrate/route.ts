@@ -60,6 +60,13 @@ export async function GET() {
     results.push({ task: 'initDb & ensureFinancialTables', status: 'Failed', error: e.message });
   }
 
+  try {
+    await db.prepare("ALTER TABLE FixedAsset ADD COLUMN disposalPaymentStatus TEXT DEFAULT 'Cash'").run();
+    results.push({ table: 'FixedAsset', column: 'disposalPaymentStatus', status: 'Added' });
+  } catch (e: any) {
+    results.push({ table: 'FixedAsset', column: 'disposalPaymentStatus', status: 'Failed or already exists', error: e.message });
+  }
+
   // 5. Add discount to Sale and Order, and status to Product
   try {
     await db.prepare('ALTER TABLE Product ADD COLUMN status TEXT DEFAULT "Active"').run();

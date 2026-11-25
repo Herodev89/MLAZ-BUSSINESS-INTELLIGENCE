@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useEffect, useCallback } from "react";
+import Link from "next/link";
 import {
   Scale,
   TrendingUp,
@@ -239,6 +240,9 @@ export default function FinancialStatementsPage() {
         </div>
 
         <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
+          <Link href="/fixed-assets" className="btn-outline btn-sm">
+            <Building2 size={14} /> Assets &amp; Disposals
+          </Link>
           <button className="btn-outline btn-sm" onClick={() => openNewAsset()}>
             <Plus size={14} /> Add Fixed Asset (PPE)
           </button>
@@ -1228,6 +1232,17 @@ export default function FinancialStatementsPage() {
                         {fmt(soce.capitalAndReservesMovement + soce.openingRetainedEarningsAdjustment)}
                       </td>
                     </tr>
+                    {soce.revaluationTransferToRE !== 0 && (
+                      <tr>
+                        <td style={{ paddingLeft: 24 }}>Transfer of revaluation surplus on asset disposal (IAS 16.41)</td>
+                        <td style={{ textAlign: "right", color: "var(--color-text-muted)" }}>—</td>
+                        <td style={{ textAlign: "right", color: "var(--color-text-muted)" }}>—</td>
+                        <td style={{ textAlign: "right" }}>{fmt(-soce.revaluationTransferToRE)}</td>
+                        <td style={{ textAlign: "right", color: "var(--color-text-muted)" }}>—</td>
+                        <td style={{ textAlign: "right" }}>{fmt(soce.revaluationTransferToRE)}</td>
+                        <td style={{ textAlign: "right" }}>{fmt(0)}</td>
+                      </tr>
+                    )}
                     <tr>
                       <td style={{ paddingLeft: 24 }}>Dividends declared &amp; paid / Owner drawings</td>
                       <td style={{ textAlign: "right", color: "var(--color-text-muted)" }}>—</td>
@@ -1652,13 +1667,18 @@ export default function FinancialStatementsPage() {
 
               {/* Note 4: PPE Schedule */}
               <div className="card">
-                <div className="card-header" style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+                <div className="card-header" style={{ display: "flex", justifyContent: "space-between", alignItems: "center", flexWrap: "wrap", gap: 8 }}>
                   <h3 style={{ fontSize: 15, fontWeight: 800, margin: 0 }}>
                     Note 4 — Property, Plant &amp; Equipment and Intangible Assets Schedule (IAS 16 / IAS 38)
                   </h3>
-                  <button className="btn-outline btn-sm" onClick={openNewAsset}>
-                    <Plus size={13} /> Add Asset
-                  </button>
+                  <div style={{ display: "flex", gap: 8 }}>
+                    <Link href="/fixed-assets" className="btn-outline btn-sm">
+                      <Building2 size={13} /> Manage Purchases &amp; Disposals
+                    </Link>
+                    <button className="btn-outline btn-sm" onClick={openNewAsset}>
+                      <Plus size={13} /> Add Asset
+                    </button>
+                  </div>
                 </div>
                 <div className="table-container" style={{ border: "none", borderRadius: 0 }}>
                   <table className="table font-tabular">
@@ -1685,7 +1705,12 @@ export default function FinancialStatementsPage() {
                         statements.notes.ppeSchedule.map((a: any) => (
                           <tr key={a.id}>
                             <td style={{ fontWeight: 600 }}>
-                              {a.name} {a.disposed && <span className="badge-error">Disposed</span>}
+                              {a.name}{" "}
+                              {a.disposed && (
+                                <span className="badge-error">
+                                  Disposed (Gain/Loss: {fmt(a.disposalGainLoss)})
+                                </span>
+                              )}
                             </td>
                             <td>{a.category}</td>
                             <td>
@@ -1693,7 +1718,7 @@ export default function FinancialStatementsPage() {
                             </td>
                             <td style={{ textAlign: "right" }}>{fmt(a.originalCost)}</td>
                             <td style={{ textAlign: "right" }}>{fmt(a.periodDepreciation)}</td>
-                            <td style={{ textAlign: "right" }}>{fmt(a.accumulatedDepreciation)}</td>
+                            <td style={{ textAlign: "right" }}>{fmt(a.carryingAccumulatedDepreciation ?? a.accumulatedDepreciation)}</td>
                             <td style={{ textAlign: "right", fontWeight: 700 }}>{fmt(a.netBookValue)}</td>
                           </tr>
                         ))
@@ -1743,8 +1768,28 @@ export default function FinancialStatementsPage() {
                       <span className="badge-accent">{sopl.taxBreakdown.companySizeTier}</span>
                     </div>
                     <div style={{ display: "flex", justifyContent: "space-between", padding: "6px 0", borderBottom: "1px solid var(--color-border)" }}>
-                      <span>Assessable Profit</span>
+                      <span>Add Back: Disallowable Accounting Depreciation</span>
+                      <strong className="font-tabular">{fmt(sopl.taxBreakdown.depreciationAddBack)}</strong>
+                    </div>
+                    {sopl.taxBreakdown.disposalGainLossAdjustment !== 0 && (
+                      <div style={{ display: "flex", justifyContent: "space-between", padding: "6px 0", borderBottom: "1px solid var(--color-border)" }}>
+                        <span>Exclude: Accounting Disposal (Gain)/Loss</span>
+                        <strong className="font-tabular">{fmt(sopl.taxBreakdown.disposalGainLossAdjustment)}</strong>
+                      </div>
+                    )}
+                    <div style={{ display: "flex", justifyContent: "space-between", padding: "6px 0", borderBottom: "1px solid var(--color-border)" }}>
+                      <span>Assessable Profit (TET Base)</span>
                       <strong className="font-tabular">{fmt(sopl.taxBreakdown.assessableProfit)}</strong>
+                    </div>
+                    <div style={{ display: "flex", justifyContent: "space-between", padding: "6px 0", borderBottom: "1px solid var(--color-border)" }}>
+                      <span>Less: FIRS CITA Capital Allowances &amp; Balancing Adj.</span>
+                      <strong className="font-tabular">
+                        ({fmt((sopl.taxBreakdown.capitalAllowanceDeduction || 0) + (sopl.taxBreakdown.balancingAdjustment || 0))})
+                      </strong>
+                    </div>
+                    <div style={{ display: "flex", justifyContent: "space-between", padding: "6px 0", borderBottom: "1px solid var(--color-border)" }}>
+                      <span>Taxable Profit (CIT Base)</span>
+                      <strong className="font-tabular">{fmt(sopl.taxBreakdown.taxableProfit)}</strong>
                     </div>
                     <div style={{ display: "flex", justifyContent: "space-between", padding: "6px 0", borderBottom: "1px solid var(--color-border)" }}>
                       <span>Company Income Tax ({sopl.taxBreakdown.citRate}%)</span>
@@ -2279,15 +2324,17 @@ export default function FinancialStatementsPage() {
                   </select>
                 </div>
                 <div>
-                  <label className="label">Payment Method</label>
+                  <label className="label">Purchase Funding Account</label>
                   <select name="paymentStatus" className="select" defaultValue={editingAsset?.paymentStatus || "Paid"}>
-                    <option value="Paid">Paid in Cash (CapEx)</option>
-                    <option value="Credit/Loan">Vendor Credit / Asset Loan</option>
+                    <option value="Paid">Cash / Bank Transfer (CapEx)</option>
+                    <option value="Credit/Loan">Long-Term Asset Loan / Hire Purchase</option>
+                    <option value="Vendor Credit">Vendor Credit (Current Payable)</option>
+                    <option value="Owner Equity">Owner Capital in Kind (Equity)</option>
                   </select>
                 </div>
               </div>
 
-              <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: 12 }}>
+              <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12 }}>
                 <div>
                   <label className="label">Revaluation Surplus (₦)</label>
                   <input
@@ -2300,7 +2347,7 @@ export default function FinancialStatementsPage() {
                   />
                 </div>
                 <div>
-                  <label className="label">Disposal Date (If Sold)</label>
+                  <label className="label">Disposal Date (If Disposed/Sold)</label>
                   <input
                     name="disposalDate"
                     type="date"
@@ -2310,6 +2357,9 @@ export default function FinancialStatementsPage() {
                     }
                   />
                 </div>
+              </div>
+
+              <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12 }}>
                 <div>
                   <label className="label">Disposal Proceeds (₦)</label>
                   <input
@@ -2320,6 +2370,17 @@ export default function FinancialStatementsPage() {
                     className="input"
                     defaultValue={editingAsset?.disposalProceeds ?? 0}
                   />
+                </div>
+                <div>
+                  <label className="label">Disposal Settlement</label>
+                  <select
+                    name="disposalPaymentStatus"
+                    className="select"
+                    defaultValue={editingAsset?.disposalPaymentStatus || "Cash"}
+                  >
+                    <option value="Cash">Cash / Bank Received</option>
+                    <option value="Receivable">Sold on Credit (Receivable)</option>
+                  </select>
                 </div>
               </div>
 

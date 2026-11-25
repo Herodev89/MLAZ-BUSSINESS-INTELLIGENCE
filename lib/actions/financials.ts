@@ -68,6 +68,7 @@ export async function getFinancialStatementsAction(startDate?: string, endDate?:
       revaluationSurplus: Number(a.revaluationSurplus) || 0,
       disposalDate: a.disposalDate ? String(a.disposalDate) : null,
       disposalProceeds: Number(a.disposalProceeds) || 0,
+      disposalPaymentStatus: a.disposalPaymentStatus ? String(a.disposalPaymentStatus) : "Cash",
       paymentStatus: String(a.paymentStatus || "Paid"),
       notes: a.notes ? String(a.notes) : "",
     }));
@@ -156,6 +157,7 @@ export async function createFixedAssetAction(formData: FormData) {
   const revaluationSurplus = parseFloat(formData.get("revaluationSurplus")?.toString() || "0");
   const disposalDateStr = formData.get("disposalDate")?.toString();
   const disposalProceeds = parseFloat(formData.get("disposalProceeds")?.toString() || "0");
+  const disposalPaymentStatus = formData.get("disposalPaymentStatus")?.toString() || "Cash";
   const paymentStatus = formData.get("paymentStatus")?.toString() || "Paid";
   const notes = formData.get("notes")?.toString() || "";
 
@@ -170,8 +172,8 @@ export async function createFixedAssetAction(formData: FormData) {
   try {
     await db
       .prepare(
-        `INSERT INTO FixedAsset (id, name, category, acquisitionDate, cost, residualValue, usefulLifeYears, depreciationMethod, revaluationSurplus, disposalDate, disposalProceeds, paymentStatus, notes)
-         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`
+        `INSERT INTO FixedAsset (id, name, category, acquisitionDate, cost, residualValue, usefulLifeYears, depreciationMethod, revaluationSurplus, disposalDate, disposalProceeds, disposalPaymentStatus, paymentStatus, notes)
+         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`
       )
       .run(
         id,
@@ -185,10 +187,12 @@ export async function createFixedAssetAction(formData: FormData) {
         revaluationSurplus,
         disposalDate,
         disposalProceeds,
+        disposalPaymentStatus,
         paymentStatus,
         notes
       );
 
+    revalidatePath("/fixed-assets");
     revalidatePath("/financial-statements");
     revalidatePath("/reports");
     return { success: true, id };
@@ -213,6 +217,7 @@ export async function updateFixedAssetAction(id: string, formData: FormData) {
   const revaluationSurplus = parseFloat(formData.get("revaluationSurplus")?.toString() || "0");
   const disposalDateStr = formData.get("disposalDate")?.toString();
   const disposalProceeds = parseFloat(formData.get("disposalProceeds")?.toString() || "0");
+  const disposalPaymentStatus = formData.get("disposalPaymentStatus")?.toString() || "Cash";
   const paymentStatus = formData.get("paymentStatus")?.toString() || "Paid";
   const notes = formData.get("notes")?.toString() || "";
 
@@ -227,7 +232,7 @@ export async function updateFixedAssetAction(id: string, formData: FormData) {
     await db
       .prepare(
         `UPDATE FixedAsset
-         SET name = ?, category = ?, acquisitionDate = ?, cost = ?, residualValue = ?, usefulLifeYears = ?, depreciationMethod = ?, revaluationSurplus = ?, disposalDate = ?, disposalProceeds = ?, paymentStatus = ?, notes = ?
+         SET name = ?, category = ?, acquisitionDate = ?, cost = ?, residualValue = ?, usefulLifeYears = ?, depreciationMethod = ?, revaluationSurplus = ?, disposalDate = ?, disposalProceeds = ?, disposalPaymentStatus = ?, paymentStatus = ?, notes = ?
          WHERE id = ?`
       )
       .run(
@@ -241,16 +246,64 @@ export async function updateFixedAssetAction(id: string, formData: FormData) {
         revaluationSurplus,
         disposalDate,
         disposalProceeds,
+        disposalPaymentStatus,
         paymentStatus,
         notes,
         id
       );
 
+    revalidatePath("/fixed-assets");
     revalidatePath("/financial-statements");
     revalidatePath("/reports");
     return { success: true };
   } catch (error: any) {
     return { error: "Failed to update asset: " + error.message };
+  }
+}
+
+export async function disposeFixedAssetAction(id: string, formData: FormData) {
+  const session = await requireAdminOrManager();
+  if (!session) return { error: "Forbidden: Admin or Store Manager access required" };
+
+  await ensureFinancialTables();
+
+  const disposalDateStr = formData.get("disposalDate")?.toString();
+  const disposalProceeds = parseFloat(formData.get("disposalProceeds")?.toString() || "0");
+  const disposalPaymentStatus = formData.get("disposalPaymentStatus")?.toString() || "Cash";
+  const notes = formData.get("notes")?.toString();
+
+  if (!disposalDateStr) {
+    return { error: "Disposal date is required under IAS 16 derecognition rules." };
+  }
+
+  const existing = (await db.prepare("SELECT acquisitionDate, notes FROM FixedAsset WHERE id = ?").get(id)) as any;
+  if (!existing) {
+    return { error: "Fixed asset not found." };
+  }
+
+  const acqDate = new Date(existing.acquisitionDate);
+  const dispDate = new Date(disposalDateStr);
+  if (dispDate < acqDate) {
+    return { error: "Disposal date cannot be earlier than the asset acquisition date." };
+  }
+
+  const updatedNotes = notes ? `${existing.notes ? existing.notes + " | " : ""}Disposal: ${notes}` : existing.notes || "";
+
+  try {
+    await db
+      .prepare(
+        `UPDATE FixedAsset
+         SET disposalDate = ?, disposalProceeds = ?, disposalPaymentStatus = ?, notes = ?
+         WHERE id = ?`
+      )
+      .run(dispDate.toISOString(), Math.max(0, disposalProceeds), disposalPaymentStatus, updatedNotes, id);
+
+    revalidatePath("/fixed-assets");
+    revalidatePath("/financial-statements");
+    revalidatePath("/reports");
+    return { success: true };
+  } catch (error: any) {
+    return { error: "Failed to record asset disposal: " + error.message };
   }
 }
 
@@ -261,6 +314,7 @@ export async function deleteFixedAssetAction(id: string) {
   try {
     await ensureFinancialTables();
     await db.prepare("DELETE FROM FixedAsset WHERE id = ?").run(id);
+    revalidatePath("/fixed-assets");
     revalidatePath("/financial-statements");
     revalidatePath("/reports");
     return { success: true };

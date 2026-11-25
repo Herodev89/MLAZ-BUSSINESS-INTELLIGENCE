@@ -149,6 +149,17 @@ export function exportFinancialStatementsCSV(statements: any, scope: ExportState
         soce.openingRetainedEarningsAdjustment
       ).toFixed(2),
     ]);
+    if (soce.revaluationTransferToRE && soce.revaluationTransferToRE !== 0) {
+      rows.push([
+        "Transfer of Revaluation Surplus on Disposal (IAS 16.41)",
+        "0.00",
+        "0.00",
+        (-soce.revaluationTransferToRE).toFixed(2),
+        "0.00",
+        soce.revaluationTransferToRE.toFixed(2),
+        "0.00",
+      ]);
+    }
     rows.push([
       "Dividends Paid / Drawings",
       "0.00",
@@ -572,6 +583,18 @@ export function exportFinancialStatementsPDF(
                 soce.openingRetainedEarningsAdjustment
             )}</td>
           </tr>
+          ${
+            soce.revaluationTransferToRE && soce.revaluationTransferToRE !== 0
+              ? `<tr>
+                  <td>Transfer of revaluation surplus on disposal (IAS 16.41)</td>
+                  <td class="num">—</td>
+                  <td class="num">—</td>
+                  <td class="num">${fmt(-soce.revaluationTransferToRE)}</td>
+                  <td class="num">${fmt(soce.revaluationTransferToRE)}</td>
+                  <td class="num">${fmt(0)}</td>
+                </tr>`
+              : ""
+          }
           <tr>
             <td>Dividends declared &amp; paid / Drawings</td>
             <td class="num">—</td>

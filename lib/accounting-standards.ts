@@ -229,6 +229,8 @@ export const FINANCIAL_ENTRY_TYPES: EntryTypeDefinition[] = [
 
 export const FIXED_ASSET_CATEGORIES = [
   "Plant & Machinery",
+  "Buildings",
+  "Land (Freehold — Non-Depreciable)",
   "Land & Buildings",
   "Generators & Power Equipment",
   "Motor Vehicles",
@@ -237,6 +239,37 @@ export const FIXED_ASSET_CATEGORIES = [
   "Right-of-Use Assets (IFRS 16)",
   "Intangible Assets (IAS 38)",
 ] as const;
+
+export interface CitaAllowanceRate {
+  initialRate: number;
+  annualRate: number;
+  citaClass: string;
+}
+
+/**
+ * Nigeria Companies Income Tax Act (CITA) Second Schedule Capital Allowance Rates
+ */
+export function getNigeriaCitaAllowanceRates(category: string): CitaAllowanceRate {
+  if (category.startsWith("Land (")) {
+    return { initialRate: 0, annualRate: 0, citaClass: "Land (Non-Qualifying Expenditure)" };
+  }
+  if (category === "Buildings" || category === "Land & Buildings") {
+    return { initialRate: 15, annualRate: 10, citaClass: "Industrial / Commercial Building (15% IA, 10% AA)" };
+  }
+  if (category === "Plant & Machinery" || category === "Generators & Power Equipment") {
+    return { initialRate: 50, annualRate: 25, citaClass: "Plant & Machinery (50% IA, 25% AA)" };
+  }
+  if (category === "Motor Vehicles") {
+    return { initialRate: 50, annualRate: 25, citaClass: "Motor Vehicle (50% IA, 25% AA)" };
+  }
+  if (category === "Furniture & Fittings" || category === "Office & Computer Equipment") {
+    return { initialRate: 25, annualRate: 20, citaClass: "Furniture & Office Equipment (25% IA, 20% AA)" };
+  }
+  if (category.includes("Right-of-Use")) {
+    return { initialRate: 0, annualRate: 0, citaClass: "IFRS 16 Lease Asset (Rent Deductible as Paid)" };
+  }
+  return { initialRate: 25, annualRate: 20, citaClass: "Qualifying Intangible / Other (25% IA, 20% AA)" };
+}
 
 export interface FixedAssetRecord {
   id: string;
@@ -250,6 +283,7 @@ export interface FixedAssetRecord {
   revaluationSurplus: number;
   disposalDate?: string | null;
   disposalProceeds?: number;
+  disposalPaymentStatus?: string;
   paymentStatus?: string;
   notes?: string;
 }
@@ -296,6 +330,10 @@ export interface NigerianTaxBreakdown {
   citRate: number;
   tetRate: number;
   policeLevyRate: number;
+  depreciationAddBack: number;
+  disposalGainLossAdjustment: number;
+  capitalAllowanceDeduction: number;
+  balancingAdjustment: number;
   assessableProfit: number;
   taxableProfit: number;
   citAmount: number;
@@ -324,7 +362,7 @@ function toStartOfDay(dateStr: string): Date {
 }
 
 /**
- * Calculate IAS 16 / IAS 38 accumulated depreciation of an asset up to a given date
+ * Calculate IAS 16 / IAS 38 accumulated depreciation & CITA capital allowance of an asset up to a given date
  */
 export function computeAssetDepreciationAtDate(asset: FixedAssetRecord, cutoff: Date): {
   acquired: boolean;
@@ -335,9 +373,18 @@ export function computeAssetDepreciationAtDate(asset: FixedAssetRecord, cutoff: 
   netBookValue: number;
   disposalGainLoss: number;
   disposalProceeds: number;
+  disposalCashProceeds: number;
+  disposalReceivableProceeds: number;
+  revaluationTransferredOnDisposal: number;
+  citaCumulativeAllowance: number;
+  citaBalancingAdjustment: number; // positive = balancing allowance (deductible), negative = balancing charge (taxable)
   isIntangible: boolean;
   isROU: boolean;
 } {
+  const isIntangible = asset.category.includes("Intangible");
+  const isROU = asset.category.includes("Right-of-Use");
+  const isFreeholdLand = asset.category.startsWith("Land (") || asset.category === "Land";
+
   const acqDate = toStartOfDay(asset.acquisitionDate);
   if (acqDate > cutoff) {
     return {
@@ -349,8 +396,13 @@ export function computeAssetDepreciationAtDate(asset: FixedAssetRecord, cutoff: 
       netBookValue: 0,
       disposalGainLoss: 0,
       disposalProceeds: 0,
-      isIntangible: asset.category.includes("Intangible"),
-      isROU: asset.category.includes("Right-of-Use"),
+      disposalCashProceeds: 0,
+      disposalReceivableProceeds: 0,
+      revaluationTransferredOnDisposal: 0,
+      citaCumulativeAllowance: 0,
+      citaBalancingAdjustment: 0,
+      isIntangible,
+      isROU,
     };
   }
 
@@ -360,16 +412,16 @@ export function computeAssetDepreciationAtDate(asset: FixedAssetRecord, cutoff: 
 
   const cost = Number(asset.cost) || 0;
   const residual = Math.min(cost, Math.max(0, Number(asset.residualValue) || 0));
-  const depreciableAmount = Math.max(0, cost - residual);
+  const depreciableAmount = isFreeholdLand ? 0 : Math.max(0, cost - residual);
   const usefulLifeYears = Math.max(0.5, Number(asset.usefulLifeYears) || 5);
   const reval = Math.max(0, Number(asset.revaluationSurplus) || 0);
 
-  // Land is non-depreciable under IAS 16.58 unless it's Buildings
+  // Land is non-depreciable under IAS 16.58
   const elapsedMs = Math.max(0, effectiveEnd.getTime() - acqDate.getTime());
   const elapsedYears = elapsedMs / (1000 * 60 * 60 * 24 * 365.25);
 
   let accumDep = 0;
-  if (depreciableAmount > 0 && elapsedYears > 0) {
+  if (!isFreeholdLand && depreciableAmount > 0 && elapsedYears > 0) {
     if (asset.depreciationMethod === "Reducing Balance") {
       const annualRate = Math.min(0.5, 1 - Math.pow(Math.max(residual, cost * 0.05) / cost, 1 / usefulLifeYears));
       const carrying = cost * Math.pow(1 - annualRate, elapsedYears);
@@ -382,21 +434,47 @@ export function computeAssetDepreciationAtDate(asset: FixedAssetRecord, cutoff: 
   }
   accumDep = roundCurrency(accumDep);
 
+  // CITA Second Schedule Capital Allowance approximation (max 90% in year 1 or up to cost - ₦10 notional)
+  const cita = getNigeriaCitaAllowanceRates(asset.category);
+  let citaAllowance = 0;
+  if (cita.initialRate > 0 || cita.annualRate > 0) {
+    const initialAllowance = cost * (cita.initialRate / 100);
+    const remainingAfterInitial = Math.max(0, cost - initialAllowance);
+    const annualAllowancePerYr = remainingAfterInitial * (cita.annualRate / 100);
+    const yearsCount = Math.max(1, Math.ceil(elapsedYears));
+    citaAllowance = Math.min(cost, initialAllowance + annualAllowancePerYr * yearsCount);
+  }
+  citaAllowance = roundCurrency(citaAllowance);
+
   if (isDisposed) {
     const nbvAtDisposal = cost + reval - accumDep;
-    const proceeds = Number(asset.disposalProceeds) || 0;
+    const proceeds = Math.max(0, Number(asset.disposalProceeds) || 0);
     const gainLoss = roundCurrency(proceeds - nbvAtDisposal);
+    const isReceivable = asset.disposalPaymentStatus === "Receivable";
+    const taxWDV = Math.max(0, cost - citaAllowance);
+    // Balancing Allowance (>0) if proceeds < Tax WDV; Balancing Charge (<0, capped at allowances claimed) if proceeds > Tax WDV
+    const rawBalancing = taxWDV - proceeds;
+    const citaBalancingAdjustment =
+      cita.initialRate === 0 && cita.annualRate === 0
+        ? 0
+        : roundCurrency(rawBalancing < 0 ? Math.max(-citaAllowance, rawBalancing) : rawBalancing);
+
     return {
       acquired: true,
       disposed: true,
       cost: 0,
       accumulatedDepreciation: accumDep, // kept for cumulative expense tracking
-      revaluation: reval,
+      revaluation: 0, // derecognised from Revaluation Reserve per IAS 16.41
       netBookValue: 0,
       disposalGainLoss: gainLoss,
       disposalProceeds: proceeds,
-      isIntangible: asset.category.includes("Intangible"),
-      isROU: asset.category.includes("Right-of-Use"),
+      disposalCashProceeds: isReceivable ? 0 : proceeds,
+      disposalReceivableProceeds: isReceivable ? proceeds : 0,
+      revaluationTransferredOnDisposal: reval,
+      citaCumulativeAllowance: citaAllowance,
+      citaBalancingAdjustment,
+      isIntangible,
+      isROU,
     };
   }
 
@@ -409,8 +487,13 @@ export function computeAssetDepreciationAtDate(asset: FixedAssetRecord, cutoff: 
     netBookValue: roundCurrency(cost + reval - accumDep),
     disposalGainLoss: 0,
     disposalProceeds: 0,
-    isIntangible: asset.category.includes("Intangible"),
-    isROU: asset.category.includes("Right-of-Use"),
+    disposalCashProceeds: 0,
+    disposalReceivableProceeds: 0,
+    revaluationTransferredOnDisposal: 0,
+    citaCumulativeAllowance: citaAllowance,
+    citaBalancingAdjustment: 0,
+    isIntangible,
+    isROU,
   };
 }
 
@@ -420,12 +503,16 @@ export function computeAssetDepreciationAtDate(asset: FixedAssetRecord, cutoff: 
  * - Small Company (Turnover <= ₦25M): 0% CIT, Exempt from TET
  * - Medium Company (₦25M < Turnover <= ₦100M): 20% CIT + 3% TET on Assessable Profit
  * - Large Company (Turnover > ₦100M): 30% CIT + 3% TET on Assessable Profit
+ * - Accounting depreciation and gain/loss on disposal are adjusted out of Assessable Profit;
+ *   FIRS Capital Allowances & Balancing Allowance/(Charge) are deducted to arrive at Taxable Profit.
  */
 export function calculateNigerianTax(
   turnover: number,
   profitBeforeTax: number,
   depreciationAddBack: number,
+  disposalGainLoss: number,
   capitalAllowanceDeduction: number,
+  balancingAdjustment: number,
   deferredTaxMovement: number,
   settings: FinancialSettingsRecord
 ): NigerianTaxBreakdown {
@@ -458,10 +545,14 @@ export function calculateNigerianTax(
     }
   }
 
-  // Assessable Profit under CITA: PBT + disallowable accounting depreciation
-  const assessableProfit = Math.max(0, roundCurrency(profitBeforeTax + depreciationAddBack));
-  // Total/Taxable Profit: Assessable Profit less FIRS Capital Allowances (approximated by capitalAllowanceDeduction)
-  const taxableProfit = Math.max(0, roundCurrency(assessableProfit - capitalAllowanceDeduction));
+  // Assessable Profit under CITA: PBT + disallowable accounting depreciation - accounting disposal gain (or + disposal loss)
+  const disposalGainLossAdjustment = roundCurrency(-disposalGainLoss);
+  const assessableProfit = Math.max(0, roundCurrency(profitBeforeTax + depreciationAddBack + disposalGainLossAdjustment));
+  // Total/Taxable Profit: Assessable Profit less FIRS Capital Allowances and Balancing Allowance (or + Balancing Charge)
+  const taxableProfit = Math.max(
+    0,
+    roundCurrency(assessableProfit - capitalAllowanceDeduction - balancingAdjustment)
+  );
 
   const isSmallOrExempt = citRate === 0;
   const tetRate = !isSmallOrExempt && settings.enableTET ? 0.03 : 0;
@@ -480,6 +571,10 @@ export function calculateNigerianTax(
     citRate: citRate * 100,
     tetRate: tetRate * 100,
     policeLevyRate: policeLevyRate * 100,
+    depreciationAddBack: roundCurrency(depreciationAddBack),
+    disposalGainLossAdjustment,
+    capitalAllowanceDeduction: roundCurrency(capitalAllowanceDeduction),
+    balancingAdjustment: roundCurrency(balancingAdjustment),
     assessableProfit,
     taxableProfit,
     citAmount,
@@ -528,12 +623,15 @@ interface CumulativeSnapshot {
   shareCapital: number;
   sharePremium: number;
   generalReserve: number;
+  assetEquityContribution: number;
   revaluationReserve: number;
+  revaluationTransferToRE: number;
   manualOpeningRE: number;
   dividendsPaid: number;
 
   longTermLoans: number;
   assetCreditFinancing: number;
+  assetVendorPayable: number;
   deferredTaxLiability: number;
 
   tradePayables: number;
@@ -544,10 +642,14 @@ interface CumulativeSnapshot {
 
   taxPaid: number;
 
-  // Cash CapEx & Disposal tracking
+  // Cash CapEx, Disposal & CITA tracking
   cashCapExPPE: number;
   cashCapExIntangible: number;
   disposalProceeds: number;
+  disposalCashProceeds: number;
+  disposalReceivables: number;
+  citaCapitalAllowance: number;
+  citaBalancingAdjustment: number;
 }
 
 function buildSnapshotAtCutoff(inputs: RawFinancialInputs, cutoff: Date | null, isZeroStart: boolean): CumulativeSnapshot {
@@ -582,11 +684,14 @@ function buildSnapshotAtCutoff(inputs: RawFinancialInputs, cutoff: Date | null, 
       shareCapital: 0,
       sharePremium: 0,
       generalReserve: 0,
+      assetEquityContribution: 0,
       revaluationReserve: 0,
+      revaluationTransferToRE: 0,
       manualOpeningRE: 0,
       dividendsPaid: 0,
       longTermLoans: 0,
       assetCreditFinancing: 0,
+      assetVendorPayable: 0,
       deferredTaxLiability: 0,
       tradePayables: 0,
       accruedExpenses: 0,
@@ -597,6 +702,10 @@ function buildSnapshotAtCutoff(inputs: RawFinancialInputs, cutoff: Date | null, 
       cashCapExPPE: 0,
       cashCapExIntangible: 0,
       disposalProceeds: 0,
+      disposalCashProceeds: 0,
+      disposalReceivables: 0,
+      citaCapitalAllowance: 0,
+      citaBalancingAdjustment: 0,
     };
   }
 
@@ -677,10 +786,17 @@ function buildSnapshotAtCutoff(inputs: RawFinancialInputs, cutoff: Date | null, 
   let depreciationExpense = 0;
   let disposalGainLoss = 0;
   let disposalProceeds = 0;
+  let disposalCashProceeds = 0;
+  let disposalReceivables = 0;
   let cashCapExPPE = 0;
   let cashCapExIntangible = 0;
   let assetCreditFinancing = 0;
+  let assetVendorPayable = 0;
+  let assetEquityContribution = 0;
   let revaluationReserve = 0;
+  let revaluationTransferToRE = 0;
+  let citaCapitalAllowance = 0;
+  let citaBalancingAdjustment = 0;
 
   for (const asset of inputs.fixedAssets) {
     const calc = computeAssetDepreciationAtDate(asset, cutoff);
@@ -689,11 +805,20 @@ function buildSnapshotAtCutoff(inputs: RawFinancialInputs, cutoff: Date | null, 
     depreciationExpense += calc.accumulatedDepreciation;
     disposalGainLoss += calc.disposalGainLoss;
     disposalProceeds += calc.disposalProceeds;
+    disposalCashProceeds += calc.disposalCashProceeds;
+    disposalReceivables += calc.disposalReceivableProceeds;
     revaluationReserve += calc.revaluation;
+    revaluationTransferToRE += calc.revaluationTransferredOnDisposal;
+    citaCapitalAllowance += calc.citaCumulativeAllowance;
+    citaBalancingAdjustment += calc.citaBalancingAdjustment;
 
     const origCost = Number(asset.cost) || 0;
     if (asset.paymentStatus === "Credit/Loan") {
       assetCreditFinancing += origCost;
+    } else if (asset.paymentStatus === "Vendor Credit") {
+      assetVendorPayable += origCost;
+    } else if (asset.paymentStatus === "Owner Equity") {
+      assetEquityContribution += origCost;
     } else if (calc.isIntangible) {
       cashCapExIntangible += origCost;
     } else {
@@ -723,10 +848,17 @@ function buildSnapshotAtCutoff(inputs: RawFinancialInputs, cutoff: Date | null, 
   depreciationExpense = roundCurrency(depreciationExpense);
   disposalGainLoss = roundCurrency(disposalGainLoss);
   disposalProceeds = roundCurrency(disposalProceeds);
+  disposalCashProceeds = roundCurrency(disposalCashProceeds);
+  disposalReceivables = roundCurrency(disposalReceivables);
   cashCapExPPE = roundCurrency(cashCapExPPE);
   cashCapExIntangible = roundCurrency(cashCapExIntangible);
   assetCreditFinancing = roundCurrency(assetCreditFinancing);
+  assetVendorPayable = roundCurrency(assetVendorPayable);
+  assetEquityContribution = roundCurrency(assetEquityContribution);
   revaluationReserve = roundCurrency(revaluationReserve);
+  revaluationTransferToRE = roundCurrency(revaluationTransferToRE);
+  citaCapitalAllowance = roundCurrency(citaCapitalAllowance);
+  citaBalancingAdjustment = roundCurrency(citaBalancingAdjustment);
 
   const totalNonCurrentAssets = roundCurrency(ppeNBV + rouNBV + intangibleNBV);
 
@@ -753,7 +885,7 @@ function buildSnapshotAtCutoff(inputs: RawFinancialInputs, cutoff: Date | null, 
 
   const prepayments = roundCurrency(sumByType("PREPAYMENT") - sumByType("PREPAYMENT_AMORTISED"));
   const otherReceivables = roundCurrency(sumByType("OTHER_RECEIVABLE") - sumByType("RECEIVABLE_COLLECTED"));
-  const totalReceivables = roundCurrency(tradeReceivablesSales + Math.max(0, otherReceivables));
+  const totalReceivables = roundCurrency(tradeReceivablesSales + Math.max(0, otherReceivables) + disposalReceivables);
 
   const taxPaid = sumByType("TAX_PAID");
 
@@ -792,11 +924,14 @@ function buildSnapshotAtCutoff(inputs: RawFinancialInputs, cutoff: Date | null, 
     shareCapital,
     sharePremium,
     generalReserve,
+    assetEquityContribution,
     revaluationReserve,
+    revaluationTransferToRE,
     manualOpeningRE,
     dividendsPaid,
     longTermLoans,
     assetCreditFinancing,
+    assetVendorPayable,
     deferredTaxLiability,
     tradePayables,
     accruedExpenses,
@@ -807,12 +942,16 @@ function buildSnapshotAtCutoff(inputs: RawFinancialInputs, cutoff: Date | null, 
     cashCapExPPE,
     cashCapExIntangible,
     disposalProceeds,
+    disposalCashProceeds,
+    disposalReceivables,
+    citaCapitalAllowance,
+    citaBalancingAdjustment,
   };
 }
 
 function deriveBalanceSheetFromSnapshot(snap: CumulativeSnapshot, cumulativeCurrentTax: number) {
   // Net Cash from exact double-entry identity:
-  // Cash = PBT - TaxPaid + Dep - DisposalGain - Inv - Rec - Prep + WorkingCapLiab - CashCapEx + DisposalProceeds + EquityCashIn - Dividends + NetCashLoans
+  // Cash = PBT - TaxPaid + Dep - DisposalGain - Inv - Rec - Prep + WorkingCapLiab - CashCapEx + DisposalCashProceeds + EquityCashIn - Dividends + NetCashLoans
   const workingCapitalAssets = roundCurrency(snap.totalInventories + snap.tradeReceivablesSales + snap.otherReceivables + snap.prepayments);
   const workingCapitalLiabilities = roundCurrency(
     snap.tradePayables + snap.accruedExpenses + snap.customerDeposits + snap.statutoryPayables
@@ -829,7 +968,7 @@ function deriveBalanceSheetFromSnapshot(snap: CumulativeSnapshot, cumulativeCurr
       workingCapitalAssets +
       workingCapitalLiabilities -
       totalCashCapEx +
-      snap.disposalProceeds +
+      snap.disposalCashProceeds +
       equityCashIn -
       snap.dividendsPaid +
       netCashBorrowings
@@ -865,6 +1004,7 @@ function deriveBalanceSheetFromSnapshot(snap: CumulativeSnapshot, cumulativeCurr
   const tradeAndOtherReceivables = roundCurrency(
     snap.tradeReceivablesSales +
       otherRecAsset +
+      snap.disposalReceivables +
       supplierAdvanceAsset +
       statutoryCreditAsset +
       longTermLoanOverpaymentAsset +
@@ -879,16 +1019,19 @@ function deriveBalanceSheetFromSnapshot(snap: CumulativeSnapshot, cumulativeCurr
 
   const totalAssets = roundCurrency(snap.totalNonCurrentAssets + totalCurrentAssets);
 
-  // Equity
+  // Equity (includes IAS 16.41 transfer from revaluation reserve upon asset disposal & capital contributed in kind)
   const cumulativePAT = roundCurrency(snap.profitBeforeTax - cumulativeCurrentTax - snap.deferredTaxLiability);
-  const retainedEarnings = roundCurrency(snap.manualOpeningRE + cumulativePAT - snap.dividendsPaid);
+  const retainedEarnings = roundCurrency(snap.manualOpeningRE + cumulativePAT + snap.revaluationTransferToRE - snap.dividendsPaid);
+  const totalGeneralReserve = roundCurrency(snap.generalReserve + snap.assetEquityContribution);
   const totalEquity = roundCurrency(
-    snap.shareCapital + snap.sharePremium + snap.revaluationReserve + snap.generalReserve + retainedEarnings
+    snap.shareCapital + snap.sharePremium + snap.revaluationReserve + totalGeneralReserve + retainedEarnings
   );
 
   // Liabilities
   const totalNonCurrentLiabilities = roundCurrency(longTermBorrowingsLiab + snap.deferredTaxLiability);
-  const accruedAndOtherPayables = roundCurrency(snap.accruedExpenses + prepaymentsCreditAdj + otherRecCreditAdj);
+  const accruedAndOtherPayables = roundCurrency(
+    snap.accruedExpenses + snap.assetVendorPayable + prepaymentsCreditAdj + otherRecCreditAdj
+  );
 
   const totalCurrentLiabilities = roundCurrency(
     tradePayablesLiab +
@@ -924,6 +1067,7 @@ function deriveBalanceSheetFromSnapshot(snap: CumulativeSnapshot, cumulativeCurr
       totalInventories: snap.totalInventories,
       tradeReceivables: snap.tradeReceivablesSales,
       otherReceivables: roundCurrency(tradeAndOtherReceivables - snap.tradeReceivablesSales),
+      disposalReceivables: snap.disposalReceivables,
       tradeAndOtherReceivables,
       prepayments: prepaymentsAsset,
       prepaidTaxAsset,
@@ -935,7 +1079,7 @@ function deriveBalanceSheetFromSnapshot(snap: CumulativeSnapshot, cumulativeCurr
       shareCapital: snap.shareCapital,
       sharePremium: snap.sharePremium,
       revaluationReserve: snap.revaluationReserve,
-      generalReserve: snap.generalReserve,
+      generalReserve: totalGeneralReserve,
       retainedEarnings,
       totalEquity,
     },
@@ -947,6 +1091,7 @@ function deriveBalanceSheetFromSnapshot(snap: CumulativeSnapshot, cumulativeCurr
     currentLiabilities: {
       tradePayables: tradePayablesLiab,
       accruedExpenses: accruedAndOtherPayables,
+      assetVendorPayables: snap.assetVendorPayable,
       contractLiabilities: snap.customerDeposits,
       statutoryPayables: statutoryPayablesLiab,
       shortTermBorrowings: shortTermBorrowingsLiab,
@@ -977,7 +1122,9 @@ export function generateFinancialStatements(inputs: RawFinancialInputs, startDat
         openSnap.netRevenue,
         openSnap.profitBeforeTax,
         openSnap.depreciationExpense,
-        openSnap.depreciationExpense, // capital allowances approx equal to accounting depreciation unless deferred tax entered
+        openSnap.disposalGainLoss,
+        openSnap.citaCapitalAllowance,
+        openSnap.citaBalancingAdjustment,
         0,
         inputs.settings
       )
@@ -1005,13 +1152,17 @@ export function generateFinancialStatements(inputs: RawFinancialInputs, startDat
   const profitBeforeTax = roundCurrency(operatingProfitEBIT - financeCosts);
 
   const periodDeferredTax = roundCurrency(closeSnap.deferredTaxLiability - openSnap.deferredTaxLiability);
+  const periodCitaCapitalAllowance = roundCurrency(closeSnap.citaCapitalAllowance - openSnap.citaCapitalAllowance);
+  const periodCitaBalancingAdjustment = roundCurrency(closeSnap.citaBalancingAdjustment - openSnap.citaBalancingAdjustment);
 
-  // Nigerian Corporate Tax for the Period (Finance Act / FIRS)
+  // Nigerian Corporate Tax for the Period (Finance Act / FIRS CITA)
   const taxBreakdown = calculateNigerianTax(
     revenue,
     profitBeforeTax,
     depreciationAndAmortisation,
-    depreciationAndAmortisation,
+    otherOperatingGainLoss,
+    periodCitaCapitalAllowance,
+    periodCitaBalancingAdjustment,
     periodDeferredTax,
     inputs.settings
   );
@@ -1020,7 +1171,12 @@ export function generateFinancialStatements(inputs: RawFinancialInputs, startDat
   const cumulativeClosingCurrentTax = roundCurrency(openCurrentTax + periodCurrentTax);
 
   const profitForThePeriod = roundCurrency(profitBeforeTax - taxBreakdown.totalTaxExpense);
-  const otherComprehensiveIncomeReval = roundCurrency(closeSnap.revaluationReserve - openSnap.revaluationReserve);
+  // Total revaluation OCI recognised (preserving revaluation on assets disposed during the period before IAS 16.41 transfer)
+  const otherComprehensiveIncomeReval = roundCurrency(
+    closeSnap.revaluationReserve +
+      closeSnap.revaluationTransferToRE -
+      (openSnap.revaluationReserve + openSnap.revaluationTransferToRE)
+  );
   const totalComprehensiveIncome = roundCurrency(profitForThePeriod + otherComprehensiveIncomeReval);
 
   // Expense category breakdown for Note 3 / SoPL
@@ -1063,8 +1219,11 @@ export function generateFinancialStatements(inputs: RawFinancialInputs, startDat
   // Statement of Changes in Equity (IAS 1.106)
   const issueOfShareCapital = roundCurrency(closeSnap.shareCapital - openSnap.shareCapital);
   const issueOfSharePremium = roundCurrency(closeSnap.sharePremium - openSnap.sharePremium);
-  const capitalIntroducedReserve = roundCurrency(closeSnap.generalReserve - openSnap.generalReserve);
+  const cashCapitalIntroducedReserve = roundCurrency(closeSnap.generalReserve - openSnap.generalReserve);
+  const assetEquityContributionMovement = roundCurrency(closeSnap.assetEquityContribution - openSnap.assetEquityContribution);
+  const capitalIntroducedReserve = roundCurrency(cashCapitalIntroducedReserve + assetEquityContributionMovement);
   const priorRetainedEarningsIntroduced = roundCurrency(closeSnap.manualOpeningRE - openSnap.manualOpeningRE);
+  const revaluationTransferToRE = roundCurrency(closeSnap.revaluationTransferToRE - openSnap.revaluationTransferToRE);
   const dividendsPaidInPeriod = roundCurrency(closeSnap.dividendsPaid - openSnap.dividendsPaid);
 
   const statementOfChangesInEquity = {
@@ -1083,6 +1242,7 @@ export function generateFinancialStatements(inputs: RawFinancialInputs, startDat
     sharePremiumMovement: issueOfSharePremium,
     capitalAndReservesMovement: capitalIntroducedReserve,
     openingRetainedEarningsAdjustment: priorRetainedEarningsIntroduced,
+    revaluationTransferToRE,
     dividendsAndDrawings: -dividendsPaidInPeriod,
     closing: {
       shareCapital: closingPosition.equity.shareCapital,
@@ -1143,12 +1303,12 @@ export function generateFinancialStatements(inputs: RawFinancialInputs, startDat
   // Investing Activities (IAS 7.16)
   const purchaseOfPPE = roundCurrency(-(closeSnap.cashCapExPPE - openSnap.cashCapExPPE));
   const purchaseOfIntangibles = roundCurrency(-(closeSnap.cashCapExIntangible - openSnap.cashCapExIntangible));
-  const proceedsFromDisposalOfPPE = roundCurrency(closeSnap.disposalProceeds - openSnap.disposalProceeds);
+  const proceedsFromDisposalOfPPE = roundCurrency(closeSnap.disposalCashProceeds - openSnap.disposalCashProceeds);
   const netCashFromInvestingActivities = roundCurrency(purchaseOfPPE + purchaseOfIntangibles + proceedsFromDisposalOfPPE);
 
-  // Financing Activities (IAS 7.17)
+  // Financing Activities (IAS 7.17 — strictly cash equity & borrowings)
   const proceedsFromShareIssue = roundCurrency(
-    issueOfShareCapital + issueOfSharePremium + capitalIntroducedReserve + priorRetainedEarningsIntroduced
+    issueOfShareCapital + issueOfSharePremium + cashCapitalIntroducedReserve + priorRetainedEarningsIntroduced
   );
   const netProceedsFromLongTermBorrowings = roundCurrency(closeSnap.longTermLoans - openSnap.longTermLoans);
   const netProceedsFromShortTermBorrowings = roundCurrency(closeSnap.shortTermLoans - openSnap.shortTermLoans);
@@ -1188,6 +1348,7 @@ export function generateFinancialStatements(inputs: RawFinancialInputs, startDat
     const periodDep = roundCurrency(
       closeCalc.accumulatedDepreciation - (openCalc ? openCalc.accumulatedDepreciation : 0)
     );
+    const citaInfo = getNigeriaCitaAllowanceRates(asset.category);
     return {
       id: asset.id,
       name: asset.name,
@@ -1195,12 +1356,21 @@ export function generateFinancialStatements(inputs: RawFinancialInputs, startDat
       acquisitionDate: asset.acquisitionDate,
       usefulLifeYears: asset.usefulLifeYears,
       method: asset.depreciationMethod,
+      paymentStatus: asset.paymentStatus || "Paid",
       originalCost: Number(asset.cost) || 0,
       revaluation: Number(asset.revaluationSurplus) || 0,
       periodDepreciation: periodDep,
-      accumulatedDepreciation: closeCalc.disposed ? 0 : closeCalc.accumulatedDepreciation,
+      accumulatedDepreciation: closeCalc.disposed ? closeCalc.accumulatedDepreciation : closeCalc.accumulatedDepreciation,
+      carryingAccumulatedDepreciation: closeCalc.disposed ? 0 : closeCalc.accumulatedDepreciation,
       netBookValue: closeCalc.netBookValue,
       disposed: closeCalc.disposed,
+      disposalDate: asset.disposalDate || null,
+      disposalProceeds: closeCalc.disposalProceeds,
+      disposalGainLoss: closeCalc.disposalGainLoss,
+      disposalPaymentStatus: asset.disposalPaymentStatus || "Cash",
+      citaClass: citaInfo.citaClass,
+      citaAllowance: closeCalc.citaCumulativeAllowance,
+      citaBalancingAdjustment: closeCalc.citaBalancingAdjustment,
     };
   });
 
@@ -1251,7 +1421,7 @@ export function generateFinancialStatements(inputs: RawFinancialInputs, startDat
       standardsApplied: [
         "IFRS / IAS 1, IAS 2, IAS 7, IAS 12, IAS 16 (FRCN Adopted)",
         "Companies and Allied Matters Act (CAMA) 2020",
-        "Nigeria Finance Act (CIT & Tertiary Education Tax)",
+        "Nigeria Finance Act (CIT, Capital Allowances & Tertiary Education Tax)",
       ],
     },
     incomeStatement: {
@@ -1325,7 +1495,13 @@ export function generateFinancialStatements(inputs: RawFinancialInputs, startDat
     },
     notes: {
       ppeSchedule,
-      nonCashInvestingFinancing: roundCurrency(closeSnap.assetCreditFinancing - openSnap.assetCreditFinancing),
+      nonCashInvestingFinancing: roundCurrency(
+        closeSnap.assetCreditFinancing -
+          openSnap.assetCreditFinancing +
+          (closeSnap.assetVendorPayable - openSnap.assetVendorPayable) +
+          (closeSnap.assetEquityContribution - openSnap.assetEquityContribution)
+      ),
+      nonCashDisposalReceivable: roundCurrency(closeSnap.disposalReceivables - openSnap.disposalReceivables),
     },
     ratios,
     complianceChecks,
