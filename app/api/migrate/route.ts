@@ -50,13 +50,14 @@ export async function GET() {
     }
   }
 
-  // Also initialize full schema if any tables are missing entirely
+  // Also initialize full schema and financial tables if any tables are missing entirely
   try {
-    const { initDb } = await import('@/lib/db');
+    const { initDb, ensureFinancialTables } = await import('@/lib/db');
     await initDb();
-    results.push({ task: 'initDb', status: 'Success' });
+    await ensureFinancialTables();
+    results.push({ task: 'initDb & ensureFinancialTables', status: 'Success' });
   } catch (e: any) {
-    results.push({ task: 'initDb', status: 'Failed', error: e.message });
+    results.push({ task: 'initDb & ensureFinancialTables', status: 'Failed', error: e.message });
   }
 
   // 5. Add discount to Sale and Order, and status to Product

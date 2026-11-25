@@ -11,15 +11,28 @@ export async function clearDatabaseAction(adminPasswordConfirm: string) {
 
   try {
     // Truncate operational data but keep users and system settings
-    await db.prepare('DELETE FROM SalesTransaction').run();
-    await db.prepare('DELETE FROM InventoryMovement').run();
-    await db.prepare('DELETE FROM ProductionRun').run();
-    await db.prepare('DELETE FROM RawMaterial').run();
-    await db.prepare('DELETE FROM Expense').run();
-    await db.prepare('DELETE FROM ProductVariant').run();
-    await db.prepare('DELETE FROM Product').run();
-    await db.prepare('DELETE FROM Customer').run();
-    await db.prepare('DELETE FROM Notification').run();
+    const tables = [
+      'Sale',
+      'SaleItem',
+      '"Order"',
+      'InventoryMovement',
+      'ProductionRun',
+      'RawMaterial',
+      'Expense',
+      'ProductVariant',
+      'Product',
+      'Customer',
+      'Notification',
+      'FixedAsset',
+      'FinancialEntry',
+    ];
+    for (const tbl of tables) {
+      try {
+        await db.prepare(`DELETE FROM ${tbl}`).run();
+      } catch {
+        // Ignore if optional table hasn't been created yet
+      }
+    }
 
     return { success: true };
   } catch (error) {

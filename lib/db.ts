@@ -183,7 +183,112 @@ export async function initDb() {
       note TEXT,
       date DATETIME DEFAULT CURRENT_TIMESTAMP
     );
+
+    CREATE TABLE IF NOT EXISTS FixedAsset (
+      id TEXT PRIMARY KEY,
+      name TEXT NOT NULL,
+      category TEXT NOT NULL,
+      acquisitionDate DATETIME NOT NULL,
+      cost REAL NOT NULL,
+      residualValue REAL DEFAULT 0,
+      usefulLifeYears REAL DEFAULT 5,
+      depreciationMethod TEXT DEFAULT 'Straight-Line',
+      revaluationSurplus REAL DEFAULT 0,
+      disposalDate DATETIME,
+      disposalProceeds REAL DEFAULT 0,
+      paymentStatus TEXT DEFAULT 'Paid',
+      notes TEXT,
+      createdAt DATETIME DEFAULT CURRENT_TIMESTAMP
+    );
+
+    CREATE TABLE IF NOT EXISTS FinancialEntry (
+      id TEXT PRIMARY KEY,
+      entryType TEXT NOT NULL,
+      section TEXT NOT NULL,
+      title TEXT NOT NULL,
+      amount REAL NOT NULL,
+      date DATETIME NOT NULL,
+      reference TEXT,
+      notes TEXT,
+      createdAt DATETIME DEFAULT CURRENT_TIMESTAMP
+    );
+
+    CREATE TABLE IF NOT EXISTS FinancialSettings (
+      id TEXT PRIMARY KEY,
+      companyLegalName TEXT DEFAULT 'MLAZ LIMITED',
+      rcNumber TEXT DEFAULT 'RC-1849201',
+      tinNumber TEXT DEFAULT '20491827-0001',
+      financialYearStartMonth INTEGER DEFAULT 1,
+      taxRegime TEXT DEFAULT 'AUTO',
+      enableTET INTEGER DEFAULT 1,
+      enablePoliceLevy INTEGER DEFAULT 0,
+      vatRate REAL DEFAULT 7.5,
+      preparedBy TEXT DEFAULT 'Financial Controller',
+      approvedBy TEXT DEFAULT 'Managing Director',
+      updatedAt DATETIME DEFAULT CURRENT_TIMESTAMP
+    );
   `);
+}
+
+let financialTablesInitialized = false;
+
+export async function ensureFinancialTables() {
+  if (financialTablesInitialized) return;
+  await db.executeMultiple(`
+    CREATE TABLE IF NOT EXISTS FixedAsset (
+      id TEXT PRIMARY KEY,
+      name TEXT NOT NULL,
+      category TEXT NOT NULL,
+      acquisitionDate DATETIME NOT NULL,
+      cost REAL NOT NULL,
+      residualValue REAL DEFAULT 0,
+      usefulLifeYears REAL DEFAULT 5,
+      depreciationMethod TEXT DEFAULT 'Straight-Line',
+      revaluationSurplus REAL DEFAULT 0,
+      disposalDate DATETIME,
+      disposalProceeds REAL DEFAULT 0,
+      paymentStatus TEXT DEFAULT 'Paid',
+      notes TEXT,
+      createdAt DATETIME DEFAULT CURRENT_TIMESTAMP
+    );
+
+    CREATE TABLE IF NOT EXISTS FinancialEntry (
+      id TEXT PRIMARY KEY,
+      entryType TEXT NOT NULL,
+      section TEXT NOT NULL,
+      title TEXT NOT NULL,
+      amount REAL NOT NULL,
+      date DATETIME NOT NULL,
+      reference TEXT,
+      notes TEXT,
+      createdAt DATETIME DEFAULT CURRENT_TIMESTAMP
+    );
+
+    CREATE TABLE IF NOT EXISTS FinancialSettings (
+      id TEXT PRIMARY KEY,
+      companyLegalName TEXT DEFAULT 'MLAZ LIMITED',
+      rcNumber TEXT DEFAULT 'RC-1849201',
+      tinNumber TEXT DEFAULT '20491827-0001',
+      financialYearStartMonth INTEGER DEFAULT 1,
+      taxRegime TEXT DEFAULT 'AUTO',
+      enableTET INTEGER DEFAULT 1,
+      enablePoliceLevy INTEGER DEFAULT 0,
+      vatRate REAL DEFAULT 7.5,
+      preparedBy TEXT DEFAULT 'Financial Controller',
+      approvedBy TEXT DEFAULT 'Managing Director',
+      updatedAt DATETIME DEFAULT CURRENT_TIMESTAMP
+    );
+  `);
+
+  const existingSettings = await db.prepare("SELECT id FROM FinancialSettings WHERE id = 'default'").get();
+  if (!existingSettings) {
+    await db.prepare(`
+      INSERT INTO FinancialSettings (id, companyLegalName, rcNumber, tinNumber, financialYearStartMonth, taxRegime, enableTET, enablePoliceLevy, vatRate, preparedBy, approvedBy)
+      VALUES ('default', 'MLAZ LIMITED', 'RC-1849201', '20491827-0001', 1, 'AUTO', 1, 0, 7.5, 'Financial Controller', 'Managing Director')
+    `).run();
+  }
+
+  financialTablesInitialized = true;
 }
 
 // Export the db client directly

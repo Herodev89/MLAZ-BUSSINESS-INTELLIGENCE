@@ -5,7 +5,7 @@ import { Plus, Search, X, Edit, Trash2 } from "lucide-react";
 import { formatNaira, formatDate } from "@/lib/utils";
 import { getExpensesAction, createExpenseAction, deleteExpenseAction, updateExpenseAction } from "@/lib/actions/expenses";
 
-const expenseCategories = ["Transport", "Electricity", "Labour", "Materials", "Rent", "Marketing", "Maintenance", "Other"];
+const expenseCategories = ["Transport", "Electricity", "Labour", "Materials", "Rent", "Marketing", "Maintenance", "Interest / Bank Charges", "Other"];
 
 export default function ExpensesPage() {
   const [expenseList, setExpenseList] = useState<any[]>([]);
@@ -122,7 +122,7 @@ export default function ExpensesPage() {
                 <tr key={exp.id}>
                   <td style={{ fontWeight: 600, color: "var(--color-text-primary)" }}>{exp.name}</td>
                   <td>
-                    <span className={`badge ${exp.type === 'Factory Overhead' ? 'badge-warning' : 'badge-neutral'}`}>
+                    <span className={`badge ${exp.type === 'Factory Overhead' ? 'badge-warning' : exp.type === 'Finance Cost' ? 'badge-error' : 'badge-neutral'}`}>
                       {exp.type || "Operating"}
                     </span>
                   </td>
@@ -161,6 +161,7 @@ export default function ExpensesPage() {
                   <select name="type" className="select" defaultValue={selectedExpense?.type || "Operating"}>
                     <option value="Operating">Operating Expense</option>
                     <option value="Factory Overhead">Factory Overhead</option>
+                    <option value="Finance Cost">Finance Cost (Loan Interest)</option>
                   </select>
                 </div>
                 <div style={{ flex: 1 }}>

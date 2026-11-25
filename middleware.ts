@@ -9,6 +9,7 @@ const key = new TextEncoder().encode(secretKey);
 // They can access: /dashboard, /sales, /orders, /customers, /products (view-only), /notifications
 const SALES_REP_RESTRICTED_ROUTES = [
   "/expenses",
+  "/financial-statements",
   "/inventory",       // Note: the plan says "maybe view only, but not adjust". For now, we restrict the whole route or sub-routes. Let's restrict /inventory/adjust and /inventory/movements but allow /inventory/stock. Wait, the plan says "Cannot manually add/remove stock". To be safe and simple, let's restrict /inventory/adjust, /inventory/movements. Let's refine below.
   "/production",
   "/profit-analysis",

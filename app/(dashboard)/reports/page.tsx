@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useEffect } from "react";
+import Link from "next/link";
 import { Download, FileText, BarChart3, TrendingUp, DollarSign, Package } from "lucide-react";
 import { formatNaira, formatDate } from "@/lib/utils";
 import { getSalesAction } from "@/lib/actions/sales";
@@ -8,6 +9,8 @@ import { getProductionRunsAction, getRawMaterialsAction } from "@/lib/actions/pr
 import { getExpensesAction } from "@/lib/actions/expenses";
 import { getProductsAction } from "@/lib/actions/products";
 import { getOrdersAction } from "@/lib/actions/orders";
+import { getFinancialStatementsAction } from "@/lib/actions/financials";
+import { exportFinancialStatementsCSV, exportFinancialStatementsPDF, ExportStatementScope } from "@/lib/financial-export";
 
 export default function ReportsPage() {
   const [selectedReport, setSelectedReport] = useState("Monthly Sales Summary");
@@ -102,7 +105,26 @@ export default function ReportsPage() {
     });
   };
 
-  const exportCSV = (type: string) => {
+  const getFinancialScope = (type: string): ExportStatementScope | null => {
+    if (type === "Statement of Financial Position") return "SOFP";
+    if (type === "Statement of Changes in Equity") return "SOCE";
+    if (type === "Statement of Cash Flows") return "SOCF";
+    if (type === "Financial Statement") return "FULL_PACKAGE";
+    return null;
+  };
+
+  const exportCSV = async (type: string) => {
+    const scope = getFinancialScope(type);
+    if (scope) {
+      const res = await getFinancialStatementsAction(startDate || undefined, endDate || undefined);
+      if (res.success && res.statements) {
+        exportFinancialStatementsCSV(res.statements, scope);
+      } else {
+        alert(res.error || "Failed to export financial statement");
+      }
+      return;
+    }
+
     let rows: string[][] = [];
     let filename = `${type.toLowerCase().replace(/\s+/g, "_")}_report.csv`;
 
@@ -139,7 +161,18 @@ export default function ReportsPage() {
     document.body.removeChild(link);
   };
 
-  const exportPDF = (type: string) => {
+  const exportPDF = async (type: string) => {
+    const scope = getFinancialScope(type);
+    if (scope) {
+      const res = await getFinancialStatementsAction(startDate || undefined, endDate || undefined);
+      if (res.success && res.statements) {
+        exportFinancialStatementsPDF(res.statements, scope);
+      } else {
+        alert(res.error || "Failed to generate financial statement PDF");
+      }
+      return;
+    }
+
     const printWindow = window.open("", "_blank");
     if (!printWindow) return;
 
@@ -284,6 +317,21 @@ export default function ReportsPage() {
         <p className="page-subtitle">Generate structured reports backed by your live operational sales & production data</p>
       </div>
 
+      <Link
+        href="/financial-statements"
+        className="card"
+        style={{ display: "flex", alignItems: "center", gap: 12, padding: "14px 18px", marginBottom: 24, textDecoration: "none", border: "1px solid var(--color-accent)" }}
+      >
+        <FileText size={20} style={{ color: "var(--color-accent)" }} />
+        <div style={{ flex: 1 }}>
+          <div style={{ fontWeight: 700, color: "var(--color-text-primary)" }}>IFRS &amp; Nigerian-Standard Financial Statements</div>
+          <div style={{ fontSize: 13, color: "var(--color-text-secondary)" }}>
+            Statement of Financial Position, Profit or Loss &amp; OCI, Changes in Equity and Cash Flows (IAS 1, IAS 7, CAMA 2020, FIRS tax)
+          </div>
+        </div>
+        <span className="btn-accent btn-sm">Open →</span>
+      </Link>
+
       <div className="card" style={{ padding: "20px", marginBottom: 24 }}>
         <div style={{ display: "flex", gap: 16, flexWrap: "wrap", alignItems: "flex-end" }}>
           <div>
@@ -292,9 +340,12 @@ export default function ReportsPage() {
               <option>Monthly Sales Summary</option>
               <option>Inventory Valuation</option>
               <option>Profit & Loss Statement</option>
+              <option>Statement of Financial Position</option>
+              <option>Statement of Changes in Equity</option>
+              <option>Statement of Cash Flows</option>
+              <option>Financial Statement</option>
               <option>Production Yield</option>
               <option>Order Report</option>
-              <option>Financial Statement</option>
               <option>Raw Materials Report</option>
               <option>Expenses Report</option>
             </select>
@@ -416,6 +467,10 @@ export default function ReportsPage() {
           { title: "Inventory Valuation", desc: "Current stock snapshot with estimated cost and retail value.", type: "Inventory" },
           { title: "Order Report", desc: "Track customer orders, status, and payment collection.", type: "Order" },
           { title: "Profit & Loss Statement", desc: "Detailed breakdown of revenue, COGS, and operating expenses.", type: "Finance" },
+          { title: "Statement of Financial Position", desc: "IFRS / IAS 1 & CAMA 2020 Balance Sheet of Assets, Equity, and Liabilities.", type: "Finance" },
+          { title: "Statement of Changes in Equity", desc: "IAS 1.106 roll-forward of Share Capital, Reserves, Retained Earnings, and Dividends.", type: "Finance" },
+          { title: "Statement of Cash Flows", desc: "IAS 7 Operating, Investing, and Financing cash flows reconciled to Cash & Bank.", type: "Finance" },
+          { title: "Financial Statement", desc: "Complete Nigerian IFRS / FRCN / CAMA 2020 annual financial statements package.", type: "Finance" },
           { title: "Production Yield", desc: "Analysis of raw material usage vs. finished goods produced.", type: "Production" },
           { title: "Raw Materials Report", desc: "View all recorded raw materials and their current inventory.", type: "Materials" },
           { title: "Expenses Report", desc: "Detailed breakdown of operating and factory overhead expenses.", type: "Expenses" },

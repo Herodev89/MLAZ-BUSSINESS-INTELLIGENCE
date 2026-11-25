@@ -15,6 +15,7 @@ import {
   Layers,
   Receipt,
   TrendingUp,
+  Scale,
   FileBarChart,
   UserCog,
   Settings,
@@ -42,6 +43,7 @@ const navItems = [
   { href: "/expenses",        label: "Expenses",        icon: Receipt, roles: ["ADMIN", "STORE_MANAGER"] },
 
   { label: "Analytics", type: "section", roles: ["ADMIN"] },
+  { href: "/financial-statements", label: "Financial Statements", icon: Scale, roles: ["ADMIN"] },
   { href: "/profit-analysis", label: "Profit Analysis", icon: TrendingUp, roles: ["ADMIN"] },
   { href: "/reports",         label: "Reports",         icon: FileBarChart, roles: ["ADMIN"] },
 
