@@ -288,3 +288,17 @@ export const ACTIVE_PRODUCTS_CATALOG: ActiveCatalogProduct[] = [
     ],
   },
 ];
+
+export interface BulkProductCostInput {
+  id: string;
+  costPrice: number;
+  price: number;
+  category: string;
+  sku: string;
+  brand: string;
+  material: string;
+  reorderLevel: number;
+  description: string;
+  status: string;
+}
+

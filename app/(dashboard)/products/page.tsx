@@ -21,9 +21,9 @@ import {
   updateProductAction,
   registerActiveProductsAction,
   bulkUpdateProductCostsAction,
-  BulkProductCostInput,
 } from "@/lib/actions/products";
 import { PRODUCT_CATEGORIES, ACTIVE_PRODUCTS_CATALOG } from "@/lib/active-products-catalog";
+import type { BulkProductCostInput } from "@/lib/active-products-catalog";
 
 export default function ProductsPage() {
   const [productList, setProductList] = useState<any[]>([]);
@@ -95,7 +95,7 @@ export default function ProductsPage() {
   }, [productList]);
 
   const availableCategories = useMemo(() => {
-    const set = new Set<string>(PRODUCT_CATEGORIES);
+    const set = new Set<string>([...PRODUCT_CATEGORIES]);
     productList.forEach((p) => {
       if (p.category) set.add(p.category);
     });
@@ -352,19 +352,19 @@ export default function ProductsPage() {
           { label: "Total Active Products", value: activeProducts.length, color: "var(--color-accent)" },
           {
             label: "Total Active Stock",
-            value: activeProducts.reduce((s, p) => s + (p.stock || 0), 0),
+            value: activeProducts.reduce((s: number, p: any) => s + (p.stock || 0), 0),
             color: "var(--color-brand)",
           },
           {
             label: "Active Retail Stock Value",
-            value: formatNaira(activeProducts.reduce((s, p) => s + (p.stock || 0) * (p.price || 0), 0)),
+            value: formatNaira(activeProducts.reduce((s: number, p: any) => s + (p.stock || 0) * (p.price || 0), 0)),
             color: "var(--color-success)",
           },
           ...(isAdmin
             ? [
                 {
                   label: "Active Inventory at Cost (IAS 2)",
-                  value: formatNaira(activeProducts.reduce((s, p) => s + (p.stock || 0) * (p.costPrice || 0), 0)),
+                  value: formatNaira(activeProducts.reduce((s: number, p: any) => s + (p.stock || 0) * (p.costPrice || 0), 0)),
                   color: "var(--color-warning)",
                 },
               ]

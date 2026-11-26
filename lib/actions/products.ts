@@ -4,7 +4,8 @@ import db, { ensureProductColumns } from "@/lib/db";
 import { getSession } from "@/lib/auth";
 import { randomUUID } from "crypto";
 import { revalidatePath } from "next/cache";
-import { ACTIVE_PRODUCTS_CATALOG } from "@/lib/active-products-catalog";
+import type { BulkProductCostInput } from "@/lib/active-products-catalog";
+import { seedActiveCatalogInDb } from "@/lib/catalog-seed";
 
 function enrichProduct(p: any, allVariants: any[]) {
   const pVariants = allVariants
@@ -49,10 +50,10 @@ export async function getProductsAction() {
     const variants = (await db.prepare("SELECT * FROM ProductVariant").all()) as any[];
 
     const productsWithVariants = products.map((p) => enrichProduct(p, variants));
-    return { success: true, products: productsWithVariants };
+    return { success: true as const, products: productsWithVariants };
   } catch (error) {
     console.error("getProductsAction error:", error);
-    return { error: "Failed to fetch products" };
+    return { success: false as const, error: "Failed to fetch products" };
   }
 }
 
@@ -60,20 +61,20 @@ export async function getProductByIdAction(id: string) {
   try {
     await ensureProductColumns();
     const p = (await db.prepare("SELECT * FROM Product WHERE id = ?").get(id)) as any;
-    if (!p) return { error: "Product not found" };
+    if (!p) return { success: false as const, error: "Product not found" };
 
     const variants = (await db.prepare("SELECT * FROM ProductVariant WHERE productId = ?").all(id)) as any[];
-    return { success: true, product: enrichProduct(p, variants) };
+    return { success: true as const, product: enrichProduct(p, variants) };
   } catch (error) {
     console.error("getProductByIdAction error:", error);
-    return { error: "Failed to fetch product" };
+    return { success: false as const, error: "Failed to fetch product" };
   }
 }
 
 export async function createProductAction(formData: FormData) {
   const session = await getSession();
   if (!session || (session.role !== "ADMIN" && session.role !== "STORE_MANAGER")) {
-    return { error: "Forbidden: Admin or Store Manager access required" };
+    return { success: false as const, error: "Forbidden: Admin or Store Manager access required" };
   }
 
   await ensureProductColumns();
@@ -89,14 +90,14 @@ export async function createProductAction(formData: FormData) {
   const variantsJson = formData.get("variants")?.toString() || "[]";
 
   if (!name) {
-    return { error: "Name is required" };
+    return { success: false as const, error: "Name is required" };
   }
 
   let variants: any[] = [];
   try {
     variants = JSON.parse(variantsJson);
   } catch {
-    return { error: "Invalid variants data" };
+    return { success: false as const, error: "Invalid variants data" };
   }
 
   const productId = randomUUID();
@@ -127,23 +128,23 @@ export async function createProductAction(formData: FormData) {
       );
     }
     revalidatePath("/", "layout");
-    return { success: true, productId };
+    return { success: true as const, productId };
   } catch (error) {
     console.error("createProductAction error:", error);
-    return { error: "Failed to create product" };
+    return { success: false as const, error: "Failed to create product" };
   }
 }
 
 export async function updateProductAction(id: string, formData: FormData) {
   const session = await getSession();
   if (!session || (session.role !== "ADMIN" && session.role !== "STORE_MANAGER")) {
-    return { error: "Forbidden: Admin or Store Manager access required" };
+    return { success: false as const, error: "Forbidden: Admin or Store Manager access required" };
   }
 
   await ensureProductColumns();
 
   const existing = (await db.prepare("SELECT * FROM Product WHERE id = ?").get(id)) as any;
-  if (!existing) return { error: "Product not found" };
+  if (!existing) return { success: false as const, error: "Product not found" };
 
   const existingVariants = (await db.prepare("SELECT * FROM ProductVariant WHERE productId = ?").all(id)) as any[];
   const existingCostMap = new Map<string, number>();
@@ -170,14 +171,14 @@ export async function updateProductAction(id: string, formData: FormData) {
   const variantsJson = formData.get("variants")?.toString() || "[]";
 
   if (!name) {
-    return { error: "Name is required" };
+    return { success: false as const, error: "Name is required" };
   }
 
   let variants: any[] = [];
   try {
     variants = JSON.parse(variantsJson);
   } catch {
-    return { error: "Invalid variants data" };
+    return { success: false as const, error: "Invalid variants data" };
   }
 
   const isAdmin = session.role === "ADMIN";
@@ -212,48 +213,32 @@ export async function updateProductAction(id: string, formData: FormData) {
       );
     }
     revalidatePath("/", "layout");
-    return { success: true };
+    return { success: true as const };
   } catch (error) {
     console.error("updateProductAction error:", error);
-    return { error: "Failed to update product" };
+    return { success: false as const, error: "Failed to update product" };
   }
 }
 
 export async function deleteProductAction(id: string) {
   const session = await getSession();
   if (!session || session.role !== "ADMIN") {
-    return { error: "Forbidden: Admin access required" };
+    return { success: false as const, error: "Forbidden: Admin access required" };
   }
 
   try {
     await db.prepare("DELETE FROM Product WHERE id = ?").run(id);
     revalidatePath("/", "layout");
-    return { success: true };
+    return { success: true as const };
   } catch (error) {
-    return { error: "Failed to delete product" };
+    return { success: false as const, error: "Failed to delete product" };
   }
 }
 
-export interface BulkProductCostInput {
-  id: string;
-  costPrice: number;
-  price: number;
-  category: string;
-  sku: string;
-  brand: string;
-  material: string;
-  reorderLevel: number;
-  description: string;
-  status: string;
-}
-
-/**
- * Admin-only bulk update for Cost of Sales (COGS), selling prices, and product metadata
- */
 export async function bulkUpdateProductCostsAction(items: BulkProductCostInput[]) {
   const session = await getSession();
   if (!session || session.role !== "ADMIN") {
-    return { error: "Forbidden: Only Administrators can update Cost of Sales and pricing." };
+    return { success: false as const, error: "Forbidden: Only Administrators can update Cost of Sales and pricing." };
   }
 
   await ensureProductColumns();
@@ -283,73 +268,25 @@ export async function bulkUpdateProductCostsAction(items: BulkProductCostInput[]
     }
 
     revalidatePath("/", "layout");
-    return { success: true, updatedCount: items.length };
+    return { success: true as const, updatedCount: items.length };
   } catch (error: any) {
     console.error("bulkUpdateProductCostsAction error:", error);
-    return { error: "Failed to save product costs: " + (error?.message || "Unknown error") };
+    return { success: false as const, error: "Failed to save product costs: " + (error?.message || "Unknown error") };
   }
-}
-
-/**
- * Idempotently register all 19 Active products from the MLAZ catalog with their respective prices
- */
-export async function seedActiveCatalogInDb(): Promise<{ added: number; existing: number }> {
-  await ensureProductColumns();
-  const existingRows = (await db.prepare("SELECT id, name FROM Product").all()) as any[];
-  const existingNames = new Set(existingRows.map((r) => String(r.name).trim().toLowerCase()));
-
-  let added = 0;
-  let existing = 0;
-
-  for (const item of ACTIVE_PRODUCTS_CATALOG) {
-    if (existingNames.has(item.name.trim().toLowerCase())) {
-      existing++;
-      continue;
-    }
-
-    const productId = randomUUID();
-    await db
-      .prepare(
-        `INSERT INTO Product (id, name, sku, category, brand, material, description, reorderLevel, status)
-         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`
-      )
-      .run(
-        productId,
-        item.name,
-        item.sku,
-        item.category,
-        item.brand,
-        item.material,
-        item.description,
-        item.reorderLevel,
-        item.status
-      );
-
-    for (const v of item.variants) {
-      await db
-        .prepare(
-          "INSERT INTO ProductVariant (id, productId, size, color, price, costPrice, stock, sku) VALUES (?, ?, ?, ?, ?, ?, ?, ?)"
-        )
-        .run(randomUUID(), productId, v.size, v.color, v.price, v.costPrice, v.stock, v.sku);
-    }
-    added++;
-  }
-
-  return { added, existing };
 }
 
 export async function registerActiveProductsAction() {
   const session = await getSession();
   if (!session || session.role !== "ADMIN") {
-    return { error: "Forbidden: Admin access required to register standard catalog." };
+    return { success: false as const, error: "Forbidden: Admin access required to register standard catalog." };
   }
 
   try {
     const result = await seedActiveCatalogInDb();
     revalidatePath("/", "layout");
-    return { success: true, ...result };
+    return { success: true as const, ...result };
   } catch (error: any) {
     console.error("registerActiveProductsAction error:", error);
-    return { error: "Failed to register active products: " + (error?.message || "Unknown error") };
+    return { success: false as const, error: "Failed to register active products: " + (error?.message || "Unknown error") };
   }
 }

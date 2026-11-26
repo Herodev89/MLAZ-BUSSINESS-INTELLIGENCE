@@ -107,7 +107,7 @@ export default function ManageVariantsPage({ params }: { params: { id: string } 
               {variants.length === 0 && (
                 <tr>
                   <td colSpan={7} style={{ textAlign: "center", padding: "40px", color: "var(--color-text-muted)" }}>
-                    No variants added. Click "Add Variant" to create one.
+                    No variants added. Click &ldquo;Add Variant&rdquo; to create one.
                   </td>
                 </tr>
               )}

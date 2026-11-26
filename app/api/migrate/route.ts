@@ -1,8 +1,10 @@
 import { NextResponse } from 'next/server';
 import db from '@/lib/db';
 
+export const dynamic = 'force-dynamic';
+
 export async function GET() {
-  const results = [];
+  const results: any[] = [];
   
   // 1. Add date to RawMaterial
   try {
@@ -60,7 +62,7 @@ export async function GET() {
 
     const countRow = await db.prepare('SELECT COUNT(*) as cnt FROM Product').get() as any;
     if (!countRow || Number(countRow.cnt) === 0) {
-      const { seedActiveCatalogInDb } = await import('@/lib/actions/products');
+      const { seedActiveCatalogInDb } = await import('@/lib/catalog-seed');
       const seeded = await seedActiveCatalogInDb();
       results.push({ task: 'seedActiveCatalogInDb', status: 'Seeded empty Product catalog', ...seeded });
     }
