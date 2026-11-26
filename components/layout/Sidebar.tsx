@@ -23,6 +23,7 @@ import {
   Bell,
   ChevronRight,
   Footprints,
+  CalendarRange,
   LogOut,
 } from "lucide-react";
 
@@ -40,6 +41,7 @@ const navItems = [
 
   { label: "Production", type: "section", roles: ["ADMIN", "STORE_MANAGER"] },
   { href: "/production",      label: "Production",      icon: Factory, roles: ["ADMIN", "STORE_MANAGER"] },
+  { href: "/monthly-ledger",  label: "Monthly Ledger",  icon: CalendarRange, roles: ["ADMIN", "STORE_MANAGER"] },
   { href: "/raw-materials",   label: "Raw Materials",   icon: Layers, roles: ["ADMIN", "STORE_MANAGER"] },
   { href: "/expenses",        label: "Expenses",        icon: Receipt, roles: ["ADMIN", "STORE_MANAGER"] },
   { href: "/fixed-assets",    label: "Fixed Assets (PPE)", icon: Building2, roles: ["ADMIN", "STORE_MANAGER"] },

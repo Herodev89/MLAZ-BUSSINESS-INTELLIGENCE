@@ -1,6 +1,16 @@
 // Standard MLAZ Active Footwear Catalog & Product Categories
 
 export const PRODUCT_CATEGORIES = [
+  "Male Sandals",
+  "Male Flat Shoes",
+  "Male Half-Covered Shoes",
+  "Male Covered Shoes",
+  "Children Shoes - Male",
+  "Female Flat Shoes",
+  "Female Half-Covered Shoes",
+  "Female Sandals",
+  "Female Covered Shoes",
+  "Children Shoes - Female",
   "Men",
   "Women",
   "Kids",

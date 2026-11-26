@@ -12,6 +12,7 @@ const SALES_REP_RESTRICTED_ROUTES = [
   "/financial-statements",
   "/fixed-assets",
   "/inventory",       // Note: the plan says "maybe view only, but not adjust". For now, we restrict the whole route or sub-routes. Let's restrict /inventory/adjust and /inventory/movements but allow /inventory/stock. Wait, the plan says "Cannot manually add/remove stock". To be safe and simple, let's restrict /inventory/adjust, /inventory/movements. Let's refine below.
+  "/monthly-ledger",
   "/production",
   "/profit-analysis",
   "/raw-materials",
