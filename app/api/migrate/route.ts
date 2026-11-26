@@ -50,14 +50,22 @@ export async function GET() {
     }
   }
 
-  // Also initialize full schema and financial tables if any tables are missing entirely
+  // Also initialize full schema, financial tables, and product metadata columns
   try {
-    const { initDb, ensureFinancialTables } = await import('@/lib/db');
+    const { initDb, ensureFinancialTables, ensureProductColumns } = await import('@/lib/db');
     await initDb();
     await ensureFinancialTables();
-    results.push({ task: 'initDb & ensureFinancialTables', status: 'Success' });
+    await ensureProductColumns();
+    results.push({ task: 'initDb, ensureFinancialTables & ensureProductColumns', status: 'Success' });
+
+    const countRow = await db.prepare('SELECT COUNT(*) as cnt FROM Product').get() as any;
+    if (!countRow || Number(countRow.cnt) === 0) {
+      const { seedActiveCatalogInDb } = await import('@/lib/actions/products');
+      const seeded = await seedActiveCatalogInDb();
+      results.push({ task: 'seedActiveCatalogInDb', status: 'Seeded empty Product catalog', ...seeded });
+    }
   } catch (e: any) {
-    results.push({ task: 'initDb & ensureFinancialTables', status: 'Failed', error: e.message });
+    results.push({ task: 'initDb, ensureFinancialTables & ensureProductColumns', status: 'Failed', error: e.message });
   }
 
   try {

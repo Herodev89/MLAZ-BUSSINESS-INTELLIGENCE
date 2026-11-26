@@ -56,6 +56,12 @@ export async function initDb() {
     CREATE TABLE IF NOT EXISTS Product (
       id TEXT PRIMARY KEY,
       name TEXT NOT NULL,
+      sku TEXT DEFAULT '',
+      category TEXT DEFAULT 'Footwear',
+      brand TEXT DEFAULT 'MLAZ',
+      material TEXT DEFAULT '',
+      description TEXT DEFAULT '',
+      reorderLevel INTEGER DEFAULT 5,
       status TEXT DEFAULT 'Active',
       createdAt DATETIME DEFAULT CURRENT_TIMESTAMP,
       updatedAt DATETIME DEFAULT CURRENT_TIMESTAMP
@@ -297,6 +303,30 @@ export async function ensureFinancialTables() {
   }
 
   financialTablesInitialized = true;
+}
+
+let productColumnsInitialized = false;
+
+export async function ensureProductColumns() {
+  if (productColumnsInitialized) return;
+  const alterCols = [
+    "ALTER TABLE Product ADD COLUMN sku TEXT DEFAULT ''",
+    "ALTER TABLE Product ADD COLUMN category TEXT DEFAULT 'Footwear'",
+    "ALTER TABLE Product ADD COLUMN brand TEXT DEFAULT 'MLAZ'",
+    "ALTER TABLE Product ADD COLUMN material TEXT DEFAULT ''",
+    "ALTER TABLE Product ADD COLUMN description TEXT DEFAULT ''",
+    "ALTER TABLE Product ADD COLUMN reorderLevel INTEGER DEFAULT 5",
+    "ALTER TABLE Product ADD COLUMN status TEXT DEFAULT 'Active'",
+    "ALTER TABLE ProductVariant ADD COLUMN costPrice REAL DEFAULT 0",
+  ];
+  for (const sql of alterCols) {
+    try {
+      await db.prepare(sql).run();
+    } catch {
+      // Column already exists
+    }
+  }
+  productColumnsInitialized = true;
 }
 
 // Export the db client directly

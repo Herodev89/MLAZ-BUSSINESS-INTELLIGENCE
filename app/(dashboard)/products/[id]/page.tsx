@@ -14,10 +14,10 @@ export default async function ProductDetailPage({ params }: { params: { id: stri
   const colors = Array.from(new Set(product.variants.map((v: any) => v.color))) as any[];
   const sizes  = Array.from(new Set(product.variants.map((v: any) => v.size))).sort() as any[];
   
-  // Provide default values since DB schema is simpler
-  const profitPerUnit = (product.price || 0) * 0.4; // rough estimate for now
-  const margin = 40; 
-  const costPrice = (product.price || 0) * 0.6;
+  const sellingPrice = Number(product.sellingPrice ?? product.price) || 0;
+  const costPrice = Number(product.costPrice) || 0;
+  const profitPerUnit = sellingPrice - costPrice;
+  const margin = sellingPrice > 0 && costPrice > 0 ? Math.round((profitPerUnit / sellingPrice) * 100) : 0;
 
   return (
     <div style={{ animation: "fade-in 0.3s ease-out" }}>

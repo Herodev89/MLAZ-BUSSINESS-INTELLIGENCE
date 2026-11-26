@@ -4,22 +4,23 @@ import { useState, useEffect } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { ArrowLeft, Save, Upload, X } from "lucide-react";
-import { productCategories } from "@/lib/mock-data/products";
+import { PRODUCT_CATEGORIES } from "@/lib/active-products-catalog";
 import { getProductByIdAction, updateProductAction } from "@/lib/actions/products";
 
 export default function EditProductPage({ params }: { params: { id: string } }) {
   const router = useRouter();
   const [product, setProduct] = useState<any>(null);
+  const [saving, setSaving] = useState(false);
   const [form, setForm] = useState({
     name: "",
     sku: "",
-    category: "",
+    category: "Men",
     description: "",
     material: "",
-    brand: "",
+    brand: "MLAZ",
     costPrice: "",
     sellingPrice: "",
-    reorderLevel: "",
+    reorderLevel: "5",
     status: "Active",
   });
 
@@ -31,13 +32,13 @@ export default function EditProductPage({ params }: { params: { id: string } }) 
         setForm({
           name: res.product.name,
           sku: res.product.sku || "",
-          category: res.product.category || "Shea Butter",
+          category: res.product.category || "Men",
           description: res.product.description || "",
           material: res.product.material || "",
-          brand: res.product.brand || "",
-          costPrice: (res.product.price ? res.product.price * 0.6 : 0).toString(),
-          sellingPrice: (res.product.price || 0).toString(),
-          reorderLevel: (res.product.reorderLevel || 10).toString(),
+          brand: res.product.brand || "MLAZ",
+          costPrice: (res.product.costPrice ?? 0).toString(),
+          sellingPrice: (res.product.price ?? 0).toString(),
+          reorderLevel: (res.product.reorderLevel ?? 5).toString(),
           status: res.product.status || "Active",
         });
       }
@@ -50,11 +51,20 @@ export default function EditProductPage({ params }: { params: { id: string } }) 
   const update = (key: string, value: string) => setForm((f) => ({ ...f, [key]: value }));
 
   const handleSave = async () => {
+    setSaving(true);
     const formData = new FormData();
     Object.entries(form).forEach(([key, value]) => formData.append(key, value));
-    formData.append("variants", JSON.stringify(product.variants));
+    const parsedCost = parseFloat(form.costPrice) || 0;
+    const parsedPrice = parseFloat(form.sellingPrice) || 0;
+    const updatedVariants = (product.variants || []).map((v: any) => ({
+      ...v,
+      costPrice: parsedCost,
+      price: parsedPrice,
+    }));
+    formData.append("variants", JSON.stringify(updatedVariants));
 
     const res = await updateProductAction(product.id, formData);
+    setSaving(false);
     if (res.success) {
       router.push(`/products/${product.id}`);
     } else {
@@ -75,7 +85,6 @@ export default function EditProductPage({ params }: { params: { id: string } }) 
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-[1fr_340px] gap-5 items-start">
-        {/* Main Form (Similar to Add Product) */}
         <div style={{ display: "flex", flexDirection: "column", gap: 20 }}>
           <div className="card">
             <div className="card-header"><div style={{ fontWeight: 700, fontSize: "14px" }}>Basic Information</div></div>
@@ -88,7 +97,7 @@ export default function EditProductPage({ params }: { params: { id: string } }) 
                 <div>
                   <label className="label">Category *</label>
                   <select className="select" value={form.category} onChange={(e) => update("category", e.target.value)}>
-                    {productCategories.map((c) => <option key={c} value={c}>{c}</option>)}
+                    {PRODUCT_CATEGORIES.map((c) => <option key={c} value={c}>{c}</option>)}
                   </select>
                 </div>
                 <div><label className="label">Brand</label><input className="input" value={form.brand} onChange={(e) => update("brand", e.target.value)} /></div>
@@ -98,9 +107,9 @@ export default function EditProductPage({ params }: { params: { id: string } }) 
             </div>
           </div>
           <div className="card">
-            <div className="card-header"><div style={{ fontWeight: 700, fontSize: "14px" }}>Pricing</div></div>
+            <div className="card-header"><div style={{ fontWeight: 700, fontSize: "14px" }}>Pricing &amp; Cost of Sales</div></div>
             <div className="card-body grid grid-cols-1 md:grid-cols-3 gap-4">
-              <div><label className="label">Cost Price (₦) *</label><input type="number" className="input" value={form.costPrice} onChange={(e) => update("costPrice", e.target.value)} /></div>
+              <div><label className="label">Cost of Sales (COGS) (₦) *</label><input type="number" className="input" value={form.costPrice} onChange={(e) => update("costPrice", e.target.value)} /></div>
               <div><label className="label">Selling Price (₦) *</label><input type="number" className="input" value={form.sellingPrice} onChange={(e) => update("sellingPrice", e.target.value)} /></div>
               <div><label className="label">Reorder Level</label><input type="number" className="input" value={form.reorderLevel} onChange={(e) => update("reorderLevel", e.target.value)} /></div>
             </div>
@@ -124,7 +133,9 @@ export default function EditProductPage({ params }: { params: { id: string } }) 
               </select>
             </div>
           </div>
-          <button className="btn-accent" style={{ padding: "13px", justifyContent: "center" }}><Save size={16} /> Save Changes</button>
+          <button type="button" onClick={handleSave} disabled={saving} className="btn-accent" style={{ padding: "13px", justifyContent: "center" }}>
+            <Save size={16} /> {saving ? "Saving..." : "Save Changes"}
+          </button>
           <Link href={`/products/${product.id}`} className="btn-outline" style={{ padding: "13px", justifyContent: "center" }}><X size={16} /> Cancel</Link>
         </div>
       </div>
