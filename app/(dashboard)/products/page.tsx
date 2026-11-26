@@ -10,10 +10,10 @@ import {
   Trash2,
   X,
   Upload,
-  DollarSign,
   PackageCheck,
   Save,
 } from "lucide-react";
+import NairaIcon from "@/components/ui/NairaIcon";
 import { formatNaira } from "@/lib/utils";
 import {
   getProductsAction,
@@ -293,7 +293,7 @@ export default function ProductsPage() {
           )}
           {isAdmin && activeProducts.length > 0 && (
             <button className="btn-outline" onClick={handleOpenBulkModal}>
-              <DollarSign size={16} /> Cost of Sales &amp; Product Info
+              <NairaIcon size={16} /> Cost of Sales &amp; Product Info
             </button>
           )}
           {canManageProducts && (
@@ -351,7 +351,7 @@ export default function ProductsPage() {
             inventory valuation.
           </div>
           <button className="btn-accent btn-sm" onClick={handleOpenBulkModal}>
-            <DollarSign size={14} /> Enter Cost of Sales
+            <NairaIcon size={14} /> Enter Cost of Sales
           </button>
         </div>
       )}

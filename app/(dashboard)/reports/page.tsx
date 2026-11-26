@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from "react";
 import Link from "next/link";
-import { Download, FileText, BarChart3, TrendingUp, DollarSign, Package } from "lucide-react";
+import { Download, FileText, BarChart3, TrendingUp, Package } from "lucide-react";
 import { formatNaira, formatDate } from "@/lib/utils";
 import { getSalesAction } from "@/lib/actions/sales";
 import { getProductionRunsAction, getRawMaterialsAction } from "@/lib/actions/production";

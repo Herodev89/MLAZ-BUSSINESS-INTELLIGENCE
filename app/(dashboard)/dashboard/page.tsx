@@ -1,5 +1,4 @@
 import {
-  DollarSign,
   TrendingUp,
   ShoppingBag,
   Package,
@@ -7,6 +6,7 @@ import {
   AlertTriangle,
   Activity,
 } from "lucide-react";
+import NairaIcon from "@/components/ui/NairaIcon";
 import KPICard from "@/components/dashboard/KPICard";
 import RevenueChart from "@/components/dashboard/RevenueChart";
 import {
@@ -128,7 +128,7 @@ export default async function DashboardPage({
             compact
             change={0}
             changePeriod={"vs last month"}
-            icon={DollarSign}
+            icon={NairaIcon}
             accentColor="var(--color-accent)"
           />
         </Link>
@@ -167,7 +167,7 @@ export default async function DashboardPage({
             compact
             change={0}
             changePeriod={"vs last month"}
-            icon={DollarSign}
+            icon={NairaIcon}
             accentColor="var(--color-error)"
           />
         </Link>
