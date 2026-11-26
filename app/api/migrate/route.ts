@@ -67,6 +67,13 @@ export async function GET() {
       const seeded = await seedActiveCatalogInDb();
       results.push({ task: 'seedActiveCatalogInDb', status: 'Seeded empty Product catalog', ...seeded });
     }
+
+    const saleCountRow = await db.prepare('SELECT COUNT(*) as cnt FROM Sale').get() as any;
+    if (!saleCountRow || Number(saleCountRow.cnt) === 0) {
+      const { seedHistoricalSalesInDb } = await import('@/lib/historical-sales-seed');
+      const seededSales = await seedHistoricalSalesInDb();
+      results.push({ task: 'seedHistoricalSalesInDb', status: 'Seeded Jan–Nov 2026 historical sales', ...seededSales });
+    }
   } catch (e: any) {
     results.push({ task: 'initDb, ensureFinancialTables & ensureProductColumns', status: 'Failed', error: e.message });
   }
@@ -115,9 +122,9 @@ export async function GET() {
     results.push({ task: 'syncCustomers', status: 'Failed', error: e.message });
   }
 
-  // 6. Recalculate Sales COGS and Profit based on current ProductVariant costPrice
+  // 6. Recalculate Sales COGS and Profit based on current ProductVariant costPrice (skip historical imports with verified COGS)
   try {
-    const sales = await db.prepare("SELECT * FROM Sale").all() as any[];
+    const sales = await db.prepare("SELECT * FROM Sale WHERE COALESCE(userId, '') != 'historical-import'").all() as any[];
     for (const sale of sales) {
       // First try to find by exact variantId
       let variant = null;
@@ -138,7 +145,7 @@ export async function GET() {
         }
       }
 
-      if (variant) {
+      if (variant && Number(variant.costPrice) > 0) {
         const unitCost = variant.costPrice || 0;
         const totalCostPrice = unitCost * sale.quantity;
         const profit = sale.amount - totalCostPrice;

@@ -4,6 +4,7 @@ import db, { ensureSalesAndOrderColumns } from "@/lib/db";
 import { getSession } from "@/lib/auth";
 import { randomUUID } from "crypto";
 import { revalidatePath } from "next/cache";
+import { seedHistoricalSalesInDb } from "@/lib/historical-sales-seed";
 
 function normalizeSaleRow(r: any) {
   const amount = Number(r.amount) || 0;
@@ -287,5 +288,21 @@ export async function updateSaleAction(id: string, formData: FormData) {
   } catch (error: any) {
     console.error(error);
     return { success: false as const, error: "Failed to update sale: " + error.message };
+  }
+}
+
+export async function importHistoricalSalesAction() {
+  const session = await getSession();
+  if (!session || session.role !== "ADMIN") {
+    return { success: false as const, error: "Forbidden: Admin access required to import historical sales." };
+  }
+
+  try {
+    const res = await seedHistoricalSalesInDb();
+    revalidatePath("/", "layout");
+    return { success: true as const, ...res };
+  } catch (error: any) {
+    console.error("importHistoricalSalesAction error:", error);
+    return { success: false as const, error: "Failed to import historical sales: " + (error?.message || "Unknown error") };
   }
 }

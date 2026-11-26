@@ -1,7 +1,7 @@
 "use client";
 
-import { useState, useEffect } from "react";
-import { Plus, Search, Eye, X, CheckCircle, Printer, Trash2, Edit, Banknote, Store, Boxes } from "lucide-react";
+import { useState, useEffect, useMemo } from "react";
+import { Plus, Search, Eye, X, CheckCircle, Printer, Trash2, Edit, Banknote, Store, Boxes, Upload } from "lucide-react";
 import { formatNaira, formatDate } from "@/lib/utils";
 import { Receipt } from "@/components/pos/Receipt";
 import {
@@ -11,7 +11,9 @@ import {
   deleteSaleAction,
   updateSaleAction,
   recordSalePaymentAction,
+  importHistoricalSalesAction,
 } from "@/lib/actions/sales";
+import { HISTORICAL_SALES_2026 } from "@/lib/historical-sales-data";
 import { getProductsAction } from "@/lib/actions/products";
 import { getCustomersAction } from "@/lib/actions/customers";
 
@@ -24,6 +26,8 @@ const PAYMENT_BADGE: Record<string, string> = {
 export default function SalesPage() {
   const [salesList, setSalesList] = useState<any[]>([]);
   const [customers, setCustomers] = useState<any[]>([]);
+  const [userRole, setUserRole] = useState<string>("");
+  const [importingHistorical, setImportingHistorical] = useState(false);
   const [search, setSearch] = useState("");
   const [channelFilter, setChannelFilter] = useState<"All" | "Retail" | "Wholesale">("All");
   const [paymentFilter, setPaymentFilter] = useState<"All" | "Paid" | "Partial" | "Credit">("All");
@@ -70,10 +74,34 @@ export default function SalesPage() {
     );
 
   useEffect(() => {
+    fetch("/api/auth/session")
+      .then((r) => r.json())
+      .then((d) => {
+        if (d?.user?.role) setUserRole(d.user.role);
+      })
+      .catch(console.error);
     loadSales();
     loadCustomers();
     loadProducts();
   }, []);
+
+  const missingHistoricalCount = useMemo(() => {
+    const existing = new Set(salesList.map((s) => String(s.id)));
+    return HISTORICAL_SALES_2026.filter((row) => !existing.has(row.id)).length;
+  }, [salesList]);
+
+  const handleImportHistoricalSales = async () => {
+    setImportingHistorical(true);
+    const res = await importHistoricalSalesAction();
+    setImportingHistorical(false);
+    if (res.success) {
+      await loadSales();
+      await loadCustomers();
+      alert(`Imported ${res.added} historical sales (${res.existing} already present).`);
+    } else {
+      alert(res.error || "Failed to import historical sales");
+    }
+  };
 
   const loadSales = async () => {
     const res = await getSalesAction();
@@ -295,9 +323,22 @@ export default function SalesPage() {
           <h1 className="page-title">Sales (Retail &amp; Wholesale)</h1>
           <p className="page-subtitle">IFRS 15 channel revenue recognition, 7.5% VAT &amp; Trade Receivables tracking</p>
         </div>
-        <button className="btn-accent" onClick={() => setShowRecordModal(true)}>
-          <Plus size={16} /> Record Sale
-        </button>
+        <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
+          {userRole === "ADMIN" && missingHistoricalCount > 0 && (
+            <button
+              className="btn-outline"
+              onClick={handleImportHistoricalSales}
+              disabled={importingHistorical}
+              title="Import all Jan–Nov 2026 historical sales from the Monthly Sales Summary"
+            >
+              <Upload size={15} />
+              {importingHistorical ? "Importing..." : `Import Jan–Nov 2026 Sales (${missingHistoricalCount})`}
+            </button>
+          )}
+          <button className="btn-accent" onClick={() => setShowRecordModal(true)}>
+            <Plus size={16} /> Record Sale
+          </button>
+        </div>
       </div>
 
       {/* KPI Strip */}
