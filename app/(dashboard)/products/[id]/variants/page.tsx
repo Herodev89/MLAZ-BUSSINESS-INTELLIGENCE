@@ -72,7 +72,8 @@ export default function ManageVariantsPage({ params }: { params: { id: string } 
                 <th>SKU</th>
                 <th>Stock</th>
                 <th>Cost of Sales (₦)</th>
-                <th>Selling Price (₦)</th>
+                <th>Retail Price (₦)</th>
+                <th>Wholesale Price (₦)</th>
                 <th style={{ width: 50 }}></th>
               </tr>
             </thead>
@@ -97,6 +98,9 @@ export default function ManageVariantsPage({ params }: { params: { id: string } 
                   <td><input type="number" className="input" value={v.price ?? product.price} onChange={(e) => {
                     const newV = [...variants]; newV[i].price = Number(e.target.value); setVariants(newV);
                   }} /></td>
+                  <td><input type="number" className="input" value={v.wholesalePrice ?? product.wholesalePrice ?? 0} onChange={(e) => {
+                    const newV = [...variants]; newV[i].wholesalePrice = Number(e.target.value); setVariants(newV);
+                  }} /></td>
                   <td>
                     <button className="btn-ghost" style={{ color: "var(--color-error)", padding: 8 }} onClick={() => removeVariant(v.id)}>
                       <Trash2 size={16} />
@@ -106,7 +110,7 @@ export default function ManageVariantsPage({ params }: { params: { id: string } 
               ))}
               {variants.length === 0 && (
                 <tr>
-                  <td colSpan={7} style={{ textAlign: "center", padding: "40px", color: "var(--color-text-muted)" }}>
+                  <td colSpan={8} style={{ textAlign: "center", padding: "40px", color: "var(--color-text-muted)" }}>
                     No variants added. Click &ldquo;Add Variant&rdquo; to create one.
                   </td>
                 </tr>

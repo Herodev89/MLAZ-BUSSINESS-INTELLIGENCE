@@ -639,6 +639,7 @@ interface CumulativeSnapshot {
   customerDeposits: number;
   shortTermLoans: number;
   statutoryPayables: number;
+  salesVatOutput: number;
 
   taxPaid: number;
 
@@ -698,6 +699,7 @@ function buildSnapshotAtCutoff(inputs: RawFinancialInputs, cutoff: Date | null, 
       customerDeposits: 0,
       shortTermLoans: 0,
       statutoryPayables: 0,
+      salesVatOutput: 0,
       taxPaid: 0,
       cashCapExPPE: 0,
       cashCapExIntangible: 0,
@@ -709,7 +711,7 @@ function buildSnapshotAtCutoff(inputs: RawFinancialInputs, cutoff: Date | null, 
     };
   }
 
-  // 1. Sales up to cutoff
+  // 1. Sales up to cutoff (IFRS 15 Revenue, Trade Receivables IFRS 9, Output VAT FIRS)
   const validSales = inputs.sales.filter((s) => s.status !== "Cancelled");
   const salesUpTo = validSales.filter((s) => !s.createdAt || new Date(s.createdAt) <= cutoff);
   const salesAfter = validSales.filter((s) => s.createdAt && new Date(s.createdAt) > cutoff);
@@ -718,10 +720,38 @@ function buildSnapshotAtCutoff(inputs: RawFinancialInputs, cutoff: Date | null, 
   const salesDiscounts = roundCurrency(salesUpTo.reduce((sum, s) => sum + (Number(s.discount) || 0), 0));
   const grossRevenue = roundCurrency(netRevenue + salesDiscounts);
   const cogsFinishedGoods = roundCurrency(salesUpTo.reduce((sum, s) => sum + (Number(s.costPrice) || 0), 0));
+  const salesVatOutput = roundCurrency(salesUpTo.reduce((sum, s) => sum + Math.max(0, Number(s.vatAmount) || 0), 0));
 
-  // Pending sales represent Trade Receivables (IFRS 15 / IFRS 9)
+  // Unpaid invoice balances (Credit/Partial Wholesale & Pending Sales) = Trade Receivables (IFRS 15.108 / IFRS 9)
   const tradeReceivablesSales = roundCurrency(
-    salesUpTo.filter((s) => s.status === "Pending").reduce((sum, s) => sum + (Number(s.amount) || 0), 0)
+    salesUpTo.reduce((sum, s) => {
+      const totalInvoice = (Number(s.amount) || 0) + Math.max(0, Number(s.vatAmount) || 0);
+      const paid =
+        s.amountPaid !== null && s.amountPaid !== undefined
+          ? Math.min(totalInvoice, Math.max(0, Number(s.amountPaid) || 0))
+          : s.status === "Pending"
+          ? 0
+          : totalInvoice;
+      return sum + Math.max(0, totalInvoice - paid);
+    }, 0)
+  );
+
+  // Advance deposits received on unfulfilled Orders (Pending/Processing/Ready) = Contract Liabilities (IFRS 15.105)
+  const convertedOrderPrefixes = new Set(
+    validSales.map((s) => String(s.id || "")).filter((id) => id.startsWith("TX-"))
+  );
+  const orderDeposits = roundCurrency(
+    (inputs.orders || [])
+      .filter((o) => {
+        if (o.createdAt && new Date(o.createdAt) > cutoff) return false;
+        if (o.status === "Cancelled" || o.status === "Confirmed" || o.status === "Delivered") return false;
+        const prefix = `TX-${o.id}`;
+        for (const sId of Array.from(convertedOrderPrefixes)) {
+          if (sId.startsWith(prefix)) return false;
+        }
+        return (Number(o.amountPaid) || 0) > 0;
+      })
+      .reduce((sum, o) => sum + Math.max(0, Number(o.amountPaid) || 0), 0)
   );
 
   // 2. Expenses up to cutoff
@@ -879,9 +909,9 @@ function buildSnapshotAtCutoff(inputs: RawFinancialInputs, cutoff: Date | null, 
 
   const tradePayables = roundCurrency(sumByType("TRADE_PAYABLE") - sumByType("TRADE_PAYABLE_SETTLEMENT"));
   const accruedExpenses = sumByType("ACCRUED_EXPENSE");
-  const customerDeposits = sumByType("CUSTOMER_DEPOSIT");
+  const customerDeposits = roundCurrency(sumByType("CUSTOMER_DEPOSIT") + orderDeposits);
   const shortTermLoans = roundCurrency(sumByType("SHORT_TERM_LOAN") - sumByType("SHORT_TERM_LOAN_REPAYMENT"));
-  const statutoryPayables = roundCurrency(sumByType("STATUTORY_PAYABLE") - sumByType("STATUTORY_REMITTANCE"));
+  const statutoryPayables = roundCurrency(sumByType("STATUTORY_PAYABLE") - sumByType("STATUTORY_REMITTANCE") + salesVatOutput);
 
   const prepayments = roundCurrency(sumByType("PREPAYMENT") - sumByType("PREPAYMENT_AMORTISED"));
   const otherReceivables = roundCurrency(sumByType("OTHER_RECEIVABLE") - sumByType("RECEIVABLE_COLLECTED"));
@@ -938,6 +968,7 @@ function buildSnapshotAtCutoff(inputs: RawFinancialInputs, cutoff: Date | null, 
     customerDeposits,
     shortTermLoans,
     statutoryPayables,
+    salesVatOutput,
     taxPaid,
     cashCapExPPE,
     cashCapExIntangible,
@@ -1204,12 +1235,28 @@ export function generateFinancialStatements(inputs: RawFinancialInputs, startDat
   });
 
   const revenueByProduct: Record<string, { qty: number; revenue: number; cogs: number }> = {};
+  const revenueByChannel: Record<"Retail" | "Wholesale", { ordersCount: number; units: number; grossRevenue: number; discounts: number; netRevenue: number; cogs: number; grossProfit: number }> = {
+    Retail: { ordersCount: 0, units: 0, grossRevenue: 0, discounts: 0, netRevenue: 0, cogs: 0, grossProfit: 0 },
+    Wholesale: { ordersCount: 0, units: 0, grossRevenue: 0, discounts: 0, netRevenue: 0, cogs: 0, grossProfit: 0 },
+  };
   for (const s of periodSalesList) {
     const prod = s.productName || "Footwear Products";
     if (!revenueByProduct[prod]) revenueByProduct[prod] = { qty: 0, revenue: 0, cogs: 0 };
     revenueByProduct[prod].qty += Number(s.quantity) || 0;
     revenueByProduct[prod].revenue = roundCurrency(revenueByProduct[prod].revenue + (Number(s.amount) || 0));
     revenueByProduct[prod].cogs = roundCurrency(revenueByProduct[prod].cogs + (Number(s.costPrice) || 0));
+
+    const ch: "Retail" | "Wholesale" = s.saleType === "Wholesale" ? "Wholesale" : "Retail";
+    const sNet = Number(s.amount) || 0;
+    const sDisc = Number(s.discount) || 0;
+    const sCogs = Number(s.costPrice) || 0;
+    revenueByChannel[ch].ordersCount += 1;
+    revenueByChannel[ch].units += Number(s.quantity) || 0;
+    revenueByChannel[ch].grossRevenue = roundCurrency(revenueByChannel[ch].grossRevenue + sNet + sDisc);
+    revenueByChannel[ch].discounts = roundCurrency(revenueByChannel[ch].discounts + sDisc);
+    revenueByChannel[ch].netRevenue = roundCurrency(revenueByChannel[ch].netRevenue + sNet);
+    revenueByChannel[ch].cogs = roundCurrency(revenueByChannel[ch].cogs + sCogs);
+    revenueByChannel[ch].grossProfit = roundCurrency(revenueByChannel[ch].netRevenue - revenueByChannel[ch].cogs);
   }
 
   // Opening & Closing Statement of Financial Position (IAS 1)
@@ -1282,8 +1329,13 @@ export function generateFinancialStatements(inputs: RawFinancialInputs, startDat
   const netCashFromOperatingActivities = roundCurrency(cashGeneratedFromOperations - incomeTaxesPaid);
 
   // Direct Method Operating Breakdown (IAS 7.18a — reconciles identically to netCashFromOperatingActivities)
+  const periodSalesVatOutput = roundCurrency(closeSnap.salesVatOutput - openSnap.salesVatOutput);
+  const closeManualStatutory = roundCurrency(closeSnap.statutoryPayables - closeSnap.salesVatOutput);
+  const openManualStatutory = roundCurrency(openSnap.statutoryPayables - openSnap.salesVatOutput);
+
   const cashReceiptsFromCustomers = roundCurrency(
-    revenue -
+    revenue +
+      periodSalesVatOutput -
       (closeSnap.tradeReceivablesSales - openSnap.tradeReceivablesSales) +
       (closeSnap.customerDeposits - openSnap.customerDeposits)
   );
@@ -1296,7 +1348,7 @@ export function generateFinancialStatements(inputs: RawFinancialInputs, startDat
       financeCosts +
       (closeSnap.prepayments - openSnap.prepayments) +
       (closeSnap.otherReceivables - openSnap.otherReceivables) -
-      (closeSnap.accruedExpenses + closeSnap.statutoryPayables - (openSnap.accruedExpenses + openSnap.statutoryPayables))
+      (closeSnap.accruedExpenses + closeManualStatutory - (openSnap.accruedExpenses + openManualStatutory))
     )
   );
 
@@ -1434,6 +1486,7 @@ export function generateFinancialStatements(inputs: RawFinancialInputs, startDat
       grossProfit,
       expensesByCategory,
       revenueByProduct,
+      revenueByChannel,
       operatingExpenses,
       depreciationAndAmortisation,
       otherOperatingGainLoss,

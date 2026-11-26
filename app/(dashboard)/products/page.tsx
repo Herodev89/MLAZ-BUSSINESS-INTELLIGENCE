@@ -45,7 +45,9 @@ export default function ProductsPage() {
     material: string;
     description: string;
     reorderLevel: number;
+    wholesaleMinQty: number;
     basePrice: number;
+    baseWholesalePrice: number;
     imageUrl: string;
     status: string;
     variants: any[];
@@ -57,7 +59,9 @@ export default function ProductsPage() {
     material: "",
     description: "",
     reorderLevel: 5,
+    wholesaleMinQty: 6,
     basePrice: 0,
+    baseWholesalePrice: 0,
     imageUrl: "",
     status: "Active",
     variants: [],
@@ -140,7 +144,9 @@ export default function ProductsPage() {
       material: p.material || "",
       description: p.description || "",
       reorderLevel: Number(p.reorderLevel ?? 5),
+      wholesaleMinQty: Number(p.wholesaleMinQty ?? 6),
       basePrice: p.price || 0,
+      baseWholesalePrice: p.wholesalePrice || 0,
       imageUrl: "",
       status: p.status || "Active",
       variants: (p.variants || []).map((v: any) => ({ ...v })),
@@ -161,6 +167,7 @@ export default function ProductsPage() {
     formData.append("material", editForm.material);
     formData.append("description", editForm.description);
     formData.append("reorderLevel", String(editForm.reorderLevel));
+    formData.append("wholesaleMinQty", String(editForm.wholesaleMinQty));
     formData.append("status", editForm.status);
     formData.append("variants", JSON.stringify(editForm.variants));
 
@@ -205,9 +212,11 @@ export default function ProductsPage() {
         brand: p.brand || "MLAZ",
         material: p.material || "",
         reorderLevel: Number(p.reorderLevel ?? 5),
+        wholesaleMinQty: Number(p.wholesaleMinQty ?? 6),
         description: p.description || "",
         status: p.status || "Active",
         price: Number(p.price) || 0,
+        wholesalePrice: Number(p.wholesalePrice) || 0,
         costPrice: Number(p.costPrice) || 0,
       }));
     setBulkItems(rows);
@@ -227,6 +236,8 @@ export default function ProductsPage() {
       id: item.id,
       costPrice: Number(item.costPrice) || 0,
       price: Number(item.price) || 0,
+      wholesalePrice: Number(item.wholesalePrice) || 0,
+      wholesaleMinQty: Math.max(1, Number(item.wholesaleMinQty) || 6),
       category: item.category,
       sku: item.sku,
       brand: item.brand,
@@ -427,7 +438,8 @@ export default function ProductsPage() {
             <tr>
               <th>Product</th>
               <th>Category</th>
-              <th>Selling Price</th>
+              <th>Retail Price</th>
+              <th>Wholesale Price</th>
               {isAdmin && <th>Cost of Sales (COGS)</th>}
               {isAdmin && <th>Margin</th>}
               <th>Total Stock</th>
@@ -439,13 +451,13 @@ export default function ProductsPage() {
           <tbody>
             {loading ? (
               <tr>
-                <td colSpan={isAdmin ? 9 : 7} style={{ textAlign: "center", padding: "40px", color: "var(--color-text-muted)" }}>
+                <td colSpan={isAdmin ? 10 : 8} style={{ textAlign: "center", padding: "40px", color: "var(--color-text-muted)" }}>
                   Loading products...
                 </td>
               </tr>
             ) : filtered.length === 0 ? (
               <tr>
-                <td colSpan={isAdmin ? 9 : 7} style={{ textAlign: "center", padding: "40px", color: "var(--color-text-muted)" }}>
+                <td colSpan={isAdmin ? 10 : 8} style={{ textAlign: "center", padding: "40px", color: "var(--color-text-muted)" }}>
                   No products found.
                 </td>
               </tr>
@@ -488,6 +500,16 @@ export default function ProductsPage() {
                       <span className="badge-muted">{p.category || "Footwear"}</span>
                     </td>
                     <td style={{ fontWeight: 700 }}>{formatNaira(p.price)}</td>
+                    <td style={{ fontWeight: 600, color: p.wholesalePrice > 0 ? "var(--color-accent)" : "var(--color-text-muted)" }}>
+                      {p.wholesalePrice > 0 ? (
+                        <div>
+                          <div>{formatNaira(p.wholesalePrice)}</div>
+                          <div style={{ fontSize: 10.5, color: "var(--color-text-muted)" }}>MOQ: {p.wholesaleMinQty ?? 6} pcs</div>
+                        </div>
+                      ) : (
+                        <span style={{ fontSize: 12 }}>Not Set</span>
+                      )}
+                    </td>
                     {isAdmin && (
                       <td style={{ fontWeight: 600, color: p.costPrice > 0 ? "var(--color-text-primary)" : "var(--color-warning)" }}>
                         {p.costPrice > 0 ? formatNaira(p.costPrice) : "Not Set"}
@@ -626,7 +648,8 @@ export default function ProductsPage() {
                       <th>Color</th>
                       <th>SKU</th>
                       {isAdmin && <th>Cost of Sales</th>}
-                      <th>Selling Price</th>
+                      <th>Retail Price</th>
+                      <th>Wholesale Price</th>
                       <th>Stock</th>
                     </tr>
                   </thead>
@@ -638,12 +661,13 @@ export default function ProductsPage() {
                         <td>{v.sku}</td>
                         {isAdmin && <td>{formatNaira(v.costPrice)}</td>}
                         <td>{formatNaira(v.price)}</td>
+                        <td>{v.wholesalePrice > 0 ? formatNaira(v.wholesalePrice) : "—"}</td>
                         <td>{v.stock} pcs</td>
                       </tr>
                     ))}
                     {!selectedProduct.variants?.length && (
                       <tr>
-                        <td colSpan={isAdmin ? 6 : 5} style={{ textAlign: "center" }}>
+                        <td colSpan={isAdmin ? 7 : 6} style={{ textAlign: "center" }}>
                           No variants available.
                         </td>
                       </tr>
@@ -732,13 +756,13 @@ export default function ProductsPage() {
                     />
                   </div>
                   <div>
-                    <label className="label">Base Selling Price (₦)</label>
+                    <label className="label">Wholesale Min Qty (MOQ)</label>
                     <input
                       className="input"
                       type="number"
-                      value={editForm.basePrice}
-                      onChange={(e) => setEditForm({ ...editForm, basePrice: parseFloat(e.target.value) || 0 })}
-                      disabled={!isAdmin}
+                      min="1"
+                      value={editForm.wholesaleMinQty}
+                      onChange={(e) => setEditForm({ ...editForm, wholesaleMinQty: Math.max(1, parseInt(e.target.value, 10) || 1) })}
                     />
                   </div>
                 </div>
@@ -768,34 +792,37 @@ export default function ProductsPage() {
 
                 <div>
                   <label className="label">
-                    Variants, Cost of Sales (COGS) &amp; Stock {!isAdmin && "(Cost of Sales restricted to Admin)"}
+                    Variants, Retail/Wholesale Pricing, COGS &amp; Stock {!isAdmin && "(Cost of Sales restricted to Admin)"}
                   </label>
                   <div style={{ display: "flex", gap: 6, marginBottom: 4, paddingLeft: 2 }}>
-                    <div style={{ width: 70, fontSize: 11.5, fontWeight: 600, color: "var(--color-text-muted)" }}>Size</div>
-                    <div style={{ width: 75, fontSize: 11.5, fontWeight: 600, color: "var(--color-text-muted)" }}>Color</div>
+                    <div style={{ width: 65, fontSize: 11.5, fontWeight: 600, color: "var(--color-text-muted)" }}>Size</div>
+                    <div style={{ width: 70, fontSize: 11.5, fontWeight: 600, color: "var(--color-text-muted)" }}>Color</div>
                     {isAdmin && (
                       <div style={{ flex: 1, fontSize: 11.5, fontWeight: 600, color: "var(--color-text-muted)" }}>
-                        Cost of Sales (₦)
+                        COGS (₦)
                       </div>
                     )}
                     <div style={{ flex: 1, fontSize: 11.5, fontWeight: 600, color: "var(--color-text-muted)" }}>
-                      Selling Price (₦)
+                      Retail (₦)
                     </div>
-                    <div style={{ width: 65, fontSize: 11.5, fontWeight: 600, color: "var(--color-text-muted)" }}>Stock</div>
+                    <div style={{ flex: 1, fontSize: 11.5, fontWeight: 600, color: "var(--color-text-muted)" }}>
+                      Wholesale (₦)
+                    </div>
+                    <div style={{ width: 60, fontSize: 11.5, fontWeight: 600, color: "var(--color-text-muted)" }}>Stock</div>
                     <div style={{ width: 32 }}></div>
                   </div>
                   {editForm.variants.map((v, idx) => (
                     <div key={v.id || idx} style={{ display: "flex", gap: 6, marginBottom: 8, alignItems: "center" }}>
                       <input
                         className="input"
-                        style={{ width: 70, padding: "6px 8px" }}
+                        style={{ width: 65, padding: "6px 8px" }}
                         value={v.size}
                         onChange={(e) => handleUpdateVariant(idx, "size", e.target.value)}
                         placeholder="Size"
                       />
                       <input
                         className="input"
-                        style={{ width: 75, padding: "6px 8px" }}
+                        style={{ width: 70, padding: "6px 8px" }}
                         value={v.color}
                         onChange={(e) => handleUpdateVariant(idx, "color", e.target.value)}
                         placeholder="Color"
@@ -820,12 +847,23 @@ export default function ProductsPage() {
                         step="0.01"
                         value={v.price}
                         onChange={(e) => handleUpdateVariant(idx, "price", parseFloat(e.target.value) || 0)}
-                        placeholder="Price"
+                        placeholder="Retail"
                         disabled={!isAdmin}
                       />
                       <input
                         className="input"
-                        style={{ width: 65, padding: "6px 8px" }}
+                        style={{ flex: 1, padding: "6px 8px" }}
+                        type="number"
+                        min="0"
+                        step="0.01"
+                        value={v.wholesalePrice ?? ""}
+                        onChange={(e) => handleUpdateVariant(idx, "wholesalePrice", parseFloat(e.target.value) || 0)}
+                        placeholder="Wholesale"
+                        disabled={!isAdmin}
+                      />
+                      <input
+                        className="input"
+                        style={{ width: 60, padding: "6px 8px" }}
                         type="number"
                         min="0"
                         value={v.stock}
@@ -856,6 +894,7 @@ export default function ProductsPage() {
                             size: "Standard",
                             color: "Default",
                             price: editForm.basePrice,
+                            wholesalePrice: editForm.baseWholesalePrice,
                             costPrice: 0,
                             stock: 0,
                             sku: editForm.sku,
@@ -933,13 +972,15 @@ export default function ProductsPage() {
                 <table className="table font-tabular" style={{ fontSize: 12.5 }}>
                   <thead>
                     <tr>
-                      <th style={{ minWidth: 210 }}>Active Product</th>
-                      <th style={{ minWidth: 115 }}>SKU</th>
-                      <th style={{ minWidth: 125 }}>Category</th>
-                      <th style={{ minWidth: 135 }}>Material / Sole</th>
-                      <th style={{ width: 85 }}>Reorder</th>
-                      <th style={{ minWidth: 125 }}>Selling Price (₦)</th>
-                      <th style={{ minWidth: 130 }}>Cost of Sales (₦)</th>
+                      <th style={{ minWidth: 195 }}>Active Product</th>
+                      <th style={{ minWidth: 105 }}>SKU</th>
+                      <th style={{ minWidth: 115 }}>Category</th>
+                      <th style={{ minWidth: 125 }}>Material / Sole</th>
+                      <th style={{ width: 75 }}>Reorder</th>
+                      <th style={{ width: 75 }}>W. MOQ</th>
+                      <th style={{ minWidth: 115 }}>Retail (₦)</th>
+                      <th style={{ minWidth: 115 }}>Wholesale (₦)</th>
+                      <th style={{ minWidth: 120 }}>Cost of Sales (₦)</th>
                       <th style={{ width: 95, textAlign: "right" }}>Profit / Unit</th>
                     </tr>
                   </thead>
@@ -998,12 +1039,34 @@ export default function ProductsPage() {
                           <td>
                             <input
                               type="number"
+                              min="1"
+                              className="input"
+                              style={{ padding: "5px 8px", fontSize: 12 }}
+                              value={item.wholesaleMinQty}
+                              onChange={(e) => updateBulkItem(idx, "wholesaleMinQty", Math.max(1, parseInt(e.target.value, 10) || 1))}
+                            />
+                          </td>
+                          <td>
+                            <input
+                              type="number"
                               min="0"
                               step="0.01"
                               className="input"
                               style={{ padding: "5px 8px", fontSize: 12, fontWeight: 600 }}
                               value={item.price}
                               onChange={(e) => updateBulkItem(idx, "price", parseFloat(e.target.value) || 0)}
+                            />
+                          </td>
+                          <td>
+                            <input
+                              type="number"
+                              min="0"
+                              step="0.01"
+                              className="input"
+                              style={{ padding: "5px 8px", fontSize: 12, fontWeight: 600 }}
+                              value={item.wholesalePrice || ""}
+                              placeholder="Wholesale"
+                              onChange={(e) => updateBulkItem(idx, "wholesalePrice", parseFloat(e.target.value) || 0)}
                             />
                           </td>
                           <td>

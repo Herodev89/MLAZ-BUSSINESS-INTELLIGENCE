@@ -135,9 +135,10 @@ export default async function ProductDetailPage({ params }: { params: { id: stri
             <div className="card-body" style={{ display: "flex", flexDirection: "column", gap: 12 }}>
               {[
                 { label: "Cost Price", value: formatNaira(product.costPrice), color: "var(--color-text-primary)" },
-                { label: "Selling Price", value: formatNaira(product.sellingPrice), color: "var(--color-accent)", size: "18px", weight: 800 },
-                { label: "Profit Per Pair", value: formatNaira(profitPerUnit), color: "var(--color-success)" },
-                { label: "Profit Margin", value: `${margin}%`, color: "var(--color-success)" },
+                { label: "Retail Price", value: formatNaira(product.sellingPrice), color: "var(--color-accent)", size: "18px", weight: 800 },
+                { label: "Wholesale Price", value: product.wholesalePrice > 0 ? `${formatNaira(product.wholesalePrice)} (MOQ ${product.wholesaleMinQty ?? 6})` : "Not Set", color: "var(--color-brand)" },
+                { label: "Profit Per Pair (Retail)", value: formatNaira(profitPerUnit), color: "var(--color-success)" },
+                { label: "Profit Margin (Retail)", value: `${margin}%`, color: "var(--color-success)" },
               ].map(({ label, value, color, size, weight }) => (
                 <div key={label} style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
                   <span style={{ fontSize: "13px", color: "var(--color-text-muted)" }}>{label}</span>

@@ -1,6 +1,6 @@
 "use server";
 
-import db, { ensureFinancialTables } from "@/lib/db";
+import db, { ensureFinancialTables, ensureProductColumns, ensureSalesAndOrderColumns } from "@/lib/db";
 import { getSession } from "@/lib/auth";
 import { randomUUID } from "crypto";
 import { revalidatePath } from "next/cache";
@@ -22,7 +22,7 @@ async function requireAdminOrManager() {
 
 export async function getFinancialStatementsAction(startDate?: string, endDate?: string) {
   try {
-    await ensureFinancialTables();
+    await Promise.all([ensureFinancialTables(), ensureProductColumns(), ensureSalesAndOrderColumns()]);
 
     const [
       rawSales,

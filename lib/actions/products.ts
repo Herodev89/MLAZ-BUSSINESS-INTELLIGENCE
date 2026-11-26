@@ -13,11 +13,13 @@ function enrichProduct(p: any, allVariants: any[]) {
     .map((v) => ({
       ...v,
       price: Number(v.price) || 0,
+      wholesalePrice: Number(v.wholesalePrice) || 0,
       costPrice: Number(v.costPrice) || 0,
       stock: Number(v.stock) || 0,
     }));
   const totalStock = pVariants.reduce((sum, v) => sum + v.stock, 0);
   const basePrice = pVariants.length > 0 ? pVariants[0].price : 0;
+  const baseWholesalePrice = pVariants.length > 0 ? pVariants[0].wholesalePrice : 0;
   const totalCostUnits = pVariants.reduce((sum, v) => sum + v.costPrice * Math.max(0, v.stock), 0);
   const baseCostPrice =
     totalStock > 0
@@ -34,11 +36,13 @@ function enrichProduct(p: any, allVariants: any[]) {
     material: p.material || "",
     description: p.description || "",
     reorderLevel: Number(p.reorderLevel ?? 5),
+    wholesaleMinQty: Number(p.wholesaleMinQty ?? 6),
     status: p.status || "Active",
     variants: pVariants,
     stock: totalStock,
     price: basePrice,
     sellingPrice: basePrice,
+    wholesalePrice: baseWholesalePrice,
     costPrice: baseCostPrice,
   };
 }
@@ -86,6 +90,7 @@ export async function createProductAction(formData: FormData) {
   const material = formData.get("material")?.toString()?.trim() || "";
   const description = formData.get("description")?.toString()?.trim() || "";
   const reorderLevel = parseInt(formData.get("reorderLevel")?.toString() || "5", 10) || 5;
+  const wholesaleMinQty = Math.max(1, parseInt(formData.get("wholesaleMinQty")?.toString() || "6", 10) || 6);
   const status = formData.get("status")?.toString() || "Active";
   const variantsJson = formData.get("variants")?.toString() || "[]";
 
@@ -106,13 +111,13 @@ export async function createProductAction(formData: FormData) {
   try {
     await db
       .prepare(
-        `INSERT INTO Product (id, name, sku, category, brand, material, description, reorderLevel, status)
-         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`
+        `INSERT INTO Product (id, name, sku, category, brand, material, description, reorderLevel, wholesaleMinQty, status)
+         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`
       )
-      .run(productId, name, sku, category, brand, material, description, reorderLevel, status);
+      .run(productId, name, sku, category, brand, material, description, reorderLevel, wholesaleMinQty, status);
 
     const insertVariant = await db.prepare(
-      "INSERT INTO ProductVariant (id, productId, size, color, price, costPrice, stock, sku) VALUES (?, ?, ?, ?, ?, ?, ?, ?)"
+      "INSERT INTO ProductVariant (id, productId, size, color, price, wholesalePrice, costPrice, stock, sku) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)"
     );
     for (const v of variants) {
       const costPriceVal = isAdmin ? parseFloat(v.costPrice) || 0 : 0;
@@ -122,6 +127,7 @@ export async function createProductAction(formData: FormData) {
         v.size || "",
         v.color || "",
         parseFloat(v.price) || 0,
+        parseFloat(v.wholesalePrice) || 0,
         costPriceVal,
         parseInt(v.stock, 10) || 0,
         v.sku || sku || ""
@@ -148,8 +154,10 @@ export async function updateProductAction(id: string, formData: FormData) {
 
   const existingVariants = (await db.prepare("SELECT * FROM ProductVariant WHERE productId = ?").all(id)) as any[];
   const existingCostMap = new Map<string, number>();
+  const existingWholesaleMap = new Map<string, number>();
   for (const ev of existingVariants) {
     existingCostMap.set(String(ev.id), Number(ev.costPrice) || 0);
+    existingWholesaleMap.set(String(ev.id), Number(ev.wholesalePrice) || 0);
   }
 
   const name = formData.get("name")?.toString()?.trim() || existing.name;
@@ -167,6 +175,9 @@ export async function updateProductAction(id: string, formData: FormData) {
   const reorderLevel = formData.has("reorderLevel")
     ? parseInt(formData.get("reorderLevel")?.toString() || "5", 10) || 5
     : Number(existing.reorderLevel ?? 5);
+  const wholesaleMinQty = formData.has("wholesaleMinQty")
+    ? Math.max(1, parseInt(formData.get("wholesaleMinQty")?.toString() || "6", 10) || 6)
+    : Number(existing.wholesaleMinQty ?? 6);
   const status = formData.get("status")?.toString() || existing.status || "Active";
   const variantsJson = formData.get("variants")?.toString() || "[]";
 
@@ -187,26 +198,29 @@ export async function updateProductAction(id: string, formData: FormData) {
     await db
       .prepare(
         `UPDATE Product
-         SET name = ?, sku = ?, category = ?, brand = ?, material = ?, description = ?, reorderLevel = ?, status = ?, updatedAt = CURRENT_TIMESTAMP
+         SET name = ?, sku = ?, category = ?, brand = ?, material = ?, description = ?, reorderLevel = ?, wholesaleMinQty = ?, status = ?, updatedAt = CURRENT_TIMESTAMP
          WHERE id = ?`
       )
-      .run(name, sku, category, brand, material, description, reorderLevel, status, id);
+      .run(name, sku, category, brand, material, description, reorderLevel, wholesaleMinQty, status, id);
 
     // Replace variants while safeguarding costPrice for non-admin edits
     await db.prepare("DELETE FROM ProductVariant WHERE productId = ?").run(id);
     const insertVariant = await db.prepare(
-      "INSERT INTO ProductVariant (id, productId, size, color, price, costPrice, stock, sku) VALUES (?, ?, ?, ?, ?, ?, ?, ?)"
+      "INSERT INTO ProductVariant (id, productId, size, color, price, wholesalePrice, costPrice, stock, sku) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)"
     );
     for (const v of variants) {
       const vId = v.id && !v.id.toString().startsWith("new-") && !v.id.toString().startsWith("V-NEW-") ? v.id : randomUUID();
       const preservedCost = existingCostMap.get(String(vId)) ?? 0;
+      const preservedWholesale = existingWholesaleMap.get(String(vId)) ?? 0;
       const costPriceVal = isAdmin ? parseFloat(v.costPrice) || 0 : preservedCost;
+      const wholesalePriceVal = v.wholesalePrice !== undefined ? parseFloat(v.wholesalePrice) || 0 : preservedWholesale;
       await insertVariant.run(
         vId,
         id,
         v.size || "",
         v.color || "",
         parseFloat(v.price) || 0,
+        wholesalePriceVal,
         costPriceVal,
         parseInt(v.stock, 10) || 0,
         v.sku || ""
@@ -248,7 +262,7 @@ export async function bulkUpdateProductCostsAction(items: BulkProductCostInput[]
       await db
         .prepare(
           `UPDATE Product
-           SET category = ?, sku = ?, brand = ?, material = ?, reorderLevel = ?, description = ?, status = ?, updatedAt = CURRENT_TIMESTAMP
+           SET category = ?, sku = ?, brand = ?, material = ?, reorderLevel = ?, wholesaleMinQty = ?, description = ?, status = ?, updatedAt = CURRENT_TIMESTAMP
            WHERE id = ?`
         )
         .run(
@@ -257,14 +271,20 @@ export async function bulkUpdateProductCostsAction(items: BulkProductCostInput[]
           item.brand || "MLAZ",
           item.material || "",
           Number(item.reorderLevel) || 5,
+          Math.max(1, Number(item.wholesaleMinQty) || 6),
           item.description || "",
           item.status || "Active",
           item.id
         );
 
       await db
-        .prepare("UPDATE ProductVariant SET costPrice = ?, price = ?, updatedAt = CURRENT_TIMESTAMP WHERE productId = ?")
-        .run(Math.max(0, Number(item.costPrice) || 0), Math.max(0, Number(item.price) || 0), item.id);
+        .prepare("UPDATE ProductVariant SET costPrice = ?, price = ?, wholesalePrice = ?, updatedAt = CURRENT_TIMESTAMP WHERE productId = ?")
+        .run(
+          Math.max(0, Number(item.costPrice) || 0),
+          Math.max(0, Number(item.price) || 0),
+          Math.max(0, Number(item.wholesalePrice) || 0),
+          item.id
+        );
     }
 
     revalidatePath("/", "layout");

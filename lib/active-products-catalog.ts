@@ -293,6 +293,8 @@ export interface BulkProductCostInput {
   id: string;
   costPrice: number;
   price: number;
+  wholesalePrice: number;
+  wholesaleMinQty: number;
   category: string;
   sku: string;
   brand: string;

@@ -52,13 +52,14 @@ export async function GET() {
     }
   }
 
-  // Also initialize full schema, financial tables, and product metadata columns
+  // Also initialize full schema, financial tables, and product/sales/order columns
   try {
-    const { initDb, ensureFinancialTables, ensureProductColumns } = await import('@/lib/db');
+    const { initDb, ensureFinancialTables, ensureProductColumns, ensureSalesAndOrderColumns } = await import('@/lib/db');
     await initDb();
     await ensureFinancialTables();
     await ensureProductColumns();
-    results.push({ task: 'initDb, ensureFinancialTables & ensureProductColumns', status: 'Success' });
+    await ensureSalesAndOrderColumns();
+    results.push({ task: 'initDb, ensureFinancialTables, ensureProductColumns & ensureSalesAndOrderColumns', status: 'Success' });
 
     const countRow = await db.prepare('SELECT COUNT(*) as cnt FROM Product').get() as any;
     if (!countRow || Number(countRow.cnt) === 0) {

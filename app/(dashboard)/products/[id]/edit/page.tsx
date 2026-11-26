@@ -20,6 +20,8 @@ export default function EditProductPage({ params }: { params: { id: string } }) 
     brand: "MLAZ",
     costPrice: "",
     sellingPrice: "",
+    wholesalePrice: "",
+    wholesaleMinQty: "6",
     reorderLevel: "5",
     status: "Active",
   });
@@ -38,6 +40,8 @@ export default function EditProductPage({ params }: { params: { id: string } }) 
           brand: res.product.brand || "MLAZ",
           costPrice: (res.product.costPrice ?? 0).toString(),
           sellingPrice: (res.product.price ?? 0).toString(),
+          wholesalePrice: (res.product.wholesalePrice ?? 0).toString(),
+          wholesaleMinQty: (res.product.wholesaleMinQty ?? 6).toString(),
           reorderLevel: (res.product.reorderLevel ?? 5).toString(),
           status: res.product.status || "Active",
         });
@@ -56,10 +60,12 @@ export default function EditProductPage({ params }: { params: { id: string } }) 
     Object.entries(form).forEach(([key, value]) => formData.append(key, value));
     const parsedCost = parseFloat(form.costPrice) || 0;
     const parsedPrice = parseFloat(form.sellingPrice) || 0;
+    const parsedWholesale = parseFloat(form.wholesalePrice) || 0;
     const updatedVariants = (product.variants || []).map((v: any) => ({
       ...v,
       costPrice: parsedCost,
       price: parsedPrice,
+      wholesalePrice: parsedWholesale,
     }));
     formData.append("variants", JSON.stringify(updatedVariants));
 
@@ -107,10 +113,12 @@ export default function EditProductPage({ params }: { params: { id: string } }) 
             </div>
           </div>
           <div className="card">
-            <div className="card-header"><div style={{ fontWeight: 700, fontSize: "14px" }}>Pricing &amp; Cost of Sales</div></div>
-            <div className="card-body grid grid-cols-1 md:grid-cols-3 gap-4">
+            <div className="card-header"><div style={{ fontWeight: 700, fontSize: "14px" }}>Pricing (Retail &amp; Wholesale) &amp; Cost of Sales</div></div>
+            <div className="card-body grid grid-cols-1 md:grid-cols-4 gap-4">
               <div><label className="label">Cost of Sales (COGS) (₦) *</label><input type="number" className="input" value={form.costPrice} onChange={(e) => update("costPrice", e.target.value)} /></div>
-              <div><label className="label">Selling Price (₦) *</label><input type="number" className="input" value={form.sellingPrice} onChange={(e) => update("sellingPrice", e.target.value)} /></div>
+              <div><label className="label">Retail Price (₦) *</label><input type="number" className="input" value={form.sellingPrice} onChange={(e) => update("sellingPrice", e.target.value)} /></div>
+              <div><label className="label">Wholesale Price (₦)</label><input type="number" className="input" value={form.wholesalePrice} onChange={(e) => update("wholesalePrice", e.target.value)} /></div>
+              <div><label className="label">Wholesale MOQ</label><input type="number" min="1" className="input" value={form.wholesaleMinQty} onChange={(e) => update("wholesaleMinQty", e.target.value)} /></div>
               <div><label className="label">Reorder Level</label><input type="number" className="input" value={form.reorderLevel} onChange={(e) => update("reorderLevel", e.target.value)} /></div>
             </div>
           </div>

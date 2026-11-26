@@ -12,7 +12,7 @@ export default function NewProductPage() {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [form, setForm] = useState({
     name: "", sku: "", category: "Men", description: "", material: "",
-    brand: "MLAZ", costPrice: "", sellingPrice: "", initialStock: "0", reorderLevel: "5", status: "Active",
+    brand: "MLAZ", costPrice: "", sellingPrice: "", wholesalePrice: "", wholesaleMinQty: "6", initialStock: "0", reorderLevel: "5", status: "Active",
   });
 
   const update = (key: string, value: string) => setForm((f) => ({ ...f, [key]: value }));
@@ -31,11 +31,13 @@ export default function NewProductPage() {
     formData.append("material", form.material);
     formData.append("description", form.description);
     formData.append("reorderLevel", form.reorderLevel || "5");
+    formData.append("wholesaleMinQty", form.wholesaleMinQty || "6");
     formData.append("status", form.status || "Active");
     const variants = [{
       size: "Standard",
       color: "Default",
       price: parseFloat(form.sellingPrice) || 0,
+      wholesalePrice: parseFloat(form.wholesalePrice) || 0,
       costPrice: parseFloat(form.costPrice) || 0,
       stock: parseInt(form.initialStock, 10) || 0,
       sku: form.sku
@@ -117,16 +119,24 @@ export default function NewProductPage() {
           {/* Pricing */}
           <div className="card">
             <div className="card-header">
-              <div style={{ fontWeight: 700, fontSize: "14px" }}>Pricing &amp; Cost of Sales</div>
+              <div style={{ fontWeight: 700, fontSize: "14px" }}>Pricing (Retail &amp; Wholesale) &amp; Cost of Sales</div>
             </div>
-            <div className="card-body grid grid-cols-1 md:grid-cols-4 gap-4">
+            <div className="card-body grid grid-cols-1 md:grid-cols-3 gap-4">
               <div>
                 <label className="label" htmlFor="cost-price">Cost of Sales (COGS) (₦) *</label>
                 <input id="cost-price" type="number" className="input" placeholder="0" value={form.costPrice} onChange={(e) => update("costPrice", e.target.value)} />
               </div>
               <div>
-                <label className="label" htmlFor="selling-price">Selling Price (₦) *</label>
+                <label className="label" htmlFor="selling-price">Retail Selling Price (₦) *</label>
                 <input id="selling-price" type="number" className="input" placeholder="0" value={form.sellingPrice} onChange={(e) => update("sellingPrice", e.target.value)} />
+              </div>
+              <div>
+                <label className="label" htmlFor="wholesale-price">Wholesale Unit Price (₦)</label>
+                <input id="wholesale-price" type="number" className="input" placeholder="0" value={form.wholesalePrice} onChange={(e) => update("wholesalePrice", e.target.value)} />
+              </div>
+              <div>
+                <label className="label" htmlFor="wholesale-moq">Wholesale Min Qty (MOQ)</label>
+                <input id="wholesale-moq" type="number" min="1" className="input" value={form.wholesaleMinQty} onChange={(e) => update("wholesaleMinQty", e.target.value)} />
               </div>
               <div>
                 <label className="label" htmlFor="initial-stock">Initial Stock</label>

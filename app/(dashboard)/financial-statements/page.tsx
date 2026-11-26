@@ -952,6 +952,30 @@ export default function FinancialStatementsPage() {
                       </td>
                       <td style={{ textAlign: "right", fontWeight: 700 }}>{fmt(sopl.revenue)}</td>
                     </tr>
+                    {sopl.revenueByChannel && (
+                      <>
+                        <tr>
+                          <td style={{ paddingLeft: 28, fontSize: 12.5, color: "var(--color-text-secondary)" }}>
+                            — Retail Sales ({sopl.revenueByChannel.Retail?.ordersCount || 0} txns,{" "}
+                            {sopl.revenueByChannel.Retail?.units || 0} units)
+                          </td>
+                          <td></td>
+                          <td style={{ textAlign: "right", fontSize: 12.5, color: "var(--color-text-secondary)" }}>
+                            {fmt(sopl.revenueByChannel.Retail?.netRevenue || 0)}
+                          </td>
+                        </tr>
+                        <tr>
+                          <td style={{ paddingLeft: 28, fontSize: 12.5, color: "var(--color-text-secondary)" }}>
+                            — Wholesale Sales ({sopl.revenueByChannel.Wholesale?.ordersCount || 0} txns,{" "}
+                            {sopl.revenueByChannel.Wholesale?.units || 0} units)
+                          </td>
+                          <td></td>
+                          <td style={{ textAlign: "right", fontSize: 12.5, color: "var(--color-text-secondary)" }}>
+                            {fmt(sopl.revenueByChannel.Wholesale?.netRevenue || 0)}
+                          </td>
+                        </tr>
+                      </>
+                    )}
                     <tr>
                       <td style={{ paddingLeft: 24 }}>
                         Cost of sales (Direct goods COGS: {fmt(sopl.cogsFinishedGoods)} • Factory overheads:{" "}
@@ -1664,6 +1688,77 @@ export default function FinancialStatementsPage() {
                   </p>
                 </div>
               </div>
+
+              {/* Note 3: Revenue Disaggregation (IFRS 15.114) */}
+              {sopl?.revenueByChannel && (
+                <div className="card">
+                  <div className="card-header">
+                    <h3 style={{ fontSize: 15, fontWeight: 800, margin: 0 }}>
+                      Note 3 — Disaggregation of Revenue from Contracts with Customers (IFRS 15.114)
+                    </h3>
+                  </div>
+                  <div className="table-container" style={{ border: "none", borderRadius: 0 }}>
+                    <table className="table font-tabular">
+                      <thead>
+                        <tr>
+                          <th>Sales Channel</th>
+                          <th style={{ textAlign: "right" }}>Transactions</th>
+                          <th style={{ textAlign: "right" }}>Units Sold</th>
+                          <th style={{ textAlign: "right" }}>Gross Revenue (₦)</th>
+                          <th style={{ textAlign: "right" }}>Trade Discounts (₦)</th>
+                          <th style={{ textAlign: "right" }}>Net Revenue (₦)</th>
+                          <th style={{ textAlign: "right" }}>Direct COGS (₦)</th>
+                          <th style={{ textAlign: "right" }}>Gross Profit (₦)</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {(["Retail", "Wholesale"] as const).map((channel) => {
+                          const row = sopl.revenueByChannel[channel] || {
+                            ordersCount: 0,
+                            units: 0,
+                            grossRevenue: 0,
+                            discounts: 0,
+                            netRevenue: 0,
+                            cogs: 0,
+                            grossProfit: 0,
+                          };
+                          return (
+                            <tr key={channel}>
+                              <td style={{ fontWeight: 700 }}>{channel} Sales</td>
+                              <td style={{ textAlign: "right" }}>{row.ordersCount}</td>
+                              <td style={{ textAlign: "right" }}>{row.units}</td>
+                              <td style={{ textAlign: "right" }}>{fmt(row.grossRevenue)}</td>
+                              <td style={{ textAlign: "right", color: "var(--color-error)" }}>{fmt(-row.discounts)}</td>
+                              <td style={{ textAlign: "right", fontWeight: 700 }}>{fmt(row.netRevenue)}</td>
+                              <td style={{ textAlign: "right" }}>{fmt(row.cogs)}</td>
+                              <td style={{ textAlign: "right", fontWeight: 700, color: "var(--color-success)" }}>
+                                {fmt(row.grossProfit)}
+                              </td>
+                            </tr>
+                          );
+                        })}
+                        <tr style={{ fontWeight: 800, background: "var(--color-surface)" }}>
+                          <td>Total Revenue</td>
+                          <td style={{ textAlign: "right" }}>
+                            {(sopl.revenueByChannel.Retail?.ordersCount || 0) +
+                              (sopl.revenueByChannel.Wholesale?.ordersCount || 0)}
+                          </td>
+                          <td style={{ textAlign: "right" }}>
+                            {(sopl.revenueByChannel.Retail?.units || 0) + (sopl.revenueByChannel.Wholesale?.units || 0)}
+                          </td>
+                          <td style={{ textAlign: "right" }}>{fmt(sopl.grossRevenue)}</td>
+                          <td style={{ textAlign: "right", color: "var(--color-error)" }}>{fmt(-sopl.salesDiscounts)}</td>
+                          <td style={{ textAlign: "right" }}>{fmt(sopl.revenue)}</td>
+                          <td style={{ textAlign: "right" }}>{fmt(sopl.cogsFinishedGoods)}</td>
+                          <td style={{ textAlign: "right", color: "var(--color-success)" }}>
+                            {fmt(sopl.revenue - sopl.cogsFinishedGoods)}
+                          </td>
+                        </tr>
+                      </tbody>
+                    </table>
+                  </div>
+                </div>
+              )}
 
               {/* Note 4: PPE Schedule */}
               <div className="card">

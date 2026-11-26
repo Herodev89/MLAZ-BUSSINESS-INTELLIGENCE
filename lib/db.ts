@@ -62,6 +62,7 @@ export async function initDb() {
       material TEXT DEFAULT '',
       description TEXT DEFAULT '',
       reorderLevel INTEGER DEFAULT 5,
+      wholesaleMinQty INTEGER DEFAULT 6,
       status TEXT DEFAULT 'Active',
       createdAt DATETIME DEFAULT CURRENT_TIMESTAMP,
       updatedAt DATETIME DEFAULT CURRENT_TIMESTAMP
@@ -73,6 +74,7 @@ export async function initDb() {
       size TEXT,
       color TEXT,
       price REAL NOT NULL,
+      wholesalePrice REAL DEFAULT 0,
       costPrice REAL DEFAULT 0,
       stock INTEGER NOT NULL DEFAULT 0,
       sku TEXT,
@@ -94,6 +96,7 @@ export async function initDb() {
     CREATE TABLE IF NOT EXISTS "Order" (
       id TEXT PRIMARY KEY,
       customerId TEXT,
+      orderType TEXT DEFAULT 'Retail',
       productName TEXT,
       variantId TEXT,
       size TEXT,
@@ -101,8 +104,13 @@ export async function initDb() {
       quantity INTEGER DEFAULT 1,
       amount REAL NOT NULL,
       discount REAL DEFAULT 0,
+      vatAmount REAL DEFAULT 0,
+      amountPaid REAL DEFAULT 0,
+      paymentStatus TEXT DEFAULT 'Unpaid',
       paymentMethod TEXT DEFAULT 'Transfer',
       status TEXT DEFAULT 'Pending',
+      dueDate DATETIME,
+      notes TEXT DEFAULT '',
       createdAt DATETIME DEFAULT CURRENT_TIMESTAMP
     );
 
@@ -118,6 +126,7 @@ export async function initDb() {
     CREATE TABLE IF NOT EXISTS Sale (
       id TEXT PRIMARY KEY,
       userId TEXT,
+      saleType TEXT DEFAULT 'Retail',
       customerName TEXT,
       productName TEXT,
       variantId TEXT,
@@ -126,10 +135,15 @@ export async function initDb() {
       quantity INTEGER DEFAULT 1,
       amount REAL NOT NULL,
       discount REAL DEFAULT 0,
+      vatAmount REAL DEFAULT 0,
+      amountPaid REAL,
+      paymentStatus TEXT DEFAULT 'Paid',
       costPrice REAL DEFAULT 0,
       profit REAL DEFAULT 0,
       paymentMethod TEXT DEFAULT 'Transfer',
       status TEXT DEFAULT 'Pending',
+      dueDate DATETIME,
+      notes TEXT DEFAULT '',
       createdAt DATETIME DEFAULT CURRENT_TIMESTAMP
     );
 
@@ -316,8 +330,10 @@ export async function ensureProductColumns() {
     "ALTER TABLE Product ADD COLUMN material TEXT DEFAULT ''",
     "ALTER TABLE Product ADD COLUMN description TEXT DEFAULT ''",
     "ALTER TABLE Product ADD COLUMN reorderLevel INTEGER DEFAULT 5",
+    "ALTER TABLE Product ADD COLUMN wholesaleMinQty INTEGER DEFAULT 6",
     "ALTER TABLE Product ADD COLUMN status TEXT DEFAULT 'Active'",
     "ALTER TABLE ProductVariant ADD COLUMN costPrice REAL DEFAULT 0",
+    "ALTER TABLE ProductVariant ADD COLUMN wholesalePrice REAL DEFAULT 0",
   ];
   for (const sql of alterCols) {
     try {
@@ -327,6 +343,34 @@ export async function ensureProductColumns() {
     }
   }
   productColumnsInitialized = true;
+}
+
+let salesOrderColumnsInitialized = false;
+
+export async function ensureSalesAndOrderColumns() {
+  if (salesOrderColumnsInitialized) return;
+  const alterCols = [
+    "ALTER TABLE Sale ADD COLUMN saleType TEXT DEFAULT 'Retail'",
+    "ALTER TABLE Sale ADD COLUMN vatAmount REAL DEFAULT 0",
+    "ALTER TABLE Sale ADD COLUMN amountPaid REAL",
+    "ALTER TABLE Sale ADD COLUMN paymentStatus TEXT DEFAULT 'Paid'",
+    "ALTER TABLE Sale ADD COLUMN dueDate DATETIME",
+    "ALTER TABLE Sale ADD COLUMN notes TEXT DEFAULT ''",
+    'ALTER TABLE "Order" ADD COLUMN orderType TEXT DEFAULT \'Retail\'',
+    'ALTER TABLE "Order" ADD COLUMN vatAmount REAL DEFAULT 0',
+    'ALTER TABLE "Order" ADD COLUMN amountPaid REAL DEFAULT 0',
+    'ALTER TABLE "Order" ADD COLUMN paymentStatus TEXT DEFAULT \'Unpaid\'',
+    'ALTER TABLE "Order" ADD COLUMN dueDate DATETIME',
+    'ALTER TABLE "Order" ADD COLUMN notes TEXT DEFAULT \'\'',
+  ];
+  for (const sql of alterCols) {
+    try {
+      await db.prepare(sql).run();
+    } catch {
+      // Column already exists
+    }
+  }
+  salesOrderColumnsInitialized = true;
 }
 
 // Export the db client directly
