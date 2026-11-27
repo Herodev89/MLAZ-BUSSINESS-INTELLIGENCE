@@ -771,6 +771,16 @@ export default function FinancialStatementsPage() {
                       {comp && <td style={{ textAlign: "right" }}>{fmt(comp.nonCurrentLiabilities.longTermBorrowings)}</td>}
                     </tr>
                     <tr>
+                      <td style={{ paddingLeft: 28 }}>Deferred government grants (IAS 20)</td>
+                      <td style={{ textAlign: "center" }}>
+                        <button className="badge-accent" style={{ border: "none", cursor: "pointer" }} onClick={jumpToNote}>
+                          9
+                        </button>
+                      </td>
+                      <td style={{ textAlign: "right" }}>{fmt(sofp.nonCurrentLiabilities.deferredGrants || 0)}</td>
+                      {comp && <td style={{ textAlign: "right" }}>{fmt(comp.nonCurrentLiabilities.deferredGrants || 0)}</td>}
+                    </tr>
+                    <tr>
                       <td style={{ paddingLeft: 28 }}>Deferred tax liabilities (IAS 12)</td>
                       <td style={{ textAlign: "center" }}>
                         <button className="badge-accent" style={{ border: "none", cursor: "pointer" }} onClick={jumpToNote}>
@@ -995,6 +1005,22 @@ export default function FinancialStatementsPage() {
                         {fmt(sopl.grossProfit)}
                       </td>
                     </tr>
+                    {sopl.grantIncome !== 0 && (
+                      <tr>
+                        <td style={{ paddingLeft: 24 }}>
+                          Grant &amp; other operating income (IAS 20: Immediate {fmt(sopl.grantIncomeCash || 0)} &bull; Released{" "}
+                          {fmt(sopl.grantAmortised || 0)})
+                        </td>
+                        <td style={{ textAlign: "center" }}>
+                          <button className="badge-accent" style={{ border: "none", cursor: "pointer" }} onClick={jumpToNote}>
+                            8
+                          </button>
+                        </td>
+                        <td style={{ textAlign: "right", color: "var(--color-success)", fontWeight: 600 }}>
+                          {fmt(sopl.grantIncome)}
+                        </td>
+                      </tr>
+                    )}
 
                     <tr>
                       <td colSpan={3} style={{ fontWeight: 700, color: "var(--color-text-secondary)", paddingTop: 12 }}>
@@ -1412,8 +1438,10 @@ export default function FinancialStatementsPage() {
                         </tr>
                         {socf.indirect.otherNonCashAdjustments !== 0 && (
                           <tr>
-                            <td style={{ paddingLeft: 28 }}>(Gain) / Loss on disposal of property, plant &amp; equipment</td>
-                            <td style={{ textAlign: "center" }}>4</td>
+                            <td style={{ paddingLeft: 28 }}>
+                              Non-cash disposal (gain)/loss &amp; deferred grant amortisation
+                            </td>
+                            <td style={{ textAlign: "center" }}>4, 9</td>
                             <td style={{ textAlign: "right" }}>{fmt(socf.indirect.otherNonCashAdjustments)}</td>
                           </tr>
                         )}
@@ -1465,6 +1493,13 @@ export default function FinancialStatementsPage() {
                           <td style={{ textAlign: "center" }}>3, 6</td>
                           <td style={{ textAlign: "right" }}>{fmt(socf.direct.cashReceiptsFromCustomers)}</td>
                         </tr>
+                        {socf.direct.cashReceiptsFromGrants !== 0 && (
+                          <tr>
+                            <td style={{ paddingLeft: 28 }}>Cash receipts from government / NGO income grants (IAS 20)</td>
+                            <td style={{ textAlign: "center" }}>8</td>
+                            <td style={{ textAlign: "right" }}>{fmt(socf.direct.cashReceiptsFromGrants)}</td>
+                          </tr>
+                        )}
                         <tr>
                           <td style={{ paddingLeft: 28 }}>Cash paid to suppliers, raw materials &amp; production</td>
                           <td style={{ textAlign: "center" }}>5, 9</td>
@@ -1531,6 +1566,13 @@ export default function FinancialStatementsPage() {
                       <td style={{ textAlign: "center" }}>8</td>
                       <td style={{ textAlign: "right" }}>{fmt(socf.financing.proceedsFromShareIssue)}</td>
                     </tr>
+                    {socf.financing.capitalGrantsReceived !== 0 && (
+                      <tr>
+                        <td style={{ paddingLeft: 28 }}>Capital &amp; asset-related grants received (IAS 20)</td>
+                        <td style={{ textAlign: "center" }}>9</td>
+                        <td style={{ textAlign: "right" }}>{fmt(socf.financing.capitalGrantsReceived)}</td>
+                      </tr>
+                    )}
                     <tr>
                       <td style={{ paddingLeft: 28 }}>Proceeds from bank, BOI &amp; director borrowings</td>
                       <td style={{ textAlign: "center" }}>9</td>

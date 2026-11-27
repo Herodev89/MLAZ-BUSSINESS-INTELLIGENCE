@@ -15,6 +15,7 @@ import {
   Layers,
   Receipt,
   Building2,
+  Landmark,
   TrendingUp,
   Scale,
   FileBarChart,
@@ -45,6 +46,7 @@ const navItems = [
   { href: "/raw-materials",   label: "Raw Materials",   icon: Layers, roles: ["ADMIN", "STORE_MANAGER"] },
   { href: "/expenses",        label: "Expenses",        icon: Receipt, roles: ["ADMIN", "STORE_MANAGER"] },
   { href: "/fixed-assets",    label: "Fixed Assets (PPE)", icon: Building2, roles: ["ADMIN", "STORE_MANAGER"] },
+  { href: "/capital-funding", label: "Capital, Grants & Loans", icon: Landmark, roles: ["ADMIN", "STORE_MANAGER"] },
 
   { label: "Analytics", type: "section", roles: ["ADMIN"] },
   { href: "/financial-statements", label: "Financial Statements", icon: Scale, roles: ["ADMIN"] },

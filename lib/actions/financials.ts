@@ -354,6 +354,7 @@ export async function createFinancialEntryAction(formData: FormData) {
       .run(id, entryType, section, title, amount, date, reference, notes);
 
     revalidatePath("/financial-statements");
+    revalidatePath("/capital-funding");
     revalidatePath("/reports");
     return { success: true, id };
   } catch (error: any) {
@@ -392,6 +393,7 @@ export async function updateFinancialEntryAction(id: string, formData: FormData)
       .run(entryType, section, title, amount, date, reference, notes, id);
 
     revalidatePath("/financial-statements");
+    revalidatePath("/capital-funding");
     revalidatePath("/reports");
     return { success: true };
   } catch (error: any) {
@@ -407,6 +409,7 @@ export async function deleteFinancialEntryAction(id: string) {
     await ensureFinancialTables();
     await db.prepare("DELETE FROM FinancialEntry WHERE id = ?").run(id);
     revalidatePath("/financial-statements");
+    revalidatePath("/capital-funding");
     revalidatePath("/reports");
     return { success: true };
   } catch (error: any) {

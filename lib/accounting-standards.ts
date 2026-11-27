@@ -12,6 +12,9 @@ export type FinancialEntryType =
   | "CAPITAL_INTRODUCED"
   | "OPENING_RETAINED_EARNINGS"
   | "DIVIDENDS_PAID"
+  | "GRANT_INCOME"
+  | "DEFERRED_GRANT"
+  | "GRANT_AMORTISED"
   | "LONG_TERM_LOAN"
   | "DIRECTOR_LOAN"
   | "LONG_TERM_LOAN_REPAYMENT"
@@ -33,7 +36,7 @@ export type FinancialEntryType =
 export interface EntryTypeDefinition {
   code: FinancialEntryType;
   label: string;
-  section: "EQUITY" | "NON_CURRENT_LIABILITY" | "CURRENT_LIABILITY" | "CURRENT_ASSET" | "TAX";
+  section: "EQUITY" | "OTHER_INCOME" | "NON_CURRENT_LIABILITY" | "CURRENT_LIABILITY" | "CURRENT_ASSET" | "TAX";
   cashFlowCategory: "Operating" | "Investing" | "Financing" | "Non-Cash";
   standardRef: string;
   hint: string;
@@ -80,6 +83,32 @@ export const FINANCIAL_ENTRY_TYPES: EntryTypeDefinition[] = [
     cashFlowCategory: "Financing",
     standardRef: "CAMA 2020 s.426 / IAS 7.34",
     hint: "Cash dividends distributed to shareholders out of distributable profits or proprietor drawings.",
+  },
+
+  // Government & Institutional Grants (IAS 20)
+  {
+    code: "GRANT_INCOME",
+    label: "Government / NGO Income Grant Received",
+    section: "OTHER_INCOME",
+    cashFlowCategory: "Operating",
+    standardRef: "IAS 20.12 & 20.29",
+    hint: "Unconditional or working-capital grant (SMEDAN, TEF, BOI, State/NGO) recognised immediately in Profit or Loss.",
+  },
+  {
+    code: "DEFERRED_GRANT",
+    label: "Deferred Capital / Asset-Related Grant Received",
+    section: "NON_CURRENT_LIABILITY",
+    cashFlowCategory: "Financing",
+    standardRef: "IAS 20.24",
+    hint: "Cash grant received to acquire factory machinery, workshop assets, or conditional multi-period milestones (held as Deferred Income).",
+  },
+  {
+    code: "GRANT_AMORTISED",
+    label: "Deferred Grant Amortised / Released to Income",
+    section: "NON_CURRENT_LIABILITY",
+    cashFlowCategory: "Non-Cash",
+    standardRef: "IAS 20.17 & 20.24",
+    hint: "Systematic non-cash release from Deferred Grant Liability to Profit or Loss matching asset depreciation or milestone completion.",
   },
 
   // Non-Current Liabilities
@@ -598,6 +627,9 @@ interface CumulativeSnapshot {
   financeCosts: number;
   depreciationExpense: number;
   disposalGainLoss: number;
+  grantIncomeCash: number;
+  grantAmortised: number;
+  grantIncomeTotal: number;
   profitBeforeTax: number;
 
   // Assets at cutoff
@@ -632,6 +664,8 @@ interface CumulativeSnapshot {
   longTermLoans: number;
   assetCreditFinancing: number;
   assetVendorPayable: number;
+  deferredGrantReceived: number;
+  deferredGrants: number;
   deferredTaxLiability: number;
 
   tradePayables: number;
@@ -666,6 +700,9 @@ function buildSnapshotAtCutoff(inputs: RawFinancialInputs, cutoff: Date | null, 
       financeCosts: 0,
       depreciationExpense: 0,
       disposalGainLoss: 0,
+      grantIncomeCash: 0,
+      grantAmortised: 0,
+      grantIncomeTotal: 0,
       profitBeforeTax: 0,
       ppeCost: 0,
       ppeAccumDep: 0,
@@ -693,6 +730,8 @@ function buildSnapshotAtCutoff(inputs: RawFinancialInputs, cutoff: Date | null, 
       longTermLoans: 0,
       assetCreditFinancing: 0,
       assetVendorPayable: 0,
+      deferredGrantReceived: 0,
+      deferredGrants: 0,
       deferredTaxLiability: 0,
       tradePayables: 0,
       accruedExpenses: 0,
@@ -905,6 +944,11 @@ function buildSnapshotAtCutoff(inputs: RawFinancialInputs, cutoff: Date | null, 
 
   const longTermLoansRaw = sumByType("LONG_TERM_LOAN") + sumByType("DIRECTOR_LOAN") - sumByType("LONG_TERM_LOAN_REPAYMENT");
   const longTermLoans = roundCurrency(longTermLoansRaw);
+  const grantIncomeCash = sumByType("GRANT_INCOME");
+  const grantAmortised = sumByType("GRANT_AMORTISED");
+  const grantIncomeTotal = roundCurrency(grantIncomeCash + grantAmortised);
+  const deferredGrantReceived = sumByType("DEFERRED_GRANT");
+  const deferredGrants = roundCurrency(deferredGrantReceived - grantAmortised);
   const deferredTaxLiability = sumByType("DEFERRED_TAX_LIABILITY");
 
   const tradePayables = roundCurrency(sumByType("TRADE_PAYABLE") - sumByType("TRADE_PAYABLE_SETTLEMENT"));
@@ -921,7 +965,7 @@ function buildSnapshotAtCutoff(inputs: RawFinancialInputs, cutoff: Date | null, 
 
   const totalCostOfSales = roundCurrency(cogsFinishedGoods + factoryOverhead);
   const profitBeforeTax = roundCurrency(
-    netRevenue - totalCostOfSales - operatingExpenses - depreciationExpense + disposalGainLoss - financeCosts
+    netRevenue - totalCostOfSales + grantIncomeTotal - operatingExpenses - depreciationExpense + disposalGainLoss - financeCosts
   );
 
   return {
@@ -935,6 +979,9 @@ function buildSnapshotAtCutoff(inputs: RawFinancialInputs, cutoff: Date | null, 
     financeCosts,
     depreciationExpense,
     disposalGainLoss,
+    grantIncomeCash,
+    grantAmortised,
+    grantIncomeTotal,
     profitBeforeTax,
     ppeCost,
     ppeAccumDep,
@@ -962,6 +1009,8 @@ function buildSnapshotAtCutoff(inputs: RawFinancialInputs, cutoff: Date | null, 
     longTermLoans,
     assetCreditFinancing,
     assetVendorPayable,
+    deferredGrantReceived,
+    deferredGrants,
     deferredTaxLiability,
     tradePayables,
     accruedExpenses,
@@ -1002,7 +1051,8 @@ function deriveBalanceSheetFromSnapshot(snap: CumulativeSnapshot, cumulativeCurr
       snap.disposalCashProceeds +
       equityCashIn -
       snap.dividendsPaid +
-      netCashBorrowings
+      netCashBorrowings +
+      snap.deferredGrants
   );
 
   const cashAndEquivalentsAsset = netCash >= 0 ? netCash : 0;
@@ -1032,6 +1082,9 @@ function deriveBalanceSheetFromSnapshot(snap: CumulativeSnapshot, cumulativeCurr
   const shortTermBorrowingsLiab = Math.max(0, snap.shortTermLoans);
   const shortTermLoanOverpaymentAsset = snap.shortTermLoans < 0 ? Math.abs(snap.shortTermLoans) : 0;
 
+  const deferredGrantsLiab = Math.max(0, snap.deferredGrants);
+  const deferredGrantOverAmortisedAsset = snap.deferredGrants < 0 ? Math.abs(snap.deferredGrants) : 0;
+
   const tradeAndOtherReceivables = roundCurrency(
     snap.tradeReceivablesSales +
       otherRecAsset +
@@ -1039,7 +1092,8 @@ function deriveBalanceSheetFromSnapshot(snap: CumulativeSnapshot, cumulativeCurr
       supplierAdvanceAsset +
       statutoryCreditAsset +
       longTermLoanOverpaymentAsset +
-      shortTermLoanOverpaymentAsset
+      shortTermLoanOverpaymentAsset +
+      deferredGrantOverAmortisedAsset
   );
 
   const totalPrepaymentsAndTaxAsset = roundCurrency(prepaymentsAsset + prepaidTaxAsset);
@@ -1059,7 +1113,7 @@ function deriveBalanceSheetFromSnapshot(snap: CumulativeSnapshot, cumulativeCurr
   );
 
   // Liabilities
-  const totalNonCurrentLiabilities = roundCurrency(longTermBorrowingsLiab + snap.deferredTaxLiability);
+  const totalNonCurrentLiabilities = roundCurrency(longTermBorrowingsLiab + deferredGrantsLiab + snap.deferredTaxLiability);
   const accruedAndOtherPayables = roundCurrency(
     snap.accruedExpenses + snap.assetVendorPayable + prepaymentsCreditAdj + otherRecCreditAdj
   );
@@ -1116,6 +1170,7 @@ function deriveBalanceSheetFromSnapshot(snap: CumulativeSnapshot, cumulativeCurr
     },
     nonCurrentLiabilities: {
       longTermBorrowings: longTermBorrowingsLiab,
+      deferredGrants: deferredGrantsLiab,
       deferredTaxLiability: snap.deferredTaxLiability,
       totalNonCurrentLiabilities,
     },
@@ -1172,12 +1227,16 @@ export function generateFinancialStatements(inputs: RawFinancialInputs, startDat
   const costOfSales = roundCurrency(closeSnap.totalCostOfSales - openSnap.totalCostOfSales);
   const grossProfit = roundCurrency(revenue - costOfSales);
 
+  const grantIncomeCash = roundCurrency(closeSnap.grantIncomeCash - openSnap.grantIncomeCash);
+  const grantAmortised = roundCurrency(closeSnap.grantAmortised - openSnap.grantAmortised);
+  const grantIncome = roundCurrency(grantIncomeCash + grantAmortised);
+
   const operatingExpenses = roundCurrency(closeSnap.operatingExpenses - openSnap.operatingExpenses);
   const depreciationAndAmortisation = roundCurrency(closeSnap.depreciationExpense - openSnap.depreciationExpense);
   const otherOperatingGainLoss = roundCurrency(closeSnap.disposalGainLoss - openSnap.disposalGainLoss);
 
   const operatingProfitEBIT = roundCurrency(
-    grossProfit - operatingExpenses - depreciationAndAmortisation + otherOperatingGainLoss
+    grossProfit + grantIncome - operatingExpenses - depreciationAndAmortisation + otherOperatingGainLoss
   );
   const financeCosts = roundCurrency(closeSnap.financeCosts - openSnap.financeCosts);
   const profitBeforeTax = roundCurrency(operatingProfitEBIT - financeCosts);
@@ -1316,7 +1375,7 @@ export function generateFinancialStatements(inputs: RawFinancialInputs, startDat
   );
 
   const operatingCashBeforeWorkingCapital = roundCurrency(
-    profitBeforeTax + depreciationAndAmortisation - otherOperatingGainLoss
+    profitBeforeTax + depreciationAndAmortisation - otherOperatingGainLoss - grantAmortised
   );
   const cashGeneratedFromOperations = roundCurrency(
     operatingCashBeforeWorkingCapital +
@@ -1339,6 +1398,7 @@ export function generateFinancialStatements(inputs: RawFinancialInputs, startDat
       (closeSnap.tradeReceivablesSales - openSnap.tradeReceivablesSales) +
       (closeSnap.customerDeposits - openSnap.customerDeposits)
   );
+  const cashReceiptsFromGrants = grantIncomeCash;
   const cashPaidToSuppliersAndProduction = roundCurrency(
     -(costOfSales + (closeSnap.totalInventories - openSnap.totalInventories) - (closeSnap.tradePayables - openSnap.tradePayables))
   );
@@ -1358,10 +1418,11 @@ export function generateFinancialStatements(inputs: RawFinancialInputs, startDat
   const proceedsFromDisposalOfPPE = roundCurrency(closeSnap.disposalCashProceeds - openSnap.disposalCashProceeds);
   const netCashFromInvestingActivities = roundCurrency(purchaseOfPPE + purchaseOfIntangibles + proceedsFromDisposalOfPPE);
 
-  // Financing Activities (IAS 7.17 — strictly cash equity & borrowings)
+  // Financing Activities (IAS 7.17 — strictly cash equity, borrowings & IAS 20 capital grants)
   const proceedsFromShareIssue = roundCurrency(
     issueOfShareCapital + issueOfSharePremium + cashCapitalIntroducedReserve + priorRetainedEarningsIntroduced
   );
+  const capitalGrantsReceived = roundCurrency(closeSnap.deferredGrantReceived - openSnap.deferredGrantReceived);
   const netProceedsFromLongTermBorrowings = roundCurrency(closeSnap.longTermLoans - openSnap.longTermLoans);
   const netProceedsFromShortTermBorrowings = roundCurrency(closeSnap.shortTermLoans - openSnap.shortTermLoans);
 
@@ -1384,7 +1445,11 @@ export function generateFinancialStatements(inputs: RawFinancialInputs, startDat
   const dividendsPaidCashFlow = roundCurrency(-dividendsPaidInPeriod);
 
   const netCashFromFinancingActivities = roundCurrency(
-    proceedsFromShareIssue + netProceedsFromLongTermBorrowings + netProceedsFromShortTermBorrowings + dividendsPaidCashFlow
+    proceedsFromShareIssue +
+      capitalGrantsReceived +
+      netProceedsFromLongTermBorrowings +
+      netProceedsFromShortTermBorrowings +
+      dividendsPaidCashFlow
   );
 
   const netIncreaseInCash = roundCurrency(
@@ -1471,7 +1536,7 @@ export function generateFinancialStatements(inputs: RawFinancialInputs, startDat
       hasComparative: hasStart,
       currency: "NGN (₦)",
       standardsApplied: [
-        "IFRS / IAS 1, IAS 2, IAS 7, IAS 12, IAS 16 (FRCN Adopted)",
+        "IFRS / IAS 1, IAS 2, IAS 7, IAS 12, IAS 16, IAS 20, IFRS 9, IFRS 15 (FRCN Adopted)",
         "Companies and Allied Matters Act (CAMA) 2020",
         "Nigeria Finance Act (CIT, Capital Allowances & Tertiary Education Tax)",
       ],
@@ -1484,6 +1549,9 @@ export function generateFinancialStatements(inputs: RawFinancialInputs, startDat
       factoryOverhead,
       costOfSales,
       grossProfit,
+      grantIncomeCash,
+      grantAmortised,
+      grantIncome,
       expensesByCategory,
       revenueByProduct,
       revenueByChannel,
@@ -1507,7 +1575,7 @@ export function generateFinancialStatements(inputs: RawFinancialInputs, startDat
       indirect: {
         profitBeforeTax,
         depreciationAndAmortisation,
-        otherNonCashAdjustments: -otherOperatingGainLoss,
+        otherNonCashAdjustments: roundCurrency(-otherOperatingGainLoss - grantAmortised),
         operatingCashBeforeWorkingCapital,
         changeInInventories,
         changeInReceivables,
@@ -1519,6 +1587,7 @@ export function generateFinancialStatements(inputs: RawFinancialInputs, startDat
       },
       direct: {
         cashReceiptsFromCustomers,
+        cashReceiptsFromGrants,
         cashPaidToSuppliersAndProduction,
         cashPaidForOperatingAndFinance,
         incomeTaxesPaid: -incomeTaxesPaid,
@@ -1532,6 +1601,7 @@ export function generateFinancialStatements(inputs: RawFinancialInputs, startDat
       },
       financing: {
         proceedsFromShareIssue,
+        capitalGrantsReceived,
         borrowingsReceived,
         borrowingsRepaid,
         dividendsPaid: dividendsPaidCashFlow,

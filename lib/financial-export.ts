@@ -62,6 +62,7 @@ export function exportFinancialStatementsCSV(statements: any, scope: ExportState
     rows.push(["Total Equity", "", sofp.equity.totalEquity.toFixed(2)]);
     rows.push(["Non-Current Liabilities", "", ""]);
     rows.push(["Long-Term Borrowings & Asset Financing", "9", sofp.nonCurrentLiabilities.longTermBorrowings.toFixed(2)]);
+    rows.push(["Deferred Government Grants (IAS 20)", "9", (sofp.nonCurrentLiabilities.deferredGrants || 0).toFixed(2)]);
     rows.push(["Deferred Tax Liabilities", "10", sofp.nonCurrentLiabilities.deferredTaxLiability.toFixed(2)]);
     rows.push(["Total Non-Current Liabilities", "", sofp.nonCurrentLiabilities.totalNonCurrentLiabilities.toFixed(2)]);
     rows.push(["Current Liabilities", "", ""]);
@@ -87,6 +88,9 @@ export function exportFinancialStatementsCSV(statements: any, scope: ExportState
     rows.push(["Net Revenue", "3", sopl.revenue.toFixed(2)]);
     rows.push(["Cost of Sales", "3", (-sopl.costOfSales).toFixed(2)]);
     rows.push(["Gross Profit", "", sopl.grossProfit.toFixed(2)]);
+    if (sopl.grantIncome && sopl.grantIncome !== 0) {
+      rows.push(["Grant & Other Operating Income (IAS 20)", "8", sopl.grantIncome.toFixed(2)]);
+    }
     rows.push(["Administrative, Selling & Operating Expenses", "", (-sopl.operatingExpenses).toFixed(2)]);
     rows.push(["Depreciation & Amortisation (IAS 16 / IAS 38)", "4", (-sopl.depreciationAndAmortisation).toFixed(2)]);
     if (sopl.otherOperatingGainLoss !== 0) {
@@ -187,7 +191,7 @@ export function exportFinancialStatementsCSV(statements: any, scope: ExportState
     rows.push(["Profit Before Tax", "", socf.indirect.profitBeforeTax.toFixed(2)]);
     rows.push(["Depreciation and Amortisation", "4", socf.indirect.depreciationAndAmortisation.toFixed(2)]);
     if (socf.indirect.otherNonCashAdjustments !== 0) {
-      rows.push(["(Gain)/Loss on Disposal of PPE", "4", socf.indirect.otherNonCashAdjustments.toFixed(2)]);
+      rows.push(["Non-Cash Disposal & Deferred Grant Amortisation", "4, 9", socf.indirect.otherNonCashAdjustments.toFixed(2)]);
     }
     rows.push(["(Increase)/Decrease in Inventories", "5", socf.indirect.changeInInventories.toFixed(2)]);
     rows.push(["(Increase)/Decrease in Trade & Other Receivables", "6", socf.indirect.changeInReceivables.toFixed(2)]);
@@ -203,6 +207,9 @@ export function exportFinancialStatementsCSV(statements: any, scope: ExportState
     rows.push(["Net Cash used in Investing Activities", "", socf.investing.netCashFromInvestingActivities.toFixed(2)]);
     rows.push(["Financing Activities", "", ""]);
     rows.push(["Proceeds from Share Issue / Owner Capital", "8", socf.financing.proceedsFromShareIssue.toFixed(2)]);
+    if (socf.financing.capitalGrantsReceived && socf.financing.capitalGrantsReceived !== 0) {
+      rows.push(["Capital / Asset-Related Grants Received (IAS 20)", "9", socf.financing.capitalGrantsReceived.toFixed(2)]);
+    }
     rows.push(["Proceeds from Borrowings", "9", socf.financing.borrowingsReceived.toFixed(2)]);
     rows.push(["Repayment of Borrowings", "9", socf.financing.borrowingsRepaid.toFixed(2)]);
     rows.push(["Dividends / Drawings Paid", "8", socf.financing.dividendsPaid.toFixed(2)]);
@@ -367,6 +374,12 @@ export function exportFinancialStatementsPDF(
             ${comp ? `<td class="num">${fmt(comp.nonCurrentLiabilities.longTermBorrowings)}</td>` : ""}
           </tr>
           <tr>
+            <td class="indent">Deferred government grants (IAS 20)</td>
+            <td class="note-col">9</td>
+            <td class="num">${fmt(sofp.nonCurrentLiabilities.deferredGrants || 0)}</td>
+            ${comp ? `<td class="num">${fmt(comp.nonCurrentLiabilities.deferredGrants || 0)}</td>` : ""}
+          </tr>
+          <tr>
             <td class="indent">Deferred tax liabilities</td>
             <td class="note-col">10</td>
             <td class="num">${fmt(sofp.nonCurrentLiabilities.deferredTaxLiability)}</td>
@@ -463,6 +476,11 @@ export function exportFinancialStatementsPDF(
             <td></td>
             <td class="num">${fmt(sopl.grossProfit)}</td>
           </tr>
+          ${
+            sopl.grantIncome && sopl.grantIncome !== 0
+              ? `<tr><td>Grant &amp; other operating income (IAS 20)</td><td class="note-col">8</td><td class="num">${fmt(sopl.grantIncome)}</td></tr>`
+              : ""
+          }
           <tr>
             <td>Administrative, selling &amp; distribution expenses</td>
             <td class="note-col">3</td>
@@ -639,7 +657,7 @@ export function exportFinancialStatementsPDF(
                 <tr><td class="indent">Adjustment for depreciation &amp; amortisation</td><td class="note-col">4</td><td class="num">${fmt(socf.indirect.depreciationAndAmortisation)}</td></tr>
                 ${
                   socf.indirect.otherNonCashAdjustments !== 0
-                    ? `<tr><td class="indent">Adjustment for (gain)/loss on PPE disposal</td><td class="note-col">4</td><td class="num">${fmt(socf.indirect.otherNonCashAdjustments)}</td></tr>`
+                    ? `<tr><td class="indent">Non-cash disposal (gain)/loss &amp; deferred grant amortisation</td><td class="note-col">4, 9</td><td class="num">${fmt(socf.indirect.otherNonCashAdjustments)}</td></tr>`
                     : ""
                 }
                 <tr class="subtotal-row"><td>Operating cash flows before working capital changes</td><td></td><td class="num">${fmt(socf.indirect.operatingCashBeforeWorkingCapital)}</td></tr>
@@ -652,6 +670,11 @@ export function exportFinancialStatementsPDF(
               `
               : `
                 <tr><td class="indent">Cash receipts from customers</td><td class="note-col">3, 6</td><td class="num">${fmt(socf.direct.cashReceiptsFromCustomers)}</td></tr>
+                ${
+                  socf.direct.cashReceiptsFromGrants && socf.direct.cashReceiptsFromGrants !== 0
+                    ? `<tr><td class="indent">Cash receipts from government / NGO income grants (IAS 20)</td><td class="note-col">8</td><td class="num">${fmt(socf.direct.cashReceiptsFromGrants)}</td></tr>`
+                    : ""
+                }
                 <tr><td class="indent">Cash paid to suppliers and production</td><td class="note-col">5, 9</td><td class="num">${fmt(socf.direct.cashPaidToSuppliersAndProduction)}</td></tr>
                 <tr><td class="indent">Cash paid for operating expenses &amp; finance charges</td><td></td><td class="num">${fmt(socf.direct.cashPaidForOperatingAndFinance)}</td></tr>
                 <tr><td class="indent">Income taxes paid to FIRS (CIT &amp; TET)</td><td class="note-col">10</td><td class="num">${fmt(socf.direct.incomeTaxesPaid)}</td></tr>
@@ -675,6 +698,11 @@ export function exportFinancialStatementsPDF(
 
           <tr class="group-row"><td colspan="3">Cash Flows from Financing Activities</td></tr>
           <tr><td class="indent">Proceeds from issue of share capital &amp; owner equity</td><td class="note-col">8</td><td class="num">${fmt(socf.financing.proceedsFromShareIssue)}</td></tr>
+          ${
+            socf.financing.capitalGrantsReceived && socf.financing.capitalGrantsReceived !== 0
+              ? `<tr><td class="indent">Capital / asset-related grants received (IAS 20)</td><td class="note-col">9</td><td class="num">${fmt(socf.financing.capitalGrantsReceived)}</td></tr>`
+              : ""
+          }
           <tr><td class="indent">Proceeds from bank &amp; director borrowings</td><td class="note-col">9</td><td class="num">${fmt(socf.financing.borrowingsReceived)}</td></tr>
           <tr><td class="indent">Repayment of borrowings</td><td class="note-col">9</td><td class="num">${fmt(socf.financing.borrowingsRepaid)}</td></tr>
           <tr><td class="indent">Dividends &amp; drawings paid</td><td class="note-col">8</td><td class="num">${fmt(socf.financing.dividendsPaid)}</td></tr>

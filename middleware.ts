@@ -8,6 +8,7 @@ const key = new TextEncoder().encode(secretKey);
 // Define which routes the SALES_REP is NOT allowed to access.
 // They can access: /dashboard, /sales, /orders, /customers, /products (view-only), /notifications
 const SALES_REP_RESTRICTED_ROUTES = [
+  "/capital-funding",
   "/expenses",
   "/financial-statements",
   "/fixed-assets",
