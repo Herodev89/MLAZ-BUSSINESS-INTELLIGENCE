@@ -734,7 +734,12 @@ export function exportFinancialStatementsPDF(
                     : ""
                 }
                 <tr><td class="indent">Cash paid to suppliers and production</td><td class="note-col">5, 9</td><td class="num">${fmt(socf.direct.cashPaidToSuppliersAndProduction)}</td></tr>
-                <tr><td class="indent">Cash paid for operating expenses &amp; finance charges</td><td></td><td class="num">${fmt(socf.direct.cashPaidForOperatingAndFinance)}</td></tr>
+                <tr><td class="indent">Cash paid for operating expenses &amp; prepayments</td><td></td><td class="num">${fmt(socf.direct.cashPaidForOperatingOnly ?? socf.direct.cashPaidForOperatingAndFinance)}</td></tr>
+                ${
+                  socf.direct.cashPaidForFinanceCosts && socf.direct.cashPaidForFinanceCosts !== 0
+                    ? `<tr><td class="indent">Finance costs paid (Loan interest &amp; bank charges)</td><td class="note-col">9</td><td class="num">${fmt(socf.direct.cashPaidForFinanceCosts)}</td></tr>`
+                    : ""
+                }
                 <tr><td class="indent">Income taxes paid to FIRS (CIT &amp; TET)</td><td class="note-col">10</td><td class="num">${fmt(socf.direct.incomeTaxesPaid)}</td></tr>
               `
           }

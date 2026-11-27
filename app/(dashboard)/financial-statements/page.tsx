@@ -89,16 +89,18 @@ export default function FinancialStatementsPage() {
   const applyPreset = (preset: "ALL" | "YTD" | "THIS_MONTH" | "H1" | "H2") => {
     const now = new Date();
     const yr = now.getFullYear();
+    const pad = (n: number) => String(n).padStart(2, "0");
+    const localToday = `${yr}-${pad(now.getMonth() + 1)}-${pad(now.getDate())}`;
     if (preset === "ALL") {
       setStartDate("");
       setEndDate("");
     } else if (preset === "YTD") {
       setStartDate(`${yr}-01-01`);
-      setEndDate(now.toISOString().split("T")[0]);
+      setEndDate(localToday);
     } else if (preset === "THIS_MONTH") {
-      const m = String(now.getMonth() + 1).padStart(2, "0");
+      const m = pad(now.getMonth() + 1);
       setStartDate(`${yr}-${m}-01`);
-      setEndDate(now.toISOString().split("T")[0]);
+      setEndDate(localToday);
     } else if (preset === "H1") {
       setStartDate(`${yr}-01-01`);
       setEndDate(`${yr}-06-30`);
@@ -1553,10 +1555,21 @@ export default function FinancialStatementsPage() {
                           <td style={{ textAlign: "right" }}>{fmt(socf.direct.cashPaidToSuppliersAndProduction)}</td>
                         </tr>
                         <tr>
-                          <td style={{ paddingLeft: 28 }}>Cash paid for operating expenses, prepayments &amp; finance costs</td>
+                          <td style={{ paddingLeft: 28 }}>Cash paid for operating expenses &amp; prepayments</td>
                           <td></td>
-                          <td style={{ textAlign: "right" }}>{fmt(socf.direct.cashPaidForOperatingAndFinance)}</td>
+                          <td style={{ textAlign: "right" }}>
+                            {fmt(socf.direct.cashPaidForOperatingOnly ?? socf.direct.cashPaidForOperatingAndFinance)}
+                          </td>
                         </tr>
+                        {(socf.direct.cashPaidForFinanceCosts || 0) !== 0 && (
+                          <tr>
+                            <td style={{ paddingLeft: 28 }}>
+                              Finance costs paid (Loan interest &amp; bank charges)
+                            </td>
+                            <td style={{ textAlign: "center" }}>9</td>
+                            <td style={{ textAlign: "right" }}>{fmt(socf.direct.cashPaidForFinanceCosts)}</td>
+                          </tr>
+                        )}
                         <tr>
                           <td style={{ paddingLeft: 28 }}>Income taxes paid to FIRS (CIT &amp; Tertiary Education Tax)</td>
                           <td style={{ textAlign: "center" }}>10</td>
@@ -2012,6 +2025,160 @@ export default function FinancialStatementsPage() {
                   </div>
                 </div>
               </div>
+
+              {/* Note 9: Borrowings, Loan Repayments & Finance Costs Schedule */}
+              {statements.notes.borrowingsSchedule && (
+                <div className="card">
+                  <div
+                    className="card-header"
+                    style={{ display: "flex", justifyContent: "space-between", alignItems: "center", flexWrap: "wrap", gap: 8 }}
+                  >
+                    <h3 style={{ fontSize: 15, fontWeight: 800, margin: 0 }}>
+                      Note 9 &mdash; Borrowings, Loan Repayments &amp; Finance Costs Schedule (IFRS 9 / IAS 7)
+                    </h3>
+                    <Link href="/capital-funding" className="btn-outline btn-sm">
+                      Manage Loans &amp; Repayments
+                    </Link>
+                  </div>
+                  <div className="card-body">
+                    <div
+                      style={{
+                        display: "grid",
+                        gridTemplateColumns: "repeat(auto-fit, minmax(170px, 1fr))",
+                        gap: 12,
+                        marginBottom: 16,
+                      }}
+                    >
+                      <div style={{ padding: 12, borderRadius: 8, background: "var(--color-surface-warm)" }}>
+                        <div style={{ fontSize: 11.5, color: "var(--color-text-muted)" }}>Loans Drawn (Period)</div>
+                        <div style={{ fontSize: 18, fontWeight: 800 }} className="font-tabular">
+                          {fmt(statements.notes.borrowingsSchedule.borrowingsReceived)}
+                        </div>
+                      </div>
+                      <div style={{ padding: 12, borderRadius: 8, background: "var(--color-surface-warm)" }}>
+                        <div style={{ fontSize: 11.5, color: "var(--color-text-muted)" }}>Loan Principal Repaid</div>
+                        <div style={{ fontSize: 18, fontWeight: 800, color: "var(--color-success)" }} className="font-tabular">
+                          {fmt(statements.notes.borrowingsSchedule.borrowingsRepaid)}
+                        </div>
+                      </div>
+                      <div style={{ padding: 12, borderRadius: 8, background: "var(--color-surface-warm)" }}>
+                        <div style={{ fontSize: 11.5, color: "var(--color-text-muted)" }}>Loan Interest (Finance Cost)</div>
+                        <div style={{ fontSize: 18, fontWeight: 800, color: "var(--color-error)" }} className="font-tabular">
+                          {fmt(statements.notes.borrowingsSchedule.financeCostsPaid)}
+                        </div>
+                      </div>
+                      <div style={{ padding: 12, borderRadius: 8, background: "var(--color-surface-warm)" }}>
+                        <div style={{ fontSize: 11.5, color: "var(--color-text-muted)" }}>Closing Net Borrowings</div>
+                        <div style={{ fontSize: 18, fontWeight: 800, color: "var(--color-brand)" }} className="font-tabular">
+                          {fmt(
+                            statements.notes.borrowingsSchedule.closingLongTermBorrowings +
+                              statements.notes.borrowingsSchedule.closingShortTermBorrowings
+                          )}
+                        </div>
+                      </div>
+                    </div>
+
+                    {statements.notes.borrowingsSchedule.loanOverpaymentAdvance > 0 && (
+                      <div
+                        style={{
+                          padding: "10px 12px",
+                          marginBottom: 14,
+                          borderRadius: 6,
+                          background: "var(--color-warning-bg)",
+                          color: "var(--color-warning)",
+                          fontSize: 12.5,
+                          fontWeight: 600,
+                        }}
+                      >
+                        Notice: Loan repayments exceed recorded loan principal by{" "}
+                        {fmt(statements.notes.borrowingsSchedule.loanOverpaymentAdvance)} (currently carried under
+                        Trade &amp; Other Receivables on SOFP). If you are repaying an opening loan obtained before
+                        onboarding, please also record the original loan balance on{" "}
+                        <Link href="/capital-funding" style={{ textDecoration: "underline", color: "inherit" }}>
+                          Investments, Grants &amp; Capital
+                        </Link>
+                        .
+                      </div>
+                    )}
+
+                    <div className="table-container" style={{ border: "1px solid var(--color-border)", borderRadius: 8 }}>
+                      <table className="table font-tabular">
+                        <thead>
+                          <tr>
+                            <th>Date</th>
+                            <th>Particulars / Reference</th>
+                            <th>Classification</th>
+                            <th style={{ textAlign: "right" }}>Amount (₦)</th>
+                          </tr>
+                        </thead>
+                        <tbody>
+                          {statements.notes.borrowingsSchedule.loanEntries.length === 0 &&
+                          statements.notes.borrowingsSchedule.financeCostExpenses.length === 0 ? (
+                            <tr>
+                              <td colSpan={4} style={{ textAlign: "center", padding: 20, color: "var(--color-text-muted)" }}>
+                                No loan drawings, principal repayments, or finance cost payments recorded in this period.
+                              </td>
+                            </tr>
+                          ) : (
+                            <>
+                              {statements.notes.borrowingsSchedule.loanEntries.map((item: any) => {
+                                const def = FINANCIAL_ENTRY_TYPES.find((t) => t.code === item.entryType);
+                                const isRepay = item.entryType.includes("REPAYMENT");
+                                return (
+                                  <tr key={item.id}>
+                                    <td style={{ fontSize: 12.5 }}>{formatDate(item.date)}</td>
+                                    <td>
+                                      <div style={{ fontWeight: 600 }}>{item.title}</div>
+                                      {(item.reference || item.notes) && (
+                                        <div style={{ fontSize: 11.5, color: "var(--color-text-muted)" }}>
+                                          {item.reference} {item.notes ? `• ${item.notes}` : ""}
+                                        </div>
+                                      )}
+                                    </td>
+                                    <td>
+                                      <span className={isRepay ? "badge-success" : "badge-warning"}>
+                                        {def?.label || item.entryType}
+                                      </span>
+                                    </td>
+                                    <td
+                                      style={{
+                                        textAlign: "right",
+                                        fontWeight: 700,
+                                        color: isRepay ? "var(--color-success)" : "var(--color-text-primary)",
+                                      }}
+                                    >
+                                      {fmt(isRepay ? -item.amount : item.amount)}
+                                    </td>
+                                  </tr>
+                                );
+                              })}
+                              {statements.notes.borrowingsSchedule.financeCostExpenses.map((exp: any) => (
+                                <tr key={exp.id}>
+                                  <td style={{ fontSize: 12.5 }}>{formatDate(exp.date)}</td>
+                                  <td>
+                                    <div style={{ fontWeight: 600 }}>{exp.name}</div>
+                                    {exp.description && (
+                                      <div style={{ fontSize: 11.5, color: "var(--color-text-muted)" }}>
+                                        {exp.description}
+                                      </div>
+                                    )}
+                                  </td>
+                                  <td>
+                                    <span className="badge-error">Finance Cost (SOPL Interest)</span>
+                                  </td>
+                                  <td style={{ textAlign: "right", fontWeight: 700, color: "var(--color-error)" }}>
+                                    {fmt(-exp.amount)}
+                                  </td>
+                                </tr>
+                              ))}
+                            </>
+                          )}
+                        </tbody>
+                      </table>
+                    </div>
+                  </div>
+                </div>
+              )}
             </div>
           )}
 

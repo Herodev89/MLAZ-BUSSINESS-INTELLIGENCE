@@ -454,14 +454,22 @@ function roundCurrency(val: number): number {
 }
 
 function toEndOfDay(dateStr: string): Date {
+  const m = /^(\d{4})-(\d{2})-(\d{2})/.exec(dateStr.trim());
+  if (m) {
+    return new Date(Date.UTC(Number(m[1]), Number(m[2]) - 1, Number(m[3]), 23, 59, 59, 999));
+  }
   const d = new Date(dateStr);
-  d.setHours(23, 59, 59, 999);
+  d.setUTCHours(23, 59, 59, 999);
   return d;
 }
 
 function toStartOfDay(dateStr: string): Date {
+  const m = /^(\d{4})-(\d{2})-(\d{2})/.exec(dateStr.trim());
+  if (m) {
+    return new Date(Date.UTC(Number(m[1]), Number(m[2]) - 1, Number(m[3]), 0, 0, 0, 0));
+  }
   const d = new Date(dateStr);
-  d.setHours(0, 0, 0, 0);
+  d.setUTCHours(0, 0, 0, 0);
   return d;
 }
 
@@ -1325,7 +1333,7 @@ export function generateFinancialStatements(inputs: RawFinancialInputs, startDat
   const hasStart = Boolean(startDate && startDate.trim());
   const hasEnd = Boolean(endDate && endDate.trim());
 
-  const closingCutoff = hasEnd ? toEndOfDay(endDate!) : toEndOfDay(new Date().toISOString());
+  const closingCutoff = hasEnd ? toEndOfDay(endDate!) : toEndOfDay(new Date(Date.now() + 86_400_000).toISOString());
   const openingCutoff = hasStart ? new Date(toStartOfDay(startDate!).getTime() - 1) : null;
 
   const openSnap = buildSnapshotAtCutoff(inputs, openingCutoff, !hasStart);
@@ -1556,6 +1564,8 @@ export function generateFinancialStatements(inputs: RawFinancialInputs, startDat
       (closeSnap.accruedExpenses + closeManualStatutory - (openSnap.accruedExpenses + openManualStatutory))
     )
   );
+  const cashPaidForFinanceCosts = roundCurrency(-financeCosts);
+  const cashPaidForOperatingOnly = roundCurrency(cashPaidForOperatingAndFinance - cashPaidForFinanceCosts);
 
   // Investing Activities (IAS 7.16)
   const purchaseOfPPE = roundCurrency(-(closeSnap.cashCapExPPE - openSnap.cashCapExPPE));
@@ -1588,13 +1598,58 @@ export function generateFinancialStatements(inputs: RawFinancialInputs, startDat
   const sumPeriodEntry = (t: FinancialEntryType) =>
     roundCurrency(periodEntries.filter((e) => e.entryType === t).reduce((s, e) => s + (Number(e.amount) || 0), 0));
 
-  const borrowingsReceived = roundCurrency(
-    sumPeriodEntry("LONG_TERM_LOAN") + sumPeriodEntry("DIRECTOR_LOAN") + sumPeriodEntry("SHORT_TERM_LOAN")
-  );
-  const borrowingsRepaid = roundCurrency(
-    -(sumPeriodEntry("LONG_TERM_LOAN_REPAYMENT") + sumPeriodEntry("SHORT_TERM_LOAN_REPAYMENT"))
-  );
+  const longTermDrawn = roundCurrency(sumPeriodEntry("LONG_TERM_LOAN") + sumPeriodEntry("DIRECTOR_LOAN"));
+  const longTermRepaid = sumPeriodEntry("LONG_TERM_LOAN_REPAYMENT");
+  const shortTermDrawn = sumPeriodEntry("SHORT_TERM_LOAN");
+  const shortTermRepaid = sumPeriodEntry("SHORT_TERM_LOAN_REPAYMENT");
+
+  const borrowingsReceived = roundCurrency(longTermDrawn + shortTermDrawn);
+  const borrowingsRepaid = roundCurrency(-(longTermRepaid + shortTermRepaid));
   const dividendsPaidCashFlow = roundCurrency(-dividendsPaidInPeriod);
+
+  const loanEntryTypes: FinancialEntryType[] = [
+    "LONG_TERM_LOAN",
+    "DIRECTOR_LOAN",
+    "LONG_TERM_LOAN_REPAYMENT",
+    "SHORT_TERM_LOAN",
+    "SHORT_TERM_LOAN_REPAYMENT",
+  ];
+  const loanEntries = periodEntries
+    .filter((e) => loanEntryTypes.includes(e.entryType))
+    .map((e) => ({
+      id: e.id,
+      date: e.date,
+      entryType: e.entryType,
+      title: e.title,
+      reference: e.reference || "",
+      notes: e.notes || "",
+      amount: roundCurrency(Number(e.amount) || 0),
+    }));
+
+  const financeCostExpenses = inputs.expenses
+    .filter((e) => {
+      const isFin =
+        e.type === "Finance Cost" || e.category === "Interest / Bank Charges" || e.category === "Finance Cost";
+      if (!isFin) return false;
+      const d = e.date ? new Date(e.date) : null;
+      if (d && openingCutoff && d <= openingCutoff) return false;
+      if (d && d > closingCutoff) return false;
+      return true;
+    })
+    .map((e) => ({
+      id: String(e.id),
+      name: String(e.name || "Finance Cost"),
+      category: String(e.category || "Interest / Bank Charges"),
+      amount: roundCurrency(Number(e.amount) || 0),
+      date: String(e.date || ""),
+      description: String(e.description || ""),
+    }));
+
+  const loanOverpaymentAdvance = roundCurrency(
+    (closeSnap.longTermLoans + closeSnap.assetCreditFinancing < 0
+      ? Math.abs(closeSnap.longTermLoans + closeSnap.assetCreditFinancing)
+      : 0) + (closeSnap.shortTermLoans < 0 ? Math.abs(closeSnap.shortTermLoans) : 0)
+  );
 
   const netCashFromFinancingActivities = roundCurrency(
     proceedsFromShareIssue +
@@ -1744,6 +1799,8 @@ export function generateFinancialStatements(inputs: RawFinancialInputs, startDat
         cashReceiptsFromGrants,
         cashPaidToSuppliersAndProduction,
         cashPaidForOperatingAndFinance,
+        cashPaidForOperatingOnly,
+        cashPaidForFinanceCosts,
         incomeTaxesPaid: -incomeTaxesPaid,
         netCashFromOperatingActivities,
       },
@@ -1774,6 +1831,23 @@ export function generateFinancialStatements(inputs: RawFinancialInputs, startDat
     },
     notes: {
       ppeSchedule,
+      borrowingsSchedule: {
+        openingLongTermBorrowings: openingPosition.nonCurrentLiabilities.longTermBorrowings,
+        openingShortTermBorrowings: openingPosition.currentLiabilities.shortTermBorrowings,
+        longTermDrawn,
+        longTermRepaid,
+        shortTermDrawn,
+        shortTermRepaid,
+        borrowingsReceived,
+        borrowingsRepaid: roundCurrency(longTermRepaid + shortTermRepaid),
+        assetCreditFinancing: roundCurrency(closeSnap.assetCreditFinancing - openSnap.assetCreditFinancing),
+        closingLongTermBorrowings: closingPosition.nonCurrentLiabilities.longTermBorrowings,
+        closingShortTermBorrowings: closingPosition.currentLiabilities.shortTermBorrowings,
+        loanOverpaymentAdvance,
+        financeCostsPaid: financeCosts,
+        loanEntries,
+        financeCostExpenses,
+      },
       nonCashInvestingFinancing: roundCurrency(
         closeSnap.assetCreditFinancing -
           openSnap.assetCreditFinancing +

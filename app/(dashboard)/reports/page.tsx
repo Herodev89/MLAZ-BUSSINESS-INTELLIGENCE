@@ -77,31 +77,64 @@ export default function ReportsPage() {
   
   const totalProductionCost = filteredProduction.reduce((acc, r) => acc + (r.totalCost || 0), 0);
   
-  const operatingExpenses = filteredExpenses.filter(e => e.type !== 'Factory Overhead').reduce((acc, e) => acc + (e.amount || 0), 0);
-  const factoryOverhead = filteredExpenses.filter(e => e.type === 'Factory Overhead').reduce((acc, e) => acc + (e.amount || 0), 0);
-  const totalExpenses = operatingExpenses + factoryOverhead;
-  
-  const inventoryValuation = products.reduce((acc, p) => acc + ((p.costPrice || p.price || 0) * (p.stock || 0)), 0);
+  const operatingExpenses = filteredExpenses
+    .filter(
+      (e) =>
+        e.type !== "Factory Overhead" &&
+        e.type !== "Finance Cost" &&
+        e.category !== "Interest / Bank Charges" &&
+        e.category !== "Finance Cost"
+    )
+    .reduce((acc, e) => acc + (e.amount || 0), 0);
+  const financeCosts = filteredExpenses
+    .filter(
+      (e) =>
+        e.type === "Finance Cost" ||
+        e.category === "Interest / Bank Charges" ||
+        e.category === "Finance Cost"
+    )
+    .reduce((acc, e) => acc + (e.amount || 0), 0);
+  const factoryOverhead = filteredExpenses
+    .filter((e) => e.type === "Factory Overhead")
+    .reduce((acc, e) => acc + (e.amount || 0), 0);
+  const totalExpenses = operatingExpenses + financeCosts + factoryOverhead;
 
-  const handleGenerateReport = () => {
+  const inventoryValuation = products.reduce(
+    (acc, p) => acc + ((p.costPrice || p.price || 0) * (p.stock || 0)),
+    0
+  );
+
+  const handleGenerateReport = async () => {
+    const scope = getFinancialScope(selectedReport);
+    let finStatements: any = null;
+    if (scope || selectedReport === "Profit & Loss Statement" || selectedReport === "Expenses Report") {
+      const res = await getFinancialStatementsAction(startDate || undefined, endDate || undefined);
+      if (res.success && res.statements) {
+        finStatements = res.statements;
+      }
+    }
+
     setGeneratedReport({
       title: selectedReport,
       date: new Date().toLocaleDateString(),
       range: startDate && endDate ? `${startDate} to ${endDate}` : "All Time Records",
+      isFinancialScope: Boolean(scope),
+      finStatements,
       salesCount: filteredSales.length,
       revenue: totalSalesRevenue,
       cogs: totalCOGS,
       profit: totalSalesProfit,
       productionCost: totalProductionCost,
-      operatingExpenses: operatingExpenses,
-      factoryOverhead: factoryOverhead,
-      netProfit: totalSalesProfit - operatingExpenses,
+      operatingExpenses,
+      financeCosts,
+      factoryOverhead,
+      netProfit: totalSalesProfit - operatingExpenses - financeCosts,
       inventoryValuation,
       filteredSales,
       filteredProduction,
       filteredExpenses,
       filteredOrders,
-      filteredRawMaterials
+      filteredRawMaterials,
     });
   };
 
@@ -377,87 +410,176 @@ export default function ReportsPage() {
             </div>
           </div>
 
-          <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(180px, 1fr))", gap: 16, marginBottom: 24 }}>
-            <div className="card" style={{ padding: 16, background: "var(--color-surface-warm)" }}>
-              <div style={{ fontSize: 12, color: "var(--color-text-muted)", textTransform: "uppercase", fontWeight: 600 }}>Total Revenue</div>
-              <div style={{ fontSize: 22, fontWeight: 800, color: "var(--color-accent)", marginTop: 4 }}>{formatNaira(generatedReport.revenue)}</div>
-              <div style={{ fontSize: 12, color: "var(--color-text-secondary)", marginTop: 2 }}>From {generatedReport.salesCount} logged sales</div>
-            </div>
-            <div className="card" style={{ padding: 16, background: "var(--color-surface-warm)" }}>
-              <div style={{ fontSize: 12, color: "var(--color-text-muted)", textTransform: "uppercase", fontWeight: 600 }}>Cost of Goods Sold (COGS)</div>
-              <div style={{ fontSize: 22, fontWeight: 800, color: "var(--color-text-secondary)", marginTop: 4 }}>{formatNaira(generatedReport.cogs)}</div>
-              <div style={{ fontSize: 12, color: "var(--color-text-secondary)", marginTop: 2 }}>Direct manufacturing costs</div>
-            </div>
-            <div className="card" style={{ padding: 16, background: "var(--color-surface-warm)" }}>
-              <div style={{ fontSize: 12, color: "var(--color-text-muted)", textTransform: "uppercase", fontWeight: 600 }}>Gross Profit</div>
-              <div style={{ fontSize: 22, fontWeight: 800, color: "var(--color-success)", marginTop: 4 }}>{formatNaira(generatedReport.profit)}</div>
-            </div>
-            <div className="card" style={{ padding: 16, background: "var(--color-surface-warm)" }}>
-              <div style={{ fontSize: 12, color: "var(--color-text-muted)", textTransform: "uppercase", fontWeight: 600 }}>Operating Expenses</div>
-              <div style={{ fontSize: 22, fontWeight: 800, color: "var(--color-error)", marginTop: 4 }}>{formatNaira(generatedReport.operatingExpenses)}</div>
-            </div>
-            <div className="card" style={{ padding: 16, background: "var(--color-surface-warm)", border: "2px solid var(--color-success)" }}>
-              <div style={{ fontSize: 12, color: "var(--color-text-muted)", textTransform: "uppercase", fontWeight: 600 }}>Net Profit</div>
-              <div style={{ fontSize: 22, fontWeight: 800, color: "var(--color-success)", marginTop: 4 }}>{formatNaira(generatedReport.netProfit)}</div>
-            </div>
-            <div className="card" style={{ padding: 16, background: "var(--color-surface-warm)" }}>
-              <div style={{ fontSize: 12, color: "var(--color-text-muted)", textTransform: "uppercase", fontWeight: 600 }}>Inventory Value</div>
-              <div style={{ fontSize: 22, fontWeight: 800, color: "var(--color-brand)", marginTop: 4 }}>{formatNaira(generatedReport.inventoryValuation)}</div>
-            </div>
-          </div>
+          {generatedReport.finStatements && (
+            <div style={{ marginBottom: 24 }}>
+              <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(175px, 1fr))", gap: 12, marginBottom: 16 }}>
+                <div className="card" style={{ padding: 14, background: "var(--color-surface-warm)" }}>
+                  <div style={{ fontSize: 11.5, color: "var(--color-text-muted)", textTransform: "uppercase", fontWeight: 600 }}>Total Assets (SOFP)</div>
+                  <div style={{ fontSize: 20, fontWeight: 800, marginTop: 4 }}>{formatNaira(generatedReport.finStatements.statementOfFinancialPosition.current.totalAssets)}</div>
+                </div>
+                <div className="card" style={{ padding: 14, background: "var(--color-surface-warm)" }}>
+                  <div style={{ fontSize: 11.5, color: "var(--color-text-muted)", textTransform: "uppercase", fontWeight: 600 }}>Total Equity (CAMA)</div>
+                  <div style={{ fontSize: 20, fontWeight: 800, color: "var(--color-success)", marginTop: 4 }}>{formatNaira(generatedReport.finStatements.statementOfFinancialPosition.current.equity.totalEquity)}</div>
+                </div>
+                <div className="card" style={{ padding: 14, background: "var(--color-surface-warm)" }}>
+                  <div style={{ fontSize: 11.5, color: "var(--color-text-muted)", textTransform: "uppercase", fontWeight: 600 }}>Net Borrowings (Loans)</div>
+                  <div style={{ fontSize: 20, fontWeight: 800, color: "var(--color-warning)", marginTop: 4 }}>
+                    {formatNaira(
+                      generatedReport.finStatements.statementOfFinancialPosition.current.nonCurrentLiabilities.longTermBorrowings +
+                        generatedReport.finStatements.statementOfFinancialPosition.current.currentLiabilities.shortTermBorrowings
+                    )}
+                  </div>
+                </div>
+                <div className="card" style={{ padding: 14, background: "var(--color-surface-warm)" }}>
+                  <div style={{ fontSize: 11.5, color: "var(--color-text-muted)", textTransform: "uppercase", fontWeight: 600 }}>Loan Principal Repaid</div>
+                  <div style={{ fontSize: 20, fontWeight: 800, color: "var(--color-brand)", marginTop: 4 }}>
+                    {formatNaira(Math.abs(generatedReport.finStatements.statementOfCashFlows.financing.borrowingsRepaid || 0))}
+                  </div>
+                </div>
+                <div className="card" style={{ padding: 14, background: "var(--color-surface-warm)" }}>
+                  <div style={{ fontSize: 11.5, color: "var(--color-text-muted)", textTransform: "uppercase", fontWeight: 600 }}>Loan Interest (Finance Cost)</div>
+                  <div style={{ fontSize: 20, fontWeight: 800, color: "var(--color-error)", marginTop: 4 }}>
+                    {formatNaira(generatedReport.finStatements.incomeStatement.financeCosts || 0)}
+                  </div>
+                </div>
+                <div className="card" style={{ padding: 14, background: "var(--color-surface-warm)" }}>
+                  <div style={{ fontSize: 11.5, color: "var(--color-text-muted)", textTransform: "uppercase", fontWeight: 600 }}>Closing Cash &amp; Bank</div>
+                  <div style={{ fontSize: 20, fontWeight: 800, color: "var(--color-accent)", marginTop: 4 }}>
+                    {formatNaira(generatedReport.finStatements.statementOfCashFlows.closingCashEquivalents)}
+                  </div>
+                </div>
+              </div>
 
-          <div>
-            <h3 style={{ fontSize: 15, fontWeight: 700, marginBottom: 12 }}>Structured Live Data Summary</h3>
-            <table className="table" style={{ fontSize: 13 }}>
-              <thead>
-                <tr>
-                  <th>Record / Product</th>
-                  <th>Type / Category</th>
-                  <th>Quantity / Volume</th>
-                  <th>Financial Value</th>
-                  <th>Status</th>
-                </tr>
-              </thead>
-              <tbody>
-                {generatedReport.filteredSales?.slice(0, 10).map((s: any) => (
-                  <tr key={s.id}>
-                    <td style={{ fontWeight: 600 }}>{s.productName} ({s.customerName})</td>
-                    <td>Sale Transaction</td>
-                    <td>{s.quantity} units</td>
-                    <td style={{ fontWeight: 700, color: "var(--color-accent)" }}>{formatNaira(s.amount)}</td>
-                    <td><span className={`badge ${s.status === "Confirmed" ? "badge-success" : "badge-warning"}`}>{s.status}</span></td>
-                  </tr>
-                ))}
-                {generatedReport.filteredProduction?.slice(0, 10).map((r: any) => (
-                  <tr key={r.id}>
-                    <td style={{ fontWeight: 600 }}>{r.productName} (Run #{r.id})</td>
-                    <td>Production Run</td>
-                    <td>{r.qtyProduced} pcs batch</td>
-                    <td style={{ fontWeight: 700 }}>{formatNaira(r.totalCost)}</td>
-                    <td><span className="badge badge-warning">{r.status}</span></td>
-                  </tr>
-                ))}
-                {generatedReport.filteredRawMaterials?.slice(0, 10).map((m: any) => (
-                  <tr key={m.id}>
-                    <td style={{ fontWeight: 600 }}>{m.name} ({m.category})</td>
-                    <td>Raw Material</td>
-                    <td>{m.quantity} {m.unit}</td>
-                    <td style={{ fontWeight: 700 }}>{formatNaira(m.costPerUnit * m.quantity)}</td>
-                    <td><span className="badge badge-success">In Stock</span></td>
-                  </tr>
-                ))}
-                {generatedReport.filteredExpenses?.slice(0, 10).map((e: any) => (
-                  <tr key={e.id}>
-                    <td style={{ fontWeight: 600 }}>{e.name}</td>
-                    <td>Expense ({e.category})</td>
-                    <td>-</td>
-                    <td style={{ fontWeight: 700, color: "var(--color-error)" }}>{formatNaira(e.amount)}</td>
-                    <td><span className="badge badge-error">Paid</span></td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
+              {(generatedReport.finStatements.notes?.borrowingsSchedule?.loanEntries?.length > 0 ||
+                generatedReport.finStatements.notes?.borrowingsSchedule?.financeCostExpenses?.length > 0) && (
+                <div style={{ marginBottom: 16 }}>
+                  <h3 style={{ fontSize: 14.5, fontWeight: 700, marginBottom: 8 }}>
+                    Borrowings, Loan Principal Repayments &amp; Finance Costs (Note 9 / IAS 7)
+                  </h3>
+                  <table className="table" style={{ fontSize: 13 }}>
+                    <thead>
+                      <tr>
+                        <th>Date</th>
+                        <th>Description</th>
+                        <th>Category</th>
+                        <th style={{ textAlign: "right" }}>Amount (₦)</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {generatedReport.finStatements.notes.borrowingsSchedule.loanEntries.map((le: any) => (
+                        <tr key={le.id}>
+                          <td>{formatDate(le.date)}</td>
+                          <td style={{ fontWeight: 600 }}>{le.title}</td>
+                          <td>
+                            <span className={le.entryType.includes("REPAYMENT") ? "badge-success" : "badge-warning"}>
+                              {le.entryType.replace(/_/g, " ")}
+                            </span>
+                          </td>
+                          <td style={{ textAlign: "right", fontWeight: 700 }}>
+                            {formatNaira(le.entryType.includes("REPAYMENT") ? -le.amount : le.amount)}
+                          </td>
+                        </tr>
+                      ))}
+                      {generatedReport.finStatements.notes.borrowingsSchedule.financeCostExpenses.map((fe: any) => (
+                        <tr key={fe.id}>
+                          <td>{formatDate(fe.date)}</td>
+                          <td style={{ fontWeight: 600 }}>{fe.name}</td>
+                          <td><span className="badge-error">Finance Cost (Loan Interest)</span></td>
+                          <td style={{ textAlign: "right", fontWeight: 700, color: "var(--color-error)" }}>{formatNaira(-fe.amount)}</td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              )}
+            </div>
+          )}
+
+          {!generatedReport.isFinancialScope && (
+            <>
+              <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(180px, 1fr))", gap: 16, marginBottom: 24 }}>
+                <div className="card" style={{ padding: 16, background: "var(--color-surface-warm)" }}>
+                  <div style={{ fontSize: 12, color: "var(--color-text-muted)", textTransform: "uppercase", fontWeight: 600 }}>Total Revenue</div>
+                  <div style={{ fontSize: 22, fontWeight: 800, color: "var(--color-accent)", marginTop: 4 }}>{formatNaira(generatedReport.revenue)}</div>
+                  <div style={{ fontSize: 12, color: "var(--color-text-secondary)", marginTop: 2 }}>From {generatedReport.salesCount} logged sales</div>
+                </div>
+                <div className="card" style={{ padding: 16, background: "var(--color-surface-warm)" }}>
+                  <div style={{ fontSize: 12, color: "var(--color-text-muted)", textTransform: "uppercase", fontWeight: 600 }}>Cost of Goods Sold (COGS)</div>
+                  <div style={{ fontSize: 22, fontWeight: 800, color: "var(--color-text-secondary)", marginTop: 4 }}>{formatNaira(generatedReport.cogs)}</div>
+                  <div style={{ fontSize: 12, color: "var(--color-text-secondary)", marginTop: 2 }}>Direct manufacturing costs</div>
+                </div>
+                <div className="card" style={{ padding: 16, background: "var(--color-surface-warm)" }}>
+                  <div style={{ fontSize: 12, color: "var(--color-text-muted)", textTransform: "uppercase", fontWeight: 600 }}>Gross Profit</div>
+                  <div style={{ fontSize: 22, fontWeight: 800, color: "var(--color-success)", marginTop: 4 }}>{formatNaira(generatedReport.profit)}</div>
+                </div>
+                <div className="card" style={{ padding: 16, background: "var(--color-surface-warm)" }}>
+                  <div style={{ fontSize: 12, color: "var(--color-text-muted)", textTransform: "uppercase", fontWeight: 600 }}>Operating Expenses</div>
+                  <div style={{ fontSize: 22, fontWeight: 800, color: "var(--color-error)", marginTop: 4 }}>{formatNaira(generatedReport.operatingExpenses)}</div>
+                </div>
+                <div className="card" style={{ padding: 16, background: "var(--color-surface-warm)", border: "2px solid var(--color-success)" }}>
+                  <div style={{ fontSize: 12, color: "var(--color-text-muted)", textTransform: "uppercase", fontWeight: 600 }}>Net Profit</div>
+                  <div style={{ fontSize: 22, fontWeight: 800, color: "var(--color-success)", marginTop: 4 }}>{formatNaira(generatedReport.netProfit)}</div>
+                </div>
+                <div className="card" style={{ padding: 16, background: "var(--color-surface-warm)" }}>
+                  <div style={{ fontSize: 12, color: "var(--color-text-muted)", textTransform: "uppercase", fontWeight: 600 }}>Inventory Value</div>
+                  <div style={{ fontSize: 22, fontWeight: 800, color: "var(--color-brand)", marginTop: 4 }}>{formatNaira(generatedReport.inventoryValuation)}</div>
+                </div>
+              </div>
+
+              <div>
+                <h3 style={{ fontSize: 15, fontWeight: 700, marginBottom: 12 }}>Structured Live Data Summary</h3>
+                <table className="table" style={{ fontSize: 13 }}>
+                  <thead>
+                    <tr>
+                      <th>Record / Product</th>
+                      <th>Type / Category</th>
+                      <th>Quantity / Volume</th>
+                      <th>Financial Value</th>
+                      <th>Status</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {generatedReport.filteredSales?.slice(0, 10).map((s: any) => (
+                      <tr key={s.id}>
+                        <td style={{ fontWeight: 600 }}>{s.productName} ({s.customerName})</td>
+                        <td>Sale Transaction</td>
+                        <td>{s.quantity} units</td>
+                        <td style={{ fontWeight: 700, color: "var(--color-accent)" }}>{formatNaira(s.amount)}</td>
+                        <td><span className={`badge ${s.status === "Confirmed" ? "badge-success" : "badge-warning"}`}>{s.status}</span></td>
+                      </tr>
+                    ))}
+                    {generatedReport.filteredProduction?.slice(0, 10).map((r: any) => (
+                      <tr key={r.id}>
+                        <td style={{ fontWeight: 600 }}>{r.productName} (Run #{r.id})</td>
+                        <td>Production Run</td>
+                        <td>{r.qtyProduced} pcs batch</td>
+                        <td style={{ fontWeight: 700 }}>{formatNaira(r.totalCost)}</td>
+                        <td><span className="badge badge-warning">{r.status}</span></td>
+                      </tr>
+                    ))}
+                    {generatedReport.filteredRawMaterials?.slice(0, 10).map((m: any) => (
+                      <tr key={m.id}>
+                        <td style={{ fontWeight: 600 }}>{m.name} ({m.category})</td>
+                        <td>Raw Material</td>
+                        <td>{m.quantity} {m.unit}</td>
+                        <td style={{ fontWeight: 700 }}>{formatNaira(m.costPerUnit * m.quantity)}</td>
+                        <td><span className="badge badge-success">In Stock</span></td>
+                      </tr>
+                    ))}
+                    {generatedReport.filteredExpenses?.slice(0, 10).map((e: any) => (
+                      <tr key={e.id}>
+                        <td style={{ fontWeight: 600 }}>{e.name}</td>
+                        <td>{e.type || "Expense"} ({e.category})</td>
+                        <td>-</td>
+                        <td style={{ fontWeight: 700, color: "var(--color-error)" }}>{formatNaira(e.amount)}</td>
+                        <td><span className="badge badge-error">Paid</span></td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            </>
+          )}
         </div>
       )}
 
