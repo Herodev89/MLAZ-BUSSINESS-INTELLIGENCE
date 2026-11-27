@@ -332,6 +332,7 @@ export async function createFinancialEntryAction(formData: FormData) {
   const entryType = formData.get("entryType")?.toString() || "SHARE_CAPITAL";
   const title = formData.get("title")?.toString()?.trim();
   const amount = parseFloat(formData.get("amount")?.toString() || "0");
+  const interestAmount = parseFloat(formData.get("interestAmount")?.toString() || "0");
   const dateStr = formData.get("date")?.toString();
   const reference = formData.get("reference")?.toString() || "";
   const notes = formData.get("notes")?.toString() || "";
@@ -353,9 +354,34 @@ export async function createFinancialEntryAction(formData: FormData) {
       )
       .run(id, entryType, section, title, amount, date, reference, notes);
 
+    // If split loan repayment includes an interest portion, post it directly to Expense as Finance Cost (SOPL)
+    if (
+      interestAmount > 0 &&
+      (entryType === "LONG_TERM_LOAN_REPAYMENT" || entryType === "SHORT_TERM_LOAN_REPAYMENT")
+    ) {
+      const expId = `EXP-${randomUUID().slice(0, 8).toUpperCase()}`;
+      await db
+        .prepare(
+          `INSERT INTO Expense (id, name, type, category, amount, description, date)
+           VALUES (?, ?, ?, ?, ?, ?, ?)`
+        )
+        .run(
+          expId,
+          `Loan Interest: ${title}`,
+          "Finance Cost",
+          "Interest / Bank Charges",
+          interestAmount,
+          `Interest portion of ${id}${reference ? ` (Ref: ${reference})` : ""}`,
+          date
+        );
+    }
+
     revalidatePath("/financial-statements");
     revalidatePath("/capital-funding");
+    revalidatePath("/expenses");
     revalidatePath("/reports");
+    revalidatePath("/profit-analysis");
+    revalidatePath("/dashboard");
     return { success: true, id };
   } catch (error: any) {
     return { error: "Failed to record financial entry: " + error.message };

@@ -351,28 +351,35 @@ export interface CitaAllowanceRate {
 }
 
 /**
- * Nigeria Companies Income Tax Act (CITA) Second Schedule Capital Allowance Rates
+ * Nigeria Tax Act (NTA) 2025 First Schedule Straight-Line Capital Allowance Rates
+ * - Initial Allowances abolished under NTA 2025 (effective 2026)
+ * - Class 1 (10% Straight-Line): Buildings, Structures & Intangibles
+ * - Class 2 (20% Straight-Line): Plant & Machinery, Power Equipment, Furniture & Fittings, Office/IT Hardware
+ * - Class 3 (25% Straight-Line): Motor Vehicles & Software / Electronic Applications
+ * - 1% Retention Rule: max cumulative allowance = 99% of cost while asset is held
  */
 export function getNigeriaCitaAllowanceRates(category: string): CitaAllowanceRate {
   if (category.startsWith("Land (")) {
     return { initialRate: 0, annualRate: 0, citaClass: "Land (Non-Qualifying Expenditure)" };
   }
   if (category === "Buildings" || category === "Land & Buildings") {
-    return { initialRate: 15, annualRate: 10, citaClass: "Industrial / Commercial Building (15% IA, 10% AA)" };
+    return { initialRate: 0, annualRate: 10, citaClass: "NTA 2025 Class 1: Building (10% Straight-Line, 1% Retention)" };
   }
-  if (category === "Plant & Machinery" || category === "Generators & Power Equipment") {
-    return { initialRate: 50, annualRate: 25, citaClass: "Plant & Machinery (50% IA, 25% AA)" };
+  if (
+    category === "Plant & Machinery" ||
+    category === "Generators & Power Equipment" ||
+    category === "Furniture & Fittings" ||
+    category === "Office & Computer Equipment"
+  ) {
+    return { initialRate: 0, annualRate: 20, citaClass: `NTA 2025 Class 2: ${category} (20% Straight-Line, 1% Retention)` };
   }
   if (category === "Motor Vehicles") {
-    return { initialRate: 50, annualRate: 25, citaClass: "Motor Vehicle (50% IA, 25% AA)" };
-  }
-  if (category === "Furniture & Fittings" || category === "Office & Computer Equipment") {
-    return { initialRate: 25, annualRate: 20, citaClass: "Furniture & Office Equipment (25% IA, 20% AA)" };
+    return { initialRate: 0, annualRate: 25, citaClass: "NTA 2025 Class 3: Motor Vehicle (25% Straight-Line, 1% Retention)" };
   }
   if (category.includes("Right-of-Use")) {
     return { initialRate: 0, annualRate: 0, citaClass: "IFRS 16 Lease Asset (Rent Deductible as Paid)" };
   }
-  return { initialRate: 25, annualRate: 20, citaClass: "Qualifying Intangible / Other (25% IA, 20% AA)" };
+  return { initialRate: 0, annualRate: 10, citaClass: "NTA 2025 Class 1: Intangible / Software (10% Straight-Line, 1% Retention)" };
 }
 
 export interface FixedAssetRecord {
@@ -430,8 +437,14 @@ export interface RawFinancialInputs {
 }
 
 export interface NigerianTaxBreakdown {
-  companySizeTier: "Small Company (≤ ₦25M)" | "Medium Company (₦25M – ₦100M)" | "Large Company (> ₦100M)" | "Tax Exempt";
+  companySizeTier:
+    | "Small Company (≤ ₦100M & Assets ≤ ₦250M — NTA 2025)"
+    | "Standard / Large Company (> ₦100M or Assets > ₦250M — NTA 2025)"
+    | "Medium Company (Legacy Pre-2026)"
+    | "Tax Exempt";
+  taxActReference: string;
   citRate: number;
+  developmentLevyRate: number;
   tetRate: number;
   policeLevyRate: number;
   depreciationAddBack: number;
@@ -441,11 +454,14 @@ export interface NigerianTaxBreakdown {
   assessableProfit: number;
   taxableProfit: number;
   citAmount: number;
+  developmentLevyAmount: number;
+  minimumTaxTopUp: number;
   tetAmount: number;
   policeLevyAmount: number;
   deferredTaxExpense: number;
   totalTaxExpense: number;
   effectiveTaxRate: number;
+  vatThresholdExempt: boolean;
 }
 
 function roundCurrency(val: number): number {
@@ -546,15 +562,13 @@ export function computeAssetDepreciationAtDate(asset: FixedAssetRecord, cutoff: 
   }
   accumDep = roundCurrency(accumDep);
 
-  // CITA Second Schedule Capital Allowance approximation (max 90% in year 1 or up to cost - ₦10 notional)
+  // Nigeria Tax Act (NTA) 2025 Straight-Line Capital Allowance with 1% Retention Rule (no initial allowance)
   const cita = getNigeriaCitaAllowanceRates(asset.category);
   let citaAllowance = 0;
-  if (cita.initialRate > 0 || cita.annualRate > 0) {
-    const initialAllowance = cost * (cita.initialRate / 100);
-    const remainingAfterInitial = Math.max(0, cost - initialAllowance);
-    const annualAllowancePerYr = remainingAfterInitial * (cita.annualRate / 100);
+  if (cita.annualRate > 0) {
+    const annualAllowancePerYr = cost * (cita.annualRate / 100);
     const yearsCount = Math.max(1, Math.ceil(elapsedYears));
-    citaAllowance = Math.min(cost, initialAllowance + annualAllowancePerYr * yearsCount);
+    citaAllowance = Math.min(cost * 0.99, annualAllowancePerYr * yearsCount);
   }
   citaAllowance = roundCurrency(citaAllowance);
 
@@ -610,13 +624,16 @@ export function computeAssetDepreciationAtDate(asset: FixedAssetRecord, cutoff: 
 }
 
 /**
- * Nigerian Corporate Income Tax (CIT) & Tertiary Education Tax (TET) Engine
- * Under Nigeria Finance Act / FIRS CITA:
- * - Small Company (Turnover <= ₦25M): 0% CIT, Exempt from TET
- * - Medium Company (₦25M < Turnover <= ₦100M): 20% CIT + 3% TET on Assessable Profit
- * - Large Company (Turnover > ₦100M): 30% CIT + 3% TET on Assessable Profit
- * - Accounting depreciation and gain/loss on disposal are adjusted out of Assessable Profit;
- *   FIRS Capital Allowances & Balancing Allowance/(Charge) are deducted to arrive at Taxable Profit.
+ * Nigeria Tax Act (NTA) 2025 Corporate Tax & 4% Development Levy Engine (Effective 2026)
+ * - Small Company (Annual Turnover ≤ ₦100M AND Total Fixed Assets ≤ ₦250M, non-professional service):
+ *   0% CIT, 0% Development Levy, 0% CGT (s.56).
+ * - Standard / Large Company (Turnover > ₦100M OR Fixed Assets > ₦250M):
+ *   30% CIT on Taxable Profit + 4% Development Levy on Assessable Profit (s.59 — consolidates & replaces
+ *   former 3% TET, 1% NITDA, 0.25% NASENI & 0.005% Police Trust Fund Levy).
+ * - Minimum Effective Tax Rate (15% ETR on PBT) applies where domestic turnover ≥ ₦50 Billion.
+ * - VAT Compliance Threshold: Businesses with turnover ≤ ₦50M are exempt from mandatory VAT filing.
+ * - Accounting depreciation & disposal gain/loss are adjusted out; NTA 2025 straight-line Capital
+ *   Allowances (1% retention rule) are deducted to compute Taxable Profit.
  */
 export function calculateNigerianTax(
   turnover: number,
@@ -626,61 +643,77 @@ export function calculateNigerianTax(
   capitalAllowanceDeduction: number,
   balancingAdjustment: number,
   deferredTaxMovement: number,
-  settings: FinancialSettingsRecord
+  settings: FinancialSettingsRecord,
+  totalFixedAssets: number = 0
 ): NigerianTaxBreakdown {
-  let tier: NigerianTaxBreakdown["companySizeTier"] = "Small Company (≤ ₦25M)";
+  let tier: NigerianTaxBreakdown["companySizeTier"] = "Small Company (≤ ₦100M & Assets ≤ ₦250M — NTA 2025)";
   let citRate = 0;
+  let isLegacyMedium = false;
 
   if (settings.taxRegime === "EXEMPT") {
     tier = "Tax Exempt";
     citRate = 0;
   } else if (settings.taxRegime === "SMALL_0") {
-    tier = "Small Company (≤ ₦25M)";
+    tier = "Small Company (≤ ₦100M & Assets ≤ ₦250M — NTA 2025)";
     citRate = 0;
   } else if (settings.taxRegime === "MEDIUM_20") {
-    tier = "Medium Company (₦25M – ₦100M)";
+    // Kept strictly for legacy pre-2026 Finance Act comparative reporting
+    tier = "Medium Company (Legacy Pre-2026)";
     citRate = 0.2;
+    isLegacyMedium = true;
   } else if (settings.taxRegime === "LARGE_30") {
-    tier = "Large Company (> ₦100M)";
+    tier = "Standard / Large Company (> ₦100M or Assets > ₦250M — NTA 2025)";
     citRate = 0.3;
   } else {
-    // AUTO detection per Finance Act thresholds
-    if (turnover <= 25_000_000) {
-      tier = "Small Company (≤ ₦25M)";
+    // AUTO detection per Nigeria Tax Act 2025 s.56
+    if (turnover <= 100_000_000 && totalFixedAssets <= 250_000_000) {
+      tier = "Small Company (≤ ₦100M & Assets ≤ ₦250M — NTA 2025)";
       citRate = 0;
-    } else if (turnover <= 100_000_000) {
-      tier = "Medium Company (₦25M – ₦100M)";
-      citRate = 0.2;
     } else {
-      tier = "Large Company (> ₦100M)";
+      tier = "Standard / Large Company (> ₦100M or Assets > ₦250M — NTA 2025)";
       citRate = 0.3;
     }
   }
 
-  // Assessable Profit under CITA: PBT + disallowable accounting depreciation - accounting disposal gain (or + disposal loss)
+  // Assessable Profit: PBT + disallowable accounting depreciation - accounting disposal gain (or + disposal loss)
   const disposalGainLossAdjustment = roundCurrency(-disposalGainLoss);
   const assessableProfit = Math.max(0, roundCurrency(profitBeforeTax + depreciationAddBack + disposalGainLossAdjustment));
-  // Total/Taxable Profit: Assessable Profit less FIRS Capital Allowances and Balancing Allowance (or + Balancing Charge)
+  // Taxable Profit: Assessable Profit less NTA 2025 Capital Allowances & Balancing Allowance/(Charge)
   const taxableProfit = Math.max(
     0,
     roundCurrency(assessableProfit - capitalAllowanceDeduction - balancingAdjustment)
   );
 
   const isSmallOrExempt = citRate === 0;
-  const tetRate = !isSmallOrExempt && settings.enableTET ? 0.03 : 0;
-  const policeLevyRate = !isSmallOrExempt && settings.enablePoliceLevy ? 0.00005 : 0;
+  // NTA 2025 s.59: 4% Development Levy replaces TET (3%), Police Levy (0.005%), NITDA (1%), NASENI (0.25%)
+  const developmentLevyRate = !isSmallOrExempt && !isLegacyMedium && settings.enableTET ? 0.04 : 0;
+  const tetRate = isLegacyMedium && settings.enableTET ? 0.03 : 0;
+  const policeLevyRate = isLegacyMedium && settings.enablePoliceLevy ? 0.00005 : 0;
 
   const citAmount = profitBeforeTax > 0 ? roundCurrency(taxableProfit * citRate) : 0;
+  const developmentLevyAmount = profitBeforeTax > 0 ? roundCurrency(assessableProfit * developmentLevyRate) : 0;
   const tetAmount = profitBeforeTax > 0 ? roundCurrency(assessableProfit * tetRate) : 0;
   const policeLevyAmount = profitBeforeTax > 0 ? roundCurrency(profitBeforeTax * policeLevyRate) : 0;
+
+  // NTA 2025 15% Minimum Effective Tax Rate for entities with turnover ≥ ₦50 Billion
+  const baseTaxTotal = roundCurrency(citAmount + developmentLevyAmount);
+  const minEtrFloor = turnover >= 50_000_000_000 && profitBeforeTax > 0 ? roundCurrency(profitBeforeTax * 0.15) : 0;
+  const minimumTaxTopUp = minEtrFloor > baseTaxTotal ? roundCurrency(minEtrFloor - baseTaxTotal) : 0;
+
   const deferredTaxExpense = roundCurrency(deferredTaxMovement);
 
-  const totalTaxExpense = roundCurrency(citAmount + tetAmount + policeLevyAmount + deferredTaxExpense);
+  const totalTaxExpense = roundCurrency(
+    citAmount + developmentLevyAmount + minimumTaxTopUp + tetAmount + policeLevyAmount + deferredTaxExpense
+  );
   const effectiveTaxRate = profitBeforeTax > 0 ? roundCurrency((totalTaxExpense / profitBeforeTax) * 100) : 0;
 
   return {
     companySizeTier: tier,
+    taxActReference: isLegacyMedium
+      ? "Legacy Finance Act (Pre-2026)"
+      : "Nigeria Tax Act (NTA) 2025 (Effective Jan 1, 2026)",
     citRate: citRate * 100,
+    developmentLevyRate: developmentLevyRate * 100,
     tetRate: tetRate * 100,
     policeLevyRate: policeLevyRate * 100,
     depreciationAddBack: roundCurrency(depreciationAddBack),
@@ -690,11 +723,14 @@ export function calculateNigerianTax(
     assessableProfit,
     taxableProfit,
     citAmount,
+    developmentLevyAmount,
+    minimumTaxTopUp,
     tetAmount,
     policeLevyAmount,
     deferredTaxExpense,
     totalTaxExpense,
     effectiveTaxRate,
+    vatThresholdExempt: turnover <= 50_000_000,
   };
 }
 
@@ -1349,10 +1385,13 @@ export function generateFinancialStatements(inputs: RawFinancialInputs, startDat
         openSnap.citaCapitalAllowance,
         openSnap.citaBalancingAdjustment,
         0,
-        inputs.settings
+        inputs.settings,
+        openSnap.totalNonCurrentAssets
       )
     : null;
-  const openCurrentTax = openTax ? openTax.citAmount + openTax.tetAmount + openTax.policeLevyAmount : 0;
+  const openCurrentTax = openTax
+    ? openTax.citAmount + openTax.developmentLevyAmount + openTax.minimumTaxTopUp + openTax.tetAmount + openTax.policeLevyAmount
+    : 0;
 
   // Period Income Statement (IAS 1)
   const grossRevenue = roundCurrency(closeSnap.grossRevenue - openSnap.grossRevenue);
@@ -1382,7 +1421,7 @@ export function generateFinancialStatements(inputs: RawFinancialInputs, startDat
   const periodCitaCapitalAllowance = roundCurrency(closeSnap.citaCapitalAllowance - openSnap.citaCapitalAllowance);
   const periodCitaBalancingAdjustment = roundCurrency(closeSnap.citaBalancingAdjustment - openSnap.citaBalancingAdjustment);
 
-  // Nigerian Corporate Tax for the Period (Finance Act / FIRS CITA)
+  // Nigeria Tax Act (NTA) 2025 Corporate Tax for the Period
   const taxBreakdown = calculateNigerianTax(
     revenue,
     profitBeforeTax,
@@ -1391,10 +1430,17 @@ export function generateFinancialStatements(inputs: RawFinancialInputs, startDat
     periodCitaCapitalAllowance,
     periodCitaBalancingAdjustment,
     periodDeferredTax,
-    inputs.settings
+    inputs.settings,
+    closeSnap.totalNonCurrentAssets
   );
 
-  const periodCurrentTax = roundCurrency(taxBreakdown.citAmount + taxBreakdown.tetAmount + taxBreakdown.policeLevyAmount);
+  const periodCurrentTax = roundCurrency(
+    taxBreakdown.citAmount +
+      taxBreakdown.developmentLevyAmount +
+      taxBreakdown.minimumTaxTopUp +
+      taxBreakdown.tetAmount +
+      taxBreakdown.policeLevyAmount
+  );
   const cumulativeClosingCurrentTax = roundCurrency(openCurrentTax + periodCurrentTax);
 
   const profitForThePeriod = roundCurrency(profitBeforeTax - taxBreakdown.totalTaxExpense);
@@ -1724,13 +1770,15 @@ export function generateFinancialStatements(inputs: RawFinancialInputs, startDat
       closingPosition.totalAssets > 0 ? roundCurrency((profitForThePeriod / closingPosition.totalAssets) * 100) : 0,
   };
 
-  // Nigerian CAMA 2020 & FRCN Compliance Diagnostics
+  // Nigerian CAMA 2020, FRCN & Nigeria Tax Act (NTA) 2025 Compliance Diagnostics
   const complianceChecks = {
     accountingEquationBalanced: closingPosition.isBalanced,
     cashFlowReconciled: Math.abs(closingCashEquivalents - closingPosition.netCash) < 0.05,
     camaMinimumShareCapitalMet: closingPosition.equity.shareCapital >= 100_000, // CAMA 2020 s.27(2)(a) private company min ₦100,000
     camaDistributableProfitCompliant: dividendsPaidInPeriod === 0 || closingPosition.equity.retainedEarnings >= 0, // CAMA 2020 s.426
     unallocatedOverdraftWarning: closingPosition.currentLiabilities.bankOverdraft > 0 && closingPosition.equity.shareCapital === 0,
+    ntaSmallCompanyExempt: taxBreakdown.citRate === 0 && taxBreakdown.developmentLevyRate === 0,
+    ntaVatRegistrationRequired: revenue > 50_000_000, // NTA 2025 ₦50M small business VAT filing threshold
   };
 
   return {
@@ -1747,7 +1795,7 @@ export function generateFinancialStatements(inputs: RawFinancialInputs, startDat
       standardsApplied: [
         "IFRS / IAS 1, IAS 2, IAS 7, IAS 12, IAS 16, IAS 20, IAS 32, IFRS 9, IFRS 15 (FRCN Adopted)",
         "Companies and Allied Matters Act (CAMA) 2020",
-        "Nigeria Finance Act (CIT, Capital Allowances & Tertiary Education Tax)",
+        "Nigeria Tax Act (NTA) 2025 (Effective 2026: ₦100M Small Co. Exemption, 4% Development Levy & Straight-Line CA)",
       ],
     },
     incomeStatement: {

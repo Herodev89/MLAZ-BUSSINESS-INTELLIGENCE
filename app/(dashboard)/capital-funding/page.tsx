@@ -1200,7 +1200,11 @@ export default function CapitalFundingPage() {
 
               <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12 }}>
                 <div>
-                  <label className="label">Amount (₦)</label>
+                  <label className="label">
+                    {selectedType === "LONG_TERM_LOAN_REPAYMENT" || selectedType === "SHORT_TERM_LOAN_REPAYMENT"
+                      ? "Principal Repaid (₦ — Reduces Loan)"
+                      : "Amount (₦)"}
+                  </label>
                   <input
                     name="amount"
                     type="number"
@@ -1227,6 +1231,34 @@ export default function CapitalFundingPage() {
                   />
                 </div>
               </div>
+
+              {!editingEntry &&
+                (selectedType === "LONG_TERM_LOAN_REPAYMENT" || selectedType === "SHORT_TERM_LOAN_REPAYMENT") && (
+                  <div
+                    style={{
+                      padding: "10px 12px",
+                      borderRadius: 8,
+                      border: "1px solid var(--color-border)",
+                      background: "var(--color-surface)",
+                    }}
+                  >
+                    <label className="label">
+                      Loan Interest Portion Paid Alongside Principal (₦ &mdash; Optional, Posts to Profit &amp; Loss)
+                    </label>
+                    <input
+                      name="interestAmount"
+                      type="number"
+                      step="0.01"
+                      min="0"
+                      className="input"
+                      placeholder="0.00 (leave blank if principal only)"
+                    />
+                    <div style={{ fontSize: 11.5, color: "var(--color-text-muted)", marginTop: 4 }}>
+                      Under IAS 1 &amp; NTA 2025, <strong>Loan Principal</strong> reduces Borrowings (Balance Sheet &amp;
+                      Cash Flow), while <strong>Loan Interest</strong> is charged as Finance Cost in Profit &amp; Loss.
+                    </div>
+                  </div>
+                )}
 
               <div>
                 <label className="label">Investor / Grantor / Lender &amp; Reference No. (Optional)</label>

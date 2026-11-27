@@ -348,17 +348,13 @@ export default function ExpensesPage() {
                   >
                     <option value="Operating">Operating Expense</option>
                     <option value="Factory Overhead">Factory Overhead</option>
-                    <option value="Finance Cost">Finance Cost (Loan Interest)</option>
-                    {modalMode === "add" && (
-                      <>
-                        <option value="LONG_TERM_LOAN_REPAYMENT">
-                          Loan Principal Repayment (Long-Term)
-                        </option>
-                        <option value="SHORT_TERM_LOAN_REPAYMENT">
-                          Loan Principal Repayment (Short-Term)
-                        </option>
-                      </>
-                    )}
+                    <option value="Finance Cost">Finance Cost (Loan Interest &mdash; P&amp;L)</option>
+                    <option value="LONG_TERM_LOAN_REPAYMENT">
+                      Loan Principal Repayment (Long-Term &mdash; Balance Sheet/Cash Flow)
+                    </option>
+                    <option value="SHORT_TERM_LOAN_REPAYMENT">
+                      Loan Principal Repayment (Short-Term &mdash; Balance Sheet/Cash Flow)
+                    </option>
                   </select>
                 </div>
                 <div style={{ flex: 1 }}>

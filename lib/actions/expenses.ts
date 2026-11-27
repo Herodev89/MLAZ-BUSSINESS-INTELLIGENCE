@@ -107,8 +107,31 @@ export async function updateExpenseAction(id: string, formData: FormData) {
   const dateStr = formData.get("date")?.toString();
   const expenseDate = dateStr ? new Date(dateStr).toISOString() : new Date().toISOString();
 
-  if (!name || !category || amount <= 0) {
-    return { error: "Name, category, and valid amount are required" };
+  if (!name || amount <= 0) {
+    return { error: "Name and valid positive amount are required" };
+  }
+
+  if (type === "LONG_TERM_LOAN_REPAYMENT" || type === "SHORT_TERM_LOAN_REPAYMENT") {
+    try {
+      await ensureFinancialTables();
+      const finId = `FIN-${randomUUID().slice(0, 8).toUpperCase()}`;
+      const section = type === "SHORT_TERM_LOAN_REPAYMENT" ? "CURRENT_LIABILITY" : "NON_CURRENT_LIABILITY";
+      await db
+        .prepare(
+          `INSERT INTO FinancialEntry (id, entryType, section, title, amount, date, reference, notes)
+           VALUES (?, ?, ?, ?, ?, ?, ?, ?)`
+        )
+        .run(finId, type, section, name, amount, expenseDate, `Reclassified from ${id}`, description);
+      await db.prepare("DELETE FROM Expense WHERE id = ?").run(id);
+      revalidateFinancialReports();
+      return { success: true, routedToLoanLedger: true, id: finId };
+    } catch (error) {
+      return { error: "Failed to reclassify expense as loan repayment" };
+    }
+  }
+
+  if (!category) {
+    return { error: "Category is required" };
   }
 
   try {

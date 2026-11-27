@@ -87,7 +87,7 @@ export function exportFinancialStatementsCSV(statements: any, scope: ExportState
     if (sofp.currentLiabilities.bankOverdraft > 0) {
       rows.push(["Bank Overdraft / Working Capital Deficit", "7", sofp.currentLiabilities.bankOverdraft.toFixed(2)]);
     }
-    rows.push(["Current Income Tax Payable (CIT & TET)", "10", sofp.currentLiabilities.currentTaxPayable.toFixed(2)]);
+    rows.push(["Current Income Tax & Dev. Levy Payable (NTA 2025)", "10", sofp.currentLiabilities.currentTaxPayable.toFixed(2)]);
     rows.push(["Total Current Liabilities", "", sofp.currentLiabilities.totalCurrentLiabilities.toFixed(2)]);
     rows.push(["TOTAL LIABILITIES", "", sofp.totalLiabilities.toFixed(2)]);
     rows.push(["TOTAL EQUITY AND LIABILITIES", "", sofp.totalEquityAndLiabilities.toFixed(2)]);
@@ -110,16 +110,35 @@ export function exportFinancialStatementsCSV(statements: any, scope: ExportState
       rows.push(["Gain / (Loss) on Disposal of PPE", "4", sopl.otherOperatingGainLoss.toFixed(2)]);
     }
     rows.push(["Operating Profit (EBIT)", "", sopl.operatingProfitEBIT.toFixed(2)]);
-    rows.push(["Finance Costs", "", (-sopl.financeCosts).toFixed(2)]);
+    rows.push(["Finance Costs (Loan Interest — Deductible in P&L)", "9", (-sopl.financeCosts).toFixed(2)]);
     rows.push(["Profit Before Tax (PBT)", "", sopl.profitBeforeTax.toFixed(2)]);
     rows.push([`Company Income Tax (CIT @ ${sopl.taxBreakdown.citRate}%)`, "10", (-sopl.taxBreakdown.citAmount).toFixed(2)]);
-    rows.push([`Tertiary Education Tax (TET @ ${sopl.taxBreakdown.tetRate}%)`, "10", (-sopl.taxBreakdown.tetAmount).toFixed(2)]);
+    if ((sopl.taxBreakdown.developmentLevyAmount || 0) !== 0 || sopl.taxBreakdown.tetRate === 0) {
+      rows.push([
+        `Development Levy (NTA 2025 s.59 @ ${sopl.taxBreakdown.developmentLevyRate ?? 0}%)`,
+        "10",
+        (-(sopl.taxBreakdown.developmentLevyAmount || 0)).toFixed(2),
+      ]);
+    }
+    if ((sopl.taxBreakdown.tetAmount || 0) !== 0) {
+      rows.push([`Tertiary Education Tax (Legacy @ ${sopl.taxBreakdown.tetRate}%)`, "10", (-sopl.taxBreakdown.tetAmount).toFixed(2)]);
+    }
+    if ((sopl.taxBreakdown.minimumTaxTopUp || 0) !== 0) {
+      rows.push(["Minimum Effective Tax Rate Top-Up (NTA 2025 @ 15%)", "10", (-sopl.taxBreakdown.minimumTaxTopUp).toFixed(2)]);
+    }
     if (sopl.taxBreakdown.deferredTaxExpense !== 0) {
       rows.push(["Deferred Tax Charge", "10", (-sopl.taxBreakdown.deferredTaxExpense).toFixed(2)]);
     }
     rows.push(["Profit for the Period (PAT)", "", sopl.profitForThePeriod.toFixed(2)]);
     rows.push(["Other Comprehensive Income (PPE Revaluation Surplus)", "4", sopl.otherComprehensiveIncomeReval.toFixed(2)]);
     rows.push(["TOTAL COMPREHENSIVE INCOME FOR THE PERIOD", "", sopl.totalComprehensiveIncome.toFixed(2)]);
+    if (Math.abs(socf?.financing?.borrowingsRepaid || 0) > 0) {
+      rows.push([
+        "Memo (Non-P&L per IAS 1/IAS 7): Loan Principal Repaid (in Balance Sheet & Cash Flows)",
+        "9",
+        Math.abs(socf.financing.borrowingsRepaid).toFixed(2),
+      ]);
+    }
     rows.push([]);
   }
 
@@ -508,7 +527,7 @@ export function exportFinancialStatementsPDF(
     <div class="stmt-section">
       <div class="stmt-header">
         <h3>STATEMENT OF PROFIT OR LOSS AND OTHER COMPREHENSIVE INCOME</h3>
-        <div class="stmt-sub">${periodLabel} (IAS 1 &amp; Nigerian Finance Act Compliant)</div>
+        <div class="stmt-sub">${periodLabel} (IAS 1 &amp; Nigeria Tax Act 2025 Compliant)</div>
       </div>
       <table class="fin-table">
         <thead>
@@ -560,8 +579,8 @@ export function exportFinancialStatementsPDF(
             <td class="num">${fmt(sopl.operatingProfitEBIT)}</td>
           </tr>
           <tr>
-            <td>Finance costs</td>
-            <td></td>
+            <td>Finance costs (Loan interest &amp; bank charges — IAS 1.82b)</td>
+            <td class="note-col">9</td>
             <td class="num">${fmt(-sopl.financeCosts)}</td>
           </tr>
           <tr class="subtotal-row">
@@ -574,11 +593,21 @@ export function exportFinancialStatementsPDF(
             <td class="note-col">10</td>
             <td class="num">${fmt(-sopl.taxBreakdown.citAmount)}</td>
           </tr>
-          <tr>
-            <td class="indent">Tertiary Education Tax (TET @ ${sopl.taxBreakdown.tetRate}%)</td>
-            <td class="note-col">10</td>
-            <td class="num">${fmt(-sopl.taxBreakdown.tetAmount)}</td>
-          </tr>
+          ${
+            (sopl.taxBreakdown.developmentLevyAmount || 0) !== 0 || sopl.taxBreakdown.tetRate === 0
+              ? `<tr><td class="indent">Development Levy (NTA 2025 s.59 @ ${sopl.taxBreakdown.developmentLevyRate ?? 0}%)</td><td class="note-col">10</td><td class="num">${fmt(-(sopl.taxBreakdown.developmentLevyAmount || 0))}</td></tr>`
+              : ""
+          }
+          ${
+            (sopl.taxBreakdown.tetAmount || 0) !== 0
+              ? `<tr><td class="indent">Tertiary Education Tax (Legacy @ ${sopl.taxBreakdown.tetRate}%)</td><td class="note-col">10</td><td class="num">${fmt(-sopl.taxBreakdown.tetAmount)}</td></tr>`
+              : ""
+          }
+          ${
+            (sopl.taxBreakdown.minimumTaxTopUp || 0) !== 0
+              ? `<tr><td class="indent">Minimum Effective Tax Rate Top-Up (NTA 2025 @ 15%)</td><td class="note-col">10</td><td class="num">${fmt(-sopl.taxBreakdown.minimumTaxTopUp)}</td></tr>`
+              : ""
+          }
           ${
             sopl.taxBreakdown.deferredTaxExpense !== 0
               ? `<tr><td class="indent">Deferred taxation</td><td class="note-col">10</td><td class="num">${fmt(-sopl.taxBreakdown.deferredTaxExpense)}</td></tr>`
@@ -601,6 +630,13 @@ export function exportFinancialStatementsPDF(
           </tr>
         </tbody>
       </table>
+      ${
+        Math.abs(socf?.financing?.borrowingsRepaid || 0) > 0
+          ? `<div style="margin-top:8px; padding:8px 10px; background:#FAF7F2; border-left:3px solid #B8860B; font-family:sans-serif; font-size:11.5px; color:#3D1F0E;">
+              <strong>Debt Service Memorandum (IAS 1 / IAS 7):</strong> Loan principal repaid in this period of <strong>${fmt(Math.abs(socf.financing.borrowingsRepaid))}</strong> reduces Borrowings on the Statement of Financial Position and appears under Financing Cash Flows (Note 9). Only Loan Interest / Finance Costs (${fmt(sopl.financeCosts)}) are charged in Profit or Loss.
+             </div>`
+          : ""
+      }
     </div>
   `;
 
@@ -881,7 +917,7 @@ export function exportFinancialStatementsPDF(
         </div>
 
         <div class="compliance-foot">
-          These financial statements have been prepared in compliance with International Financial Reporting Standards (IFRS) as issued by the IASB and adopted by the Financial Reporting Council of Nigeria (FRCN), the Companies and Allied Matters Act (CAMA) 2020, and the Nigeria Finance Act.
+          These financial statements have been prepared in compliance with International Financial Reporting Standards (IFRS) as issued by the IASB and adopted by the Financial Reporting Council of Nigeria (FRCN), the Companies and Allied Matters Act (CAMA) 2020, and the Nigeria Tax Act (NTA) 2025.
         </div>
       </body>
     </html>

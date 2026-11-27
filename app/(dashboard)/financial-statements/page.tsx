@@ -1106,8 +1106,12 @@ export default function FinancialStatementsPage() {
                     </tr>
 
                     <tr>
-                      <td style={{ paddingLeft: 28 }}>Finance costs (Interest on borrowings &amp; bank charges)</td>
-                      <td></td>
+                      <td style={{ paddingLeft: 28 }}>Finance costs (Interest on borrowings &amp; bank charges &mdash; IAS 1.82b)</td>
+                      <td style={{ textAlign: "center" }}>
+                        <button className="badge-accent" style={{ border: "none", cursor: "pointer" }} onClick={jumpToNote}>
+                          9
+                        </button>
+                      </td>
                       <td style={{ textAlign: "right" }}>{fmt(-sopl.financeCosts)}</td>
                     </tr>
                     <tr style={{ fontWeight: 800, background: "var(--color-surface)" }}>
@@ -1120,7 +1124,7 @@ export default function FinancialStatementsPage() {
 
                     <tr>
                       <td colSpan={3} style={{ fontWeight: 700, color: "var(--color-text-secondary)", paddingTop: 12 }}>
-                        Income Tax Expense — Nigerian Finance Act ({sopl.taxBreakdown.companySizeTier})
+                        Income Tax Expense &mdash; Nigeria Tax Act (NTA) 2025 ({sopl.taxBreakdown.companySizeTier})
                       </td>
                     </tr>
                     <tr>
@@ -1134,20 +1138,42 @@ export default function FinancialStatementsPage() {
                       </td>
                       <td style={{ textAlign: "right" }}>{fmt(-sopl.taxBreakdown.citAmount)}</td>
                     </tr>
-                    <tr>
-                      <td style={{ paddingLeft: 28 }}>
-                        Tertiary Education Tax (TET @ {sopl.taxBreakdown.tetRate}% of assessable profit)
-                      </td>
-                      <td style={{ textAlign: "center" }}>
-                        <button className="badge-accent" style={{ border: "none", cursor: "pointer" }} onClick={jumpToNote}>
-                          10
-                        </button>
-                      </td>
-                      <td style={{ textAlign: "right" }}>{fmt(-sopl.taxBreakdown.tetAmount)}</td>
-                    </tr>
+                    {((sopl.taxBreakdown.developmentLevyAmount || 0) !== 0 || sopl.taxBreakdown.tetRate === 0) && (
+                      <tr>
+                        <td style={{ paddingLeft: 28 }}>
+                          Development Levy (NTA 2025 s.59 @ {sopl.taxBreakdown.developmentLevyRate ?? 0}% of assessable profit)
+                        </td>
+                        <td style={{ textAlign: "center" }}>
+                          <button className="badge-accent" style={{ border: "none", cursor: "pointer" }} onClick={jumpToNote}>
+                            10
+                          </button>
+                        </td>
+                        <td style={{ textAlign: "right" }}>{fmt(-(sopl.taxBreakdown.developmentLevyAmount || 0))}</td>
+                      </tr>
+                    )}
+                    {(sopl.taxBreakdown.tetAmount || 0) !== 0 && (
+                      <tr>
+                        <td style={{ paddingLeft: 28 }}>
+                          Tertiary Education Tax (Legacy Pre-2026 @ {sopl.taxBreakdown.tetRate}% of assessable profit)
+                        </td>
+                        <td style={{ textAlign: "center" }}>
+                          <button className="badge-accent" style={{ border: "none", cursor: "pointer" }} onClick={jumpToNote}>
+                            10
+                          </button>
+                        </td>
+                        <td style={{ textAlign: "right" }}>{fmt(-sopl.taxBreakdown.tetAmount)}</td>
+                      </tr>
+                    )}
+                    {(sopl.taxBreakdown.minimumTaxTopUp || 0) !== 0 && (
+                      <tr>
+                        <td style={{ paddingLeft: 28 }}>Minimum Effective Tax Rate Top-Up (NTA 2025 @ 15%)</td>
+                        <td style={{ textAlign: "center" }}>10</td>
+                        <td style={{ textAlign: "right" }}>{fmt(-sopl.taxBreakdown.minimumTaxTopUp)}</td>
+                      </tr>
+                    )}
                     {sopl.taxBreakdown.policeLevyAmount > 0 && (
                       <tr>
-                        <td style={{ paddingLeft: 28 }}>Nigeria Police Trust Fund Levy (0.005%)</td>
+                        <td style={{ paddingLeft: 28 }}>Nigeria Police Trust Fund Levy (Legacy 0.005%)</td>
                         <td style={{ textAlign: "center" }}>10</td>
                         <td style={{ textAlign: "right" }}>{fmt(-sopl.taxBreakdown.policeLevyAmount)}</td>
                       </tr>
@@ -1193,6 +1219,34 @@ export default function FinancialStatementsPage() {
                     </tr>
                   </tbody>
                 </table>
+              </div>
+
+              {/* IFRS / NTA 2025 Debt Service Disclosure */}
+              <div
+                className="card-body"
+                style={{
+                  borderTop: "1px solid var(--color-border)",
+                  background: "var(--color-surface-warm)",
+                  fontSize: 12.5,
+                  lineHeight: 1.55,
+                  display: "flex",
+                  justifyContent: "space-between",
+                  alignItems: "center",
+                  flexWrap: "wrap",
+                  gap: 12,
+                }}
+              >
+                <div>
+                  <strong>Loan Repayment &amp; Profit or Loss Treatment (IAS 1, IAS 7 &amp; NTA 2025):</strong>{" "}
+                  Loan Interest (<strong>{fmt(sopl.financeCosts)}</strong>) is charged above in Profit or Loss under{" "}
+                  <em>Finance costs</em>. Loan Principal repaid during this period (
+                  <strong>{fmt(Math.abs(socf?.financing?.borrowingsRepaid || 0))}</strong>) is <em>not</em> an expense
+                  in Profit or Loss &mdash; under IFRS &amp; Nigerian tax law, principal repayments reduce Borrowings on the
+                  Balance Sheet and appear in Financing Cash Flows (Note 9).
+                </div>
+                <button className="btn-outline btn-sm" onClick={jumpToNote}>
+                  View Note 9 Borrowings
+                </button>
               </div>
             </div>
           )}
@@ -1976,13 +2030,19 @@ export default function FinancialStatementsPage() {
                 <div className="card">
                   <div className="card-header">
                     <h3 style={{ fontSize: 15, fontWeight: 800, margin: 0 }}>
-                      Note 10 — Nigerian Taxation Computation (FIRS / CITA)
+                      Note 10 &mdash; Nigeria Tax Act (NTA) 2025 Computation
                     </h3>
                   </div>
                   <div className="card-body">
                     <div style={{ display: "flex", justifyContent: "space-between", padding: "6px 0", borderBottom: "1px solid var(--color-border)" }}>
-                      <span>Finance Act Classification</span>
+                      <span>NTA 2025 Size Classification</span>
                       <span className="badge-accent">{sopl.taxBreakdown.companySizeTier}</span>
+                    </div>
+                    <div style={{ display: "flex", justifyContent: "space-between", padding: "6px 0", borderBottom: "1px solid var(--color-border)" }}>
+                      <span>VAT Threshold Check (NTA 2025 &le; ₦50M)</span>
+                      <span className={sopl.taxBreakdown.vatThresholdExempt ? "badge-success" : "badge-warning"}>
+                        {sopl.taxBreakdown.vatThresholdExempt ? "Exempt from Mandatory VAT Filing" : "Mandatory 7.5% VAT Filing"}
+                      </span>
                     </div>
                     <div style={{ display: "flex", justifyContent: "space-between", padding: "6px 0", borderBottom: "1px solid var(--color-border)" }}>
                       <span>Add Back: Disallowable Accounting Depreciation</span>
@@ -1995,11 +2055,11 @@ export default function FinancialStatementsPage() {
                       </div>
                     )}
                     <div style={{ display: "flex", justifyContent: "space-between", padding: "6px 0", borderBottom: "1px solid var(--color-border)" }}>
-                      <span>Assessable Profit (TET Base)</span>
+                      <span>Assessable Profit (Development Levy Base)</span>
                       <strong className="font-tabular">{fmt(sopl.taxBreakdown.assessableProfit)}</strong>
                     </div>
                     <div style={{ display: "flex", justifyContent: "space-between", padding: "6px 0", borderBottom: "1px solid var(--color-border)" }}>
-                      <span>Less: FIRS CITA Capital Allowances &amp; Balancing Adj.</span>
+                      <span>Less: NTA 2025 Straight-Line Capital Allowances (1% Retention)</span>
                       <strong className="font-tabular">
                         ({fmt((sopl.taxBreakdown.capitalAllowanceDeduction || 0) + (sopl.taxBreakdown.balancingAdjustment || 0))})
                       </strong>
@@ -2013,9 +2073,15 @@ export default function FinancialStatementsPage() {
                       <strong className="font-tabular">{fmt(sopl.taxBreakdown.citAmount)}</strong>
                     </div>
                     <div style={{ display: "flex", justifyContent: "space-between", padding: "6px 0", borderBottom: "1px solid var(--color-border)" }}>
-                      <span>Tertiary Education Tax ({sopl.taxBreakdown.tetRate}%)</span>
-                      <strong className="font-tabular">{fmt(sopl.taxBreakdown.tetAmount)}</strong>
+                      <span>Development Levy (NTA 2025 s.59 @ {sopl.taxBreakdown.developmentLevyRate ?? 0}%)</span>
+                      <strong className="font-tabular">{fmt(sopl.taxBreakdown.developmentLevyAmount || 0)}</strong>
                     </div>
+                    {(sopl.taxBreakdown.tetAmount || 0) !== 0 && (
+                      <div style={{ display: "flex", justifyContent: "space-between", padding: "6px 0", borderBottom: "1px solid var(--color-border)" }}>
+                        <span>Legacy Tertiary Education Tax ({sopl.taxBreakdown.tetRate}%)</span>
+                        <strong className="font-tabular">{fmt(sopl.taxBreakdown.tetAmount)}</strong>
+                      </div>
+                    )}
                     <div style={{ display: "flex", justifyContent: "space-between", paddingTop: 10, fontWeight: 800 }}>
                       <span>Total Tax Provision (Effective: {sopl.taxBreakdown.effectiveTaxRate}%)</span>
                       <span className="font-tabular" style={{ color: "var(--color-warning)" }}>
@@ -2356,8 +2422,8 @@ export default function FinancialStatementsPage() {
                 <div className="card">
                   <div className="card-header">
                     <h3 style={{ fontSize: 16, fontWeight: 800, margin: 0, display: "flex", alignItems: "center", gap: 8 }}>
-                      <Building2 size={17} style={{ color: "var(--color-accent)" }} /> Nigerian Statutory &amp; FIRS Tax
-                      Configuration (CAMA 2020 &amp; Finance Act)
+                      <Building2 size={17} style={{ color: "var(--color-accent)" }} /> Nigerian Statutory &amp; Tax
+                      Configuration (CAMA 2020 &amp; Nigeria Tax Act 2025)
                     </h3>
                   </div>
                   <div className="card-body">
@@ -2386,31 +2452,31 @@ export default function FinancialStatementsPage() {
                           <input name="rcNumber" className="input" defaultValue={settings.rcNumber} placeholder="RC-1849201" />
                         </div>
                         <div>
-                          <label className="label">FIRS Tax Identification No. (TIN)</label>
+                          <label className="label">FIRS / NRS Tax Identification No. (TIN)</label>
                           <input name="tinNumber" className="input" defaultValue={settings.tinNumber} placeholder="20491827-0001" />
                         </div>
                         <div>
-                          <label className="label">Company Income Tax (CIT) Regime</label>
+                          <label className="label">Company Income Tax (NTA 2025 Regime)</label>
                           <select name="taxRegime" className="select" defaultValue={settings.taxRegime}>
-                            <option value="AUTO">Auto (Finance Act Turnover Tiers)</option>
-                            <option value="SMALL_0">Small Company ≤ ₦25M (0% CIT)</option>
-                            <option value="MEDIUM_20">Medium Company ₦25M–₦100M (20% CIT)</option>
-                            <option value="LARGE_30">Large Company &gt; ₦100M (30% CIT)</option>
+                            <option value="AUTO">Auto (NTA 2025: ≤ ₦100M &amp; Assets ≤ ₦250M = 0%)</option>
+                            <option value="SMALL_0">Small Business ≤ ₦100M &amp; Assets ≤ ₦250M (0% CIT)</option>
+                            <option value="LARGE_30">Standard / Large Company (30% CIT)</option>
+                            <option value="MEDIUM_20">Legacy Pre-2026 Medium Tier (20% CIT)</option>
                             <option value="EXEMPT">Pioneer / Tax Exempt (0%)</option>
                           </select>
                         </div>
                         <div>
-                          <label className="label">Tertiary Education Tax (3% TET)</label>
+                          <label className="label">Development Levy (NTA 2025 s.59 @ 4%)</label>
                           <select name="enableTET" className="select" defaultValue={String(settings.enableTET)}>
-                            <option value="1">Enabled (3% for Medium/Large Companies)</option>
+                            <option value="1">Enabled (4% on Standard/Large; 0% for Small Co.)</option>
                             <option value="0">Disabled / Exempt</option>
                           </select>
                         </div>
                         <div>
-                          <label className="label">Police Trust Fund Levy (0.005%)</label>
+                          <label className="label">Legacy Police Trust Fund Levy (Repealed 2025)</label>
                           <select name="enablePoliceLevy" className="select" defaultValue={String(settings.enablePoliceLevy)}>
-                            <option value="0">Disabled</option>
-                            <option value="1">Enabled (0.005% of Net Profit)</option>
+                            <option value="0">Repealed / Consolidated into 4% Dev. Levy (NTA 2025)</option>
+                            <option value="1">Enabled (Legacy Pre-2026 Only)</option>
                           </select>
                         </div>
                         <div>
