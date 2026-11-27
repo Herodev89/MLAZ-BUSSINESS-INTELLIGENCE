@@ -56,6 +56,13 @@ export async function initDb() {
     CREATE TABLE IF NOT EXISTS Product (
       id TEXT PRIMARY KEY,
       name TEXT NOT NULL,
+      sku TEXT DEFAULT '',
+      category TEXT DEFAULT 'Footwear',
+      brand TEXT DEFAULT 'MLAZ',
+      material TEXT DEFAULT '',
+      description TEXT DEFAULT '',
+      reorderLevel INTEGER DEFAULT 5,
+      wholesaleMinQty INTEGER DEFAULT 6,
       status TEXT DEFAULT 'Active',
       createdAt DATETIME DEFAULT CURRENT_TIMESTAMP,
       updatedAt DATETIME DEFAULT CURRENT_TIMESTAMP
@@ -67,6 +74,7 @@ export async function initDb() {
       size TEXT,
       color TEXT,
       price REAL NOT NULL,
+      wholesalePrice REAL DEFAULT 0,
       costPrice REAL DEFAULT 0,
       stock INTEGER NOT NULL DEFAULT 0,
       sku TEXT,
@@ -88,6 +96,7 @@ export async function initDb() {
     CREATE TABLE IF NOT EXISTS "Order" (
       id TEXT PRIMARY KEY,
       customerId TEXT,
+      orderType TEXT DEFAULT 'Retail',
       productName TEXT,
       variantId TEXT,
       size TEXT,
@@ -95,8 +104,13 @@ export async function initDb() {
       quantity INTEGER DEFAULT 1,
       amount REAL NOT NULL,
       discount REAL DEFAULT 0,
+      vatAmount REAL DEFAULT 0,
+      amountPaid REAL DEFAULT 0,
+      paymentStatus TEXT DEFAULT 'Unpaid',
       paymentMethod TEXT DEFAULT 'Transfer',
       status TEXT DEFAULT 'Pending',
+      dueDate DATETIME,
+      notes TEXT DEFAULT '',
       createdAt DATETIME DEFAULT CURRENT_TIMESTAMP
     );
 
@@ -112,6 +126,7 @@ export async function initDb() {
     CREATE TABLE IF NOT EXISTS Sale (
       id TEXT PRIMARY KEY,
       userId TEXT,
+      saleType TEXT DEFAULT 'Retail',
       customerName TEXT,
       productName TEXT,
       variantId TEXT,
@@ -120,10 +135,15 @@ export async function initDb() {
       quantity INTEGER DEFAULT 1,
       amount REAL NOT NULL,
       discount REAL DEFAULT 0,
+      vatAmount REAL DEFAULT 0,
+      amountPaid REAL,
+      paymentStatus TEXT DEFAULT 'Paid',
       costPrice REAL DEFAULT 0,
       profit REAL DEFAULT 0,
       paymentMethod TEXT DEFAULT 'Transfer',
       status TEXT DEFAULT 'Pending',
+      dueDate DATETIME,
+      notes TEXT DEFAULT '',
       createdAt DATETIME DEFAULT CURRENT_TIMESTAMP
     );
 
@@ -183,7 +203,174 @@ export async function initDb() {
       note TEXT,
       date DATETIME DEFAULT CURRENT_TIMESTAMP
     );
+
+    CREATE TABLE IF NOT EXISTS FixedAsset (
+      id TEXT PRIMARY KEY,
+      name TEXT NOT NULL,
+      category TEXT NOT NULL,
+      acquisitionDate DATETIME NOT NULL,
+      cost REAL NOT NULL,
+      residualValue REAL DEFAULT 0,
+      usefulLifeYears REAL DEFAULT 5,
+      depreciationMethod TEXT DEFAULT 'Straight-Line',
+      revaluationSurplus REAL DEFAULT 0,
+      disposalDate DATETIME,
+      disposalProceeds REAL DEFAULT 0,
+      disposalPaymentStatus TEXT DEFAULT 'Cash',
+      paymentStatus TEXT DEFAULT 'Paid',
+      notes TEXT,
+      createdAt DATETIME DEFAULT CURRENT_TIMESTAMP
+    );
+
+    CREATE TABLE IF NOT EXISTS FinancialEntry (
+      id TEXT PRIMARY KEY,
+      entryType TEXT NOT NULL,
+      section TEXT NOT NULL,
+      title TEXT NOT NULL,
+      amount REAL NOT NULL,
+      date DATETIME NOT NULL,
+      reference TEXT,
+      notes TEXT,
+      createdAt DATETIME DEFAULT CURRENT_TIMESTAMP
+    );
+
+    CREATE TABLE IF NOT EXISTS FinancialSettings (
+      id TEXT PRIMARY KEY,
+      companyLegalName TEXT DEFAULT 'MLAZ LIMITED',
+      rcNumber TEXT DEFAULT 'RC-1849201',
+      tinNumber TEXT DEFAULT '20491827-0001',
+      financialYearStartMonth INTEGER DEFAULT 1,
+      taxRegime TEXT DEFAULT 'AUTO',
+      enableTET INTEGER DEFAULT 1,
+      enablePoliceLevy INTEGER DEFAULT 0,
+      vatRate REAL DEFAULT 7.5,
+      preparedBy TEXT DEFAULT 'Financial Controller',
+      approvedBy TEXT DEFAULT 'Managing Director',
+      updatedAt DATETIME DEFAULT CURRENT_TIMESTAMP
+    );
   `);
+}
+
+let financialTablesInitialized = false;
+
+export async function ensureFinancialTables() {
+  if (financialTablesInitialized) return;
+  await db.executeMultiple(`
+    CREATE TABLE IF NOT EXISTS FixedAsset (
+      id TEXT PRIMARY KEY,
+      name TEXT NOT NULL,
+      category TEXT NOT NULL,
+      acquisitionDate DATETIME NOT NULL,
+      cost REAL NOT NULL,
+      residualValue REAL DEFAULT 0,
+      usefulLifeYears REAL DEFAULT 5,
+      depreciationMethod TEXT DEFAULT 'Straight-Line',
+      revaluationSurplus REAL DEFAULT 0,
+      disposalDate DATETIME,
+      disposalProceeds REAL DEFAULT 0,
+      disposalPaymentStatus TEXT DEFAULT 'Cash',
+      paymentStatus TEXT DEFAULT 'Paid',
+      notes TEXT,
+      createdAt DATETIME DEFAULT CURRENT_TIMESTAMP
+    );
+
+    CREATE TABLE IF NOT EXISTS FinancialEntry (
+      id TEXT PRIMARY KEY,
+      entryType TEXT NOT NULL,
+      section TEXT NOT NULL,
+      title TEXT NOT NULL,
+      amount REAL NOT NULL,
+      date DATETIME NOT NULL,
+      reference TEXT,
+      notes TEXT,
+      createdAt DATETIME DEFAULT CURRENT_TIMESTAMP
+    );
+
+    CREATE TABLE IF NOT EXISTS FinancialSettings (
+      id TEXT PRIMARY KEY,
+      companyLegalName TEXT DEFAULT 'MLAZ LIMITED',
+      rcNumber TEXT DEFAULT 'RC-1849201',
+      tinNumber TEXT DEFAULT '20491827-0001',
+      financialYearStartMonth INTEGER DEFAULT 1,
+      taxRegime TEXT DEFAULT 'AUTO',
+      enableTET INTEGER DEFAULT 1,
+      enablePoliceLevy INTEGER DEFAULT 0,
+      vatRate REAL DEFAULT 7.5,
+      preparedBy TEXT DEFAULT 'Financial Controller',
+      approvedBy TEXT DEFAULT 'Managing Director',
+      updatedAt DATETIME DEFAULT CURRENT_TIMESTAMP
+    );
+  `);
+
+  try {
+    await db.prepare("ALTER TABLE FixedAsset ADD COLUMN disposalPaymentStatus TEXT DEFAULT 'Cash'").run();
+  } catch {
+    // Column already exists
+  }
+
+  const existingSettings = await db.prepare("SELECT id FROM FinancialSettings WHERE id = 'default'").get();
+  if (!existingSettings) {
+    await db.prepare(`
+      INSERT INTO FinancialSettings (id, companyLegalName, rcNumber, tinNumber, financialYearStartMonth, taxRegime, enableTET, enablePoliceLevy, vatRate, preparedBy, approvedBy)
+      VALUES ('default', 'MLAZ LIMITED', 'RC-1849201', '20491827-0001', 1, 'AUTO', 1, 0, 7.5, 'Financial Controller', 'Managing Director')
+    `).run();
+  }
+
+  financialTablesInitialized = true;
+}
+
+let productColumnsInitialized = false;
+
+export async function ensureProductColumns() {
+  if (productColumnsInitialized) return;
+  const alterCols = [
+    "ALTER TABLE Product ADD COLUMN sku TEXT DEFAULT ''",
+    "ALTER TABLE Product ADD COLUMN category TEXT DEFAULT 'Footwear'",
+    "ALTER TABLE Product ADD COLUMN brand TEXT DEFAULT 'MLAZ'",
+    "ALTER TABLE Product ADD COLUMN material TEXT DEFAULT ''",
+    "ALTER TABLE Product ADD COLUMN description TEXT DEFAULT ''",
+    "ALTER TABLE Product ADD COLUMN reorderLevel INTEGER DEFAULT 5",
+    "ALTER TABLE Product ADD COLUMN wholesaleMinQty INTEGER DEFAULT 6",
+    "ALTER TABLE Product ADD COLUMN status TEXT DEFAULT 'Active'",
+    "ALTER TABLE ProductVariant ADD COLUMN costPrice REAL DEFAULT 0",
+    "ALTER TABLE ProductVariant ADD COLUMN wholesalePrice REAL DEFAULT 0",
+  ];
+  for (const sql of alterCols) {
+    try {
+      await db.prepare(sql).run();
+    } catch {
+      // Column already exists
+    }
+  }
+  productColumnsInitialized = true;
+}
+
+let salesOrderColumnsInitialized = false;
+
+export async function ensureSalesAndOrderColumns() {
+  if (salesOrderColumnsInitialized) return;
+  const alterCols = [
+    "ALTER TABLE Sale ADD COLUMN saleType TEXT DEFAULT 'Retail'",
+    "ALTER TABLE Sale ADD COLUMN vatAmount REAL DEFAULT 0",
+    "ALTER TABLE Sale ADD COLUMN amountPaid REAL",
+    "ALTER TABLE Sale ADD COLUMN paymentStatus TEXT DEFAULT 'Paid'",
+    "ALTER TABLE Sale ADD COLUMN dueDate DATETIME",
+    "ALTER TABLE Sale ADD COLUMN notes TEXT DEFAULT ''",
+    'ALTER TABLE "Order" ADD COLUMN orderType TEXT DEFAULT \'Retail\'',
+    'ALTER TABLE "Order" ADD COLUMN vatAmount REAL DEFAULT 0',
+    'ALTER TABLE "Order" ADD COLUMN amountPaid REAL DEFAULT 0',
+    'ALTER TABLE "Order" ADD COLUMN paymentStatus TEXT DEFAULT \'Unpaid\'',
+    'ALTER TABLE "Order" ADD COLUMN dueDate DATETIME',
+    'ALTER TABLE "Order" ADD COLUMN notes TEXT DEFAULT \'\'',
+  ];
+  for (const sql of alterCols) {
+    try {
+      await db.prepare(sql).run();
+    } catch {
+      // Column already exists
+    }
+  }
+  salesOrderColumnsInitialized = true;
 }
 
 // Export the db client directly

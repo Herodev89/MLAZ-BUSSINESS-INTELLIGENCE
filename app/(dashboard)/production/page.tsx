@@ -1,7 +1,8 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import { Plus, Search, X, Trash2, Edit } from "lucide-react";
+import Link from "next/link";
+import { Plus, Search, X, Trash2, Edit, CalendarRange } from "lucide-react";
 import { formatNaira, formatDate } from "@/lib/utils";
 import { getProductionRunsAction, createProductionRunAction, updateProductionRunAction, deleteProductionRunAction } from "@/lib/actions/production";
 import { getProductsAction } from "@/lib/actions/products";
@@ -11,7 +12,15 @@ export default function ProductionPage() {
   const [search, setSearch] = useState("");
   const [showRecordModal, setShowRecordModal] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
-  const [form, setForm] = useState({ variantId: "", qty: "", labour: "", material: "", other: "", status: "Completed" });
+  const [form, setForm] = useState({
+    variantId: "",
+    qty: "",
+    labour: "",
+    material: "",
+    other: "",
+    status: "Completed",
+    date: new Date().toISOString().split("T")[0],
+  });
   const [products, setProducts] = useState<any[]>([]);
 
   // Edit State
@@ -50,6 +59,9 @@ export default function ProductionPage() {
   );
 
   const totalProductionCost = filtered.reduce((acc, curr) => acc + (curr.totalCost || 0), 0);
+  const totalPairsProduced = filtered
+    .filter((r) => r.status === "Completed")
+    .reduce((acc, curr) => acc + (Number(curr.qtyProduced) || 0), 0);
 
   const handleRecordProduction = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
@@ -66,13 +78,14 @@ export default function ProductionPage() {
     data.append("materialCost", form.material.toString());
     data.append("otherCosts", form.other.toString());
     data.append("status", form.status);
+    if (form.date) data.append("date", form.date);
     
     const res = await createProductionRunAction(data);
 
     if (res.success) {
       setShowRecordModal(false);
       loadRuns();
-      setForm({ variantId: "", qty: "", labour: "", material: "", other: "", status: "Completed" });
+      setForm({ variantId: "", qty: "", labour: "", material: "", other: "", status: "Completed", date: new Date().toISOString().split("T")[0] });
     } else {
       alert(res.error);
     }
@@ -116,14 +129,25 @@ export default function ProductionPage() {
           <h1 className="page-title">Production</h1>
           <p className="page-subtitle">Track manufacturing runs and production costs</p>
         </div>
-        <button className="btn-accent" onClick={() => setShowRecordModal(true)}>
-          <Plus size={16} /> Record Production
-        </button>
+        <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
+          <Link href="/monthly-ledger" className="btn-outline">
+            <CalendarRange size={16} /> Monthly Ledger
+          </Link>
+          <button className="btn-accent" onClick={() => setShowRecordModal(true)}>
+            <Plus size={16} /> Record Production
+          </button>
+        </div>
       </div>
 
-      <div className="card" style={{ padding: "16px 20px", marginBottom: 24, display: "inline-block" }}>
-        <div style={{ fontSize: "12px", color: "var(--color-text-muted)", textTransform: "uppercase", fontWeight: 600, marginBottom: 4 }}>Total Production Cost</div>
-        <div style={{ fontSize: "28px", fontWeight: 800, color: "var(--color-error)" }}>{formatNaira(totalProductionCost)}</div>
+      <div style={{ display: "flex", gap: 12, flexWrap: "wrap", marginBottom: 24 }}>
+        <div className="card" style={{ padding: "16px 20px", minWidth: 220 }}>
+          <div style={{ fontSize: "12px", color: "var(--color-text-muted)", textTransform: "uppercase", fontWeight: 600, marginBottom: 4 }}>Total Production Cost</div>
+          <div style={{ fontSize: "28px", fontWeight: 800, color: "var(--color-error)" }}>{formatNaira(totalProductionCost)}</div>
+        </div>
+        <div className="card" style={{ padding: "16px 20px", minWidth: 220 }}>
+          <div style={{ fontSize: "12px", color: "var(--color-text-muted)", textTransform: "uppercase", fontWeight: 600, marginBottom: 4 }}>Completed Pairs Produced</div>
+          <div style={{ fontSize: "28px", fontWeight: 800, color: "var(--color-accent)" }}>{totalPairsProduced.toLocaleString()} pairs</div>
+        </div>
       </div>
 
       <div className="card" style={{ padding: "14px 16px", display: "flex", gap: 12, flexWrap: "wrap", alignItems: "center", marginBottom: 16 }}>
@@ -227,8 +251,8 @@ export default function ProductionPage() {
                   </select>
                 </div>
                 <div style={{ flex: 1 }}>
-                  <label className="label">Date</label>
-                  <input name="date" className="input" type="date" />
+                  <label className="label">Production Date</label>
+                  <input name="date" className="input" type="date" value={form.date} onChange={(e) => setForm({...form, date: e.target.value})} required />
                 </div>
               </div>
               <div style={{ display: "flex", justifyContent: "flex-end", gap: 8, marginTop: 12 }}>

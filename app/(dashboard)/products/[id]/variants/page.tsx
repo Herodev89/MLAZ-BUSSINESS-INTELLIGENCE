@@ -69,8 +69,11 @@ export default function ManageVariantsPage({ params }: { params: { id: string } 
               <tr>
                 <th>Color</th>
                 <th>Size (EU)</th>
+                <th>SKU</th>
                 <th>Stock</th>
-                <th>Price (₦)</th>
+                <th>Cost of Sales (₦)</th>
+                <th>Retail Price (₦)</th>
+                <th>Wholesale Price (₦)</th>
                 <th style={{ width: 50 }}></th>
               </tr>
             </thead>
@@ -83,11 +86,20 @@ export default function ManageVariantsPage({ params }: { params: { id: string } 
                   <td><input className="input" value={v.size} onChange={(e) => {
                     const newV = [...variants]; newV[i].size = e.target.value; setVariants(newV);
                   }} placeholder="e.g. EU 42" /></td>
+                  <td><input className="input" value={v.sku || ""} onChange={(e) => {
+                    const newV = [...variants]; newV[i].sku = e.target.value; setVariants(newV);
+                  }} placeholder="SKU" /></td>
                   <td><input type="number" className="input" value={v.stock} onChange={(e) => {
                     const newV = [...variants]; newV[i].stock = Number(e.target.value); setVariants(newV);
                   }} /></td>
-                  <td><input type="number" className="input" value={v.price || product.price} onChange={(e) => {
+                  <td><input type="number" className="input" value={v.costPrice ?? 0} onChange={(e) => {
+                    const newV = [...variants]; newV[i].costPrice = Number(e.target.value); setVariants(newV);
+                  }} /></td>
+                  <td><input type="number" className="input" value={v.price ?? product.price} onChange={(e) => {
                     const newV = [...variants]; newV[i].price = Number(e.target.value); setVariants(newV);
+                  }} /></td>
+                  <td><input type="number" className="input" value={v.wholesalePrice ?? product.wholesalePrice ?? 0} onChange={(e) => {
+                    const newV = [...variants]; newV[i].wholesalePrice = Number(e.target.value); setVariants(newV);
                   }} /></td>
                   <td>
                     <button className="btn-ghost" style={{ color: "var(--color-error)", padding: 8 }} onClick={() => removeVariant(v.id)}>
@@ -98,8 +110,8 @@ export default function ManageVariantsPage({ params }: { params: { id: string } 
               ))}
               {variants.length === 0 && (
                 <tr>
-                  <td colSpan={5} style={{ textAlign: "center", padding: "40px", color: "var(--color-text-muted)" }}>
-                    No variants added. Click "Add Variant" to create one.
+                  <td colSpan={8} style={{ textAlign: "center", padding: "40px", color: "var(--color-text-muted)" }}>
+                    No variants added. Click &ldquo;Add Variant&rdquo; to create one.
                   </td>
                 </tr>
               )}
@@ -110,7 +122,7 @@ export default function ManageVariantsPage({ params }: { params: { id: string } 
 
       <div style={{ display: "flex", justifyContent: "flex-end", marginTop: 24, gap: 12 }}>
         <Link href={`/products/${product.id}`} className="btn-outline">Cancel</Link>
-        <button className="btn-brand" style={{ display: "flex", alignItems: "center", gap: 8, padding: "8px 16px", borderRadius: 8, background: "var(--color-brand)", color: "white" }}>
+        <button type="button" onClick={handleSave} className="btn-brand" style={{ display: "flex", alignItems: "center", gap: 8, padding: "8px 16px", borderRadius: 8, background: "var(--color-brand)", color: "white" }}>
           <Save size={16} /> Save Variants
         </button>
       </div>

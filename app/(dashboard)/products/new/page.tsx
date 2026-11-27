@@ -4,30 +4,42 @@ import { useState } from "react";
 import Link from "next/link";
 import { ArrowLeft, Save, Upload, X } from "lucide-react";
 import { createProductAction } from "@/lib/actions/products";
+import { PRODUCT_CATEGORIES } from "@/lib/active-products-catalog";
 import { useRouter } from "next/navigation";
-
-const productCategories = ["Men", "Women", "Unisex", "Kids", "Accessories"];
 
 export default function NewProductPage() {
   const router = useRouter();
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [form, setForm] = useState({
-    name: "", sku: "", category: "", description: "", material: "",
-    brand: "MLAZ", costPrice: "", sellingPrice: "", reorderLevel: "5", status: "Active",
+    name: "", sku: "", category: "Men", description: "", material: "",
+    brand: "MLAZ", costPrice: "", sellingPrice: "", wholesalePrice: "", wholesaleMinQty: "6", initialStock: "0", reorderLevel: "5", status: "Active",
   });
 
   const update = (key: string, value: string) => setForm((f) => ({ ...f, [key]: value }));
 
   const handleSave = async () => {
+    if (!form.name.trim()) {
+      alert("Product name is required.");
+      return;
+    }
     setIsSubmitting(true);
     const formData = new FormData();
     formData.append("name", form.name);
+    formData.append("sku", form.sku);
+    formData.append("category", form.category || "Footwear");
+    formData.append("brand", form.brand || "MLAZ");
+    formData.append("material", form.material);
+    formData.append("description", form.description);
+    formData.append("reorderLevel", form.reorderLevel || "5");
+    formData.append("wholesaleMinQty", form.wholesaleMinQty || "6");
+    formData.append("status", form.status || "Active");
     const variants = [{
       size: "Standard",
       color: "Default",
       price: parseFloat(form.sellingPrice) || 0,
+      wholesalePrice: parseFloat(form.wholesalePrice) || 0,
       costPrice: parseFloat(form.costPrice) || 0,
-      stock: 0,
+      stock: parseInt(form.initialStock, 10) || 0,
       sku: form.sku
     }];
     formData.append("variants", JSON.stringify(variants));
@@ -77,7 +89,7 @@ export default function NewProductPage() {
                   <label className="label" htmlFor="product-category">Category *</label>
                   <select id="product-category" className="select" value={form.category} onChange={(e) => update("category", e.target.value)}>
                     <option value="">Select category...</option>
-                    {productCategories.map((c) => <option key={c} value={c}>{c}</option>)}
+                    {PRODUCT_CATEGORIES.map((c) => <option key={c} value={c}>{c}</option>)}
                   </select>
                 </div>
                 <div>
@@ -107,16 +119,28 @@ export default function NewProductPage() {
           {/* Pricing */}
           <div className="card">
             <div className="card-header">
-              <div style={{ fontWeight: 700, fontSize: "14px" }}>Pricing</div>
+              <div style={{ fontWeight: 700, fontSize: "14px" }}>Pricing (Retail &amp; Wholesale) &amp; Cost of Sales</div>
             </div>
             <div className="card-body grid grid-cols-1 md:grid-cols-3 gap-4">
               <div>
-                <label className="label" htmlFor="cost-price">Cost Price (₦) *</label>
+                <label className="label" htmlFor="cost-price">Cost of Sales (COGS) (₦) *</label>
                 <input id="cost-price" type="number" className="input" placeholder="0" value={form.costPrice} onChange={(e) => update("costPrice", e.target.value)} />
               </div>
               <div>
-                <label className="label" htmlFor="selling-price">Selling Price (₦) *</label>
+                <label className="label" htmlFor="selling-price">Retail Selling Price (₦) *</label>
                 <input id="selling-price" type="number" className="input" placeholder="0" value={form.sellingPrice} onChange={(e) => update("sellingPrice", e.target.value)} />
+              </div>
+              <div>
+                <label className="label" htmlFor="wholesale-price">Wholesale Unit Price (₦)</label>
+                <input id="wholesale-price" type="number" className="input" placeholder="0" value={form.wholesalePrice} onChange={(e) => update("wholesalePrice", e.target.value)} />
+              </div>
+              <div>
+                <label className="label" htmlFor="wholesale-moq">Wholesale Min Qty (MOQ)</label>
+                <input id="wholesale-moq" type="number" min="1" className="input" value={form.wholesaleMinQty} onChange={(e) => update("wholesaleMinQty", e.target.value)} />
+              </div>
+              <div>
+                <label className="label" htmlFor="initial-stock">Initial Stock</label>
+                <input id="initial-stock" type="number" min="0" className="input" value={form.initialStock} onChange={(e) => update("initialStock", e.target.value)} />
               </div>
               <div>
                 <label className="label" htmlFor="reorder-level">Reorder Level</label>

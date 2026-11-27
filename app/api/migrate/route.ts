@@ -1,8 +1,10 @@
 import { NextResponse } from 'next/server';
 import db from '@/lib/db';
 
+export const dynamic = 'force-dynamic';
+
 export async function GET() {
-  const results = [];
+  const results: any[] = [];
   
   // 1. Add date to RawMaterial
   try {
@@ -50,13 +52,37 @@ export async function GET() {
     }
   }
 
-  // Also initialize full schema if any tables are missing entirely
+  // Also initialize full schema, financial tables, and product/sales/order columns
   try {
-    const { initDb } = await import('@/lib/db');
+    const { initDb, ensureFinancialTables, ensureProductColumns, ensureSalesAndOrderColumns } = await import('@/lib/db');
     await initDb();
-    results.push({ task: 'initDb', status: 'Success' });
+    await ensureFinancialTables();
+    await ensureProductColumns();
+    await ensureSalesAndOrderColumns();
+    results.push({ task: 'initDb, ensureFinancialTables, ensureProductColumns & ensureSalesAndOrderColumns', status: 'Success' });
+
+    const countRow = await db.prepare('SELECT COUNT(*) as cnt FROM Product').get() as any;
+    if (!countRow || Number(countRow.cnt) === 0) {
+      const { seedActiveCatalogInDb } = await import('@/lib/catalog-seed');
+      const seeded = await seedActiveCatalogInDb();
+      results.push({ task: 'seedActiveCatalogInDb', status: 'Seeded empty Product catalog', ...seeded });
+    }
+
+    const saleCountRow = await db.prepare('SELECT COUNT(*) as cnt FROM Sale').get() as any;
+    if (!saleCountRow || Number(saleCountRow.cnt) === 0) {
+      const { seedHistoricalSalesInDb } = await import('@/lib/historical-sales-seed');
+      const seededSales = await seedHistoricalSalesInDb();
+      results.push({ task: 'seedHistoricalSalesInDb', status: 'Seeded Jan–Nov 2026 historical sales', ...seededSales });
+    }
   } catch (e: any) {
-    results.push({ task: 'initDb', status: 'Failed', error: e.message });
+    results.push({ task: 'initDb, ensureFinancialTables & ensureProductColumns', status: 'Failed', error: e.message });
+  }
+
+  try {
+    await db.prepare("ALTER TABLE FixedAsset ADD COLUMN disposalPaymentStatus TEXT DEFAULT 'Cash'").run();
+    results.push({ table: 'FixedAsset', column: 'disposalPaymentStatus', status: 'Added' });
+  } catch (e: any) {
+    results.push({ table: 'FixedAsset', column: 'disposalPaymentStatus', status: 'Failed or already exists', error: e.message });
   }
 
   // 5. Add discount to Sale and Order, and status to Product
@@ -96,9 +122,9 @@ export async function GET() {
     results.push({ task: 'syncCustomers', status: 'Failed', error: e.message });
   }
 
-  // 6. Recalculate Sales COGS and Profit based on current ProductVariant costPrice
+  // 6. Recalculate Sales COGS and Profit based on current ProductVariant costPrice (skip historical imports with verified COGS)
   try {
-    const sales = await db.prepare("SELECT * FROM Sale").all() as any[];
+    const sales = await db.prepare("SELECT * FROM Sale WHERE COALESCE(userId, '') != 'historical-import'").all() as any[];
     for (const sale of sales) {
       // First try to find by exact variantId
       let variant = null;
@@ -119,7 +145,7 @@ export async function GET() {
         }
       }
 
-      if (variant) {
+      if (variant && Number(variant.costPrice) > 0) {
         const unitCost = variant.costPrice || 0;
         const totalCostPrice = unitCost * sale.quantity;
         const profit = sale.amount - totalCostPrice;

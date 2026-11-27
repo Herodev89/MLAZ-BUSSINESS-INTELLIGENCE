@@ -14,13 +14,17 @@ import {
   Factory,
   Layers,
   Receipt,
+  Building2,
+  Landmark,
   TrendingUp,
+  Scale,
   FileBarChart,
   UserCog,
   Settings,
   Bell,
   ChevronRight,
   Footprints,
+  CalendarRange,
   LogOut,
 } from "lucide-react";
 
@@ -38,10 +42,14 @@ const navItems = [
 
   { label: "Production", type: "section", roles: ["ADMIN", "STORE_MANAGER"] },
   { href: "/production",      label: "Production",      icon: Factory, roles: ["ADMIN", "STORE_MANAGER"] },
+  { href: "/monthly-ledger",  label: "Monthly Ledger",  icon: CalendarRange, roles: ["ADMIN", "STORE_MANAGER"] },
   { href: "/raw-materials",   label: "Raw Materials",   icon: Layers, roles: ["ADMIN", "STORE_MANAGER"] },
   { href: "/expenses",        label: "Expenses",        icon: Receipt, roles: ["ADMIN", "STORE_MANAGER"] },
+  { href: "/fixed-assets",    label: "Fixed Assets (PPE)", icon: Building2, roles: ["ADMIN", "STORE_MANAGER"] },
+  { href: "/capital-funding", label: "Investments, Grants & Capital", icon: Landmark, roles: ["ADMIN", "STORE_MANAGER"] },
 
   { label: "Analytics", type: "section", roles: ["ADMIN"] },
+  { href: "/financial-statements", label: "Financial Statements", icon: Scale, roles: ["ADMIN"] },
   { href: "/profit-analysis", label: "Profit Analysis", icon: TrendingUp, roles: ["ADMIN"] },
   { href: "/reports",         label: "Reports",         icon: FileBarChart, roles: ["ADMIN"] },
 

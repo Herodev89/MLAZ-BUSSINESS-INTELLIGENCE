@@ -1,7 +1,8 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { TrendingUp, TrendingDown, DollarSign, Activity } from "lucide-react";
+import { TrendingUp, TrendingDown, Activity } from "lucide-react";
+import NairaIcon from "@/components/ui/NairaIcon";
 import RevenueChart from "@/components/dashboard/RevenueChart";
 import { formatNaira } from "@/lib/utils";
 import KPICard from "@/components/dashboard/KPICard";
@@ -48,7 +49,7 @@ export default function ProfitAnalysisPage() {
           value={revenue}
           isCurrency
           compact
-          icon={DollarSign}
+          icon={NairaIcon}
           accentColor="var(--color-brand)"
         />
         <KPICard
