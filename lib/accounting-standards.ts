@@ -1,9 +1,10 @@
 // Comprehensive Financial Statements & Nigerian Accounting Standards Engine
 // Compliant with:
 // - IFRS / IAS 1 (Presentation of Financial Statements), IAS 2 (Inventories),
-//   IAS 7 (Statement of Cash Flows), IAS 12 (Income Taxes), IAS 16 (PPE), IAS 38 (Intangibles)
+//   IAS 7 (Statement of Cash Flows), IAS 12 (Income Taxes), IAS 16 (PPE), IAS 20 (Grants),
+//   IAS 32 & IFRS 9 (Financial Instruments: Debt vs Equity Classification), IAS 38 (Intangibles)
 // - Financial Reporting Council of Nigeria (FRCN) IFRS Adoption Framework
-// - Companies and Allied Matters Act (CAMA) 2020 (Sections 377–385 & 426)
+// - Companies and Allied Matters Act (CAMA) 2020 (Sections 27, 124–152, 377–385 & 426)
 // - Nigerian Tax Provisions (Finance Act / FIRS: CIT Small/Medium/Large tiers & 3% Tertiary Education Tax)
 
 export type FinancialEntryType =
@@ -12,6 +13,14 @@ export type FinancialEntryType =
   | "CAPITAL_INTRODUCED"
   | "OPENING_RETAINED_EARNINGS"
   | "DIVIDENDS_PAID"
+  | "INVESTOR_ORDINARY_EQUITY"
+  | "PREFERENCE_SHARE_CAPITAL"
+  | "DEPOSIT_FOR_SHARES"
+  | "PARTNER_JV_INVESTMENT"
+  | "CONVERTIBLE_INVESTMENT"
+  | "REDEEMABLE_PREFERENCE_SHARES"
+  | "CONVERTIBLE_CONVERSION"
+  | "INVESTMENT_REDEMPTION"
   | "GRANT_INCOME"
   | "DEFERRED_GRANT"
   | "GRANT_AMORTISED"
@@ -43,7 +52,7 @@ export interface EntryTypeDefinition {
 }
 
 export const FINANCIAL_ENTRY_TYPES: EntryTypeDefinition[] = [
-  // Equity (CAMA 2020 / IAS 1)
+  // Equity (CAMA 2020 / IAS 1 / IAS 32)
   {
     code: "SHARE_CAPITAL",
     label: "Issued Ordinary Share Capital",
@@ -78,11 +87,77 @@ export const FINANCIAL_ENTRY_TYPES: EntryTypeDefinition[] = [
   },
   {
     code: "DIVIDENDS_PAID",
-    label: "Dividends Paid / Owner Drawings",
+    label: "Dividends Paid / Owner & Investor Distributions",
     section: "EQUITY",
     cashFlowCategory: "Financing",
     standardRef: "CAMA 2020 s.426 / IAS 7.34",
-    hint: "Cash dividends distributed to shareholders out of distributable profits or proprietor drawings.",
+    hint: "Cash dividends or profit distributions paid to shareholders, equity investors, or owners out of distributable profits.",
+  },
+
+  // Investments Received (CAMA 2020 / IAS 32 / IFRS 9 / FRCN Nigeria)
+  {
+    code: "INVESTOR_ORDINARY_EQUITY",
+    label: "Investor Ordinary Equity Investment (Shares Allotted)",
+    section: "EQUITY",
+    cashFlowCategory: "Financing",
+    standardRef: "CAMA 2020 s.124 / IAS 32.16",
+    hint: "Cash investment from an angel, VC, or private investor in exchange for ordinary shares allotted via CAC.",
+  },
+  {
+    code: "PREFERENCE_SHARE_CAPITAL",
+    label: "Irredeemable Preference Share Investment (Equity)",
+    section: "EQUITY",
+    cashFlowCategory: "Financing",
+    standardRef: "IAS 32.16 / CAMA 2020 s.147",
+    hint: "Non-redeemable preference shares with discretionary dividends; recognised strictly in Equity under IAS 32.",
+  },
+  {
+    code: "DEPOSIT_FOR_SHARES",
+    label: "Deposit for Shares (Pending CAC Allotment)",
+    section: "EQUITY",
+    cashFlowCategory: "Financing",
+    standardRef: "FRCN Nigeria Practice / IAS 32.16",
+    hint: "Irrevocable equity investment cash received ahead of formal CAC Return of Allotment filing.",
+  },
+  {
+    code: "PARTNER_JV_INVESTMENT",
+    label: "Silent Partner / Joint Venture Capital Investment",
+    section: "EQUITY",
+    cashFlowCategory: "Financing",
+    standardRef: "IAS 1.78(e) / IFRS 11",
+    hint: "Equity/capital funding from a syndicate, profit-sharing partner, or joint venture investor without fixed repayment.",
+  },
+  {
+    code: "CONVERTIBLE_INVESTMENT",
+    label: "Convertible Note / SAFE / Quasi-Equity Investment",
+    section: "NON_CURRENT_LIABILITY",
+    cashFlowCategory: "Financing",
+    standardRef: "IAS 32.28 / IFRS 9",
+    hint: "Investor funds received via Convertible Loan Note or SAFE prior to priced conversion (Non-Current Financial Liability until converted).",
+  },
+  {
+    code: "REDEEMABLE_PREFERENCE_SHARES",
+    label: "Redeemable Preference Shares Investment (Liability)",
+    section: "NON_CURRENT_LIABILITY",
+    cashFlowCategory: "Financing",
+    standardRef: "IAS 32.18(a) / IFRS 9",
+    hint: "Preference shares with mandatory redemption or holder put option; substance-over-form classifies as Financial Liability under IAS 32.",
+  },
+  {
+    code: "CONVERTIBLE_CONVERSION",
+    label: "Convertible / SAFE Converted to Ordinary Shares",
+    section: "EQUITY",
+    cashFlowCategory: "Non-Cash",
+    standardRef: "IAS 32.28 / CAMA 2020",
+    hint: "Non-cash conversion transferring Convertible Note / SAFE balance from Liabilities into Issued Share Capital upon allotment.",
+  },
+  {
+    code: "INVESTMENT_REDEMPTION",
+    label: "Redemption / Buyback of Redeemable Investment",
+    section: "NON_CURRENT_LIABILITY",
+    cashFlowCategory: "Financing",
+    standardRef: "IAS 32 / IAS 7.17",
+    hint: "Cash principal payout redeeming matured convertible notes or redeemable preference shares.",
   },
 
   // Government & Institutional Grants (IAS 20)
@@ -653,6 +728,8 @@ interface CumulativeSnapshot {
 
   // Equity & Liability ledger balances at cutoff
   shareCapital: number;
+  preferenceShareCapital: number;
+  depositForShares: number;
   sharePremium: number;
   generalReserve: number;
   assetEquityContribution: number;
@@ -666,6 +743,10 @@ interface CumulativeSnapshot {
   assetVendorPayable: number;
   deferredGrantReceived: number;
   deferredGrants: number;
+  convertibleReceived: number;
+  convertibleConverted: number;
+  convertibleRedeemed: number;
+  convertibleAndRedeemableLiab: number;
   deferredTaxLiability: number;
 
   tradePayables: number;
@@ -720,6 +801,8 @@ function buildSnapshotAtCutoff(inputs: RawFinancialInputs, cutoff: Date | null, 
       totalReceivables: 0,
       prepayments: 0,
       shareCapital: 0,
+      preferenceShareCapital: 0,
+      depositForShares: 0,
       sharePremium: 0,
       generalReserve: 0,
       assetEquityContribution: 0,
@@ -732,6 +815,10 @@ function buildSnapshotAtCutoff(inputs: RawFinancialInputs, cutoff: Date | null, 
       assetVendorPayable: 0,
       deferredGrantReceived: 0,
       deferredGrants: 0,
+      convertibleReceived: 0,
+      convertibleConverted: 0,
+      convertibleRedeemed: 0,
+      convertibleAndRedeemableLiab: 0,
       deferredTaxLiability: 0,
       tradePayables: 0,
       accruedExpenses: 0,
@@ -936,14 +1023,26 @@ function buildSnapshotAtCutoff(inputs: RawFinancialInputs, cutoff: Date | null, 
   const sumByType = (t: FinancialEntryType) =>
     roundCurrency(entriesUpTo.filter((e) => e.entryType === t).reduce((s, e) => s + (Number(e.amount) || 0), 0));
 
-  const shareCapital = sumByType("SHARE_CAPITAL");
+  const shareCapital = roundCurrency(
+    sumByType("SHARE_CAPITAL") + sumByType("INVESTOR_ORDINARY_EQUITY") + sumByType("CONVERTIBLE_CONVERSION")
+  );
+  const preferenceShareCapital = sumByType("PREFERENCE_SHARE_CAPITAL");
+  const depositForShares = sumByType("DEPOSIT_FOR_SHARES");
   const sharePremium = sumByType("SHARE_PREMIUM");
-  const generalReserve = sumByType("CAPITAL_INTRODUCED");
+  const generalReserve = roundCurrency(sumByType("CAPITAL_INTRODUCED") + sumByType("PARTNER_JV_INVESTMENT"));
   const manualOpeningRE = sumByType("OPENING_RETAINED_EARNINGS");
   const dividendsPaid = sumByType("DIVIDENDS_PAID");
 
   const longTermLoansRaw = sumByType("LONG_TERM_LOAN") + sumByType("DIRECTOR_LOAN") - sumByType("LONG_TERM_LOAN_REPAYMENT");
   const longTermLoans = roundCurrency(longTermLoansRaw);
+  const convertibleReceived = roundCurrency(
+    sumByType("CONVERTIBLE_INVESTMENT") + sumByType("REDEEMABLE_PREFERENCE_SHARES")
+  );
+  const convertibleConverted = sumByType("CONVERTIBLE_CONVERSION");
+  const convertibleRedeemed = sumByType("INVESTMENT_REDEMPTION");
+  const convertibleAndRedeemableLiab = roundCurrency(
+    convertibleReceived - convertibleConverted - convertibleRedeemed
+  );
   const grantIncomeCash = sumByType("GRANT_INCOME");
   const grantAmortised = sumByType("GRANT_AMORTISED");
   const grantIncomeTotal = roundCurrency(grantIncomeCash + grantAmortised);
@@ -999,6 +1098,8 @@ function buildSnapshotAtCutoff(inputs: RawFinancialInputs, cutoff: Date | null, 
     totalReceivables,
     prepayments,
     shareCapital,
+    preferenceShareCapital,
+    depositForShares,
     sharePremium,
     generalReserve,
     assetEquityContribution,
@@ -1011,6 +1112,10 @@ function buildSnapshotAtCutoff(inputs: RawFinancialInputs, cutoff: Date | null, 
     assetVendorPayable,
     deferredGrantReceived,
     deferredGrants,
+    convertibleReceived,
+    convertibleConverted,
+    convertibleRedeemed,
+    convertibleAndRedeemableLiab,
     deferredTaxLiability,
     tradePayables,
     accruedExpenses,
@@ -1036,7 +1141,14 @@ function deriveBalanceSheetFromSnapshot(snap: CumulativeSnapshot, cumulativeCurr
   const workingCapitalLiabilities = roundCurrency(
     snap.tradePayables + snap.accruedExpenses + snap.customerDeposits + snap.statutoryPayables
   );
-  const equityCashIn = roundCurrency(snap.shareCapital + snap.sharePremium + snap.generalReserve + snap.manualOpeningRE);
+  const equityCashIn = roundCurrency(
+    snap.shareCapital +
+      snap.preferenceShareCapital +
+      snap.depositForShares +
+      snap.sharePremium +
+      snap.generalReserve +
+      snap.manualOpeningRE
+  );
   const netCashBorrowings = roundCurrency(snap.longTermLoans + snap.shortTermLoans);
   const totalCashCapEx = roundCurrency(snap.cashCapExPPE + snap.cashCapExIntangible);
 
@@ -1052,7 +1164,8 @@ function deriveBalanceSheetFromSnapshot(snap: CumulativeSnapshot, cumulativeCurr
       equityCashIn -
       snap.dividendsPaid +
       netCashBorrowings +
-      snap.deferredGrants
+      snap.deferredGrants +
+      snap.convertibleAndRedeemableLiab
   );
 
   const cashAndEquivalentsAsset = netCash >= 0 ? netCash : 0;
@@ -1085,6 +1198,10 @@ function deriveBalanceSheetFromSnapshot(snap: CumulativeSnapshot, cumulativeCurr
   const deferredGrantsLiab = Math.max(0, snap.deferredGrants);
   const deferredGrantOverAmortisedAsset = snap.deferredGrants < 0 ? Math.abs(snap.deferredGrants) : 0;
 
+  const convertibleInvestmentsLiab = Math.max(0, snap.convertibleAndRedeemableLiab);
+  const convertibleOverConvertedAsset =
+    snap.convertibleAndRedeemableLiab < 0 ? Math.abs(snap.convertibleAndRedeemableLiab) : 0;
+
   const tradeAndOtherReceivables = roundCurrency(
     snap.tradeReceivablesSales +
       otherRecAsset +
@@ -1093,7 +1210,8 @@ function deriveBalanceSheetFromSnapshot(snap: CumulativeSnapshot, cumulativeCurr
       statutoryCreditAsset +
       longTermLoanOverpaymentAsset +
       shortTermLoanOverpaymentAsset +
-      deferredGrantOverAmortisedAsset
+      deferredGrantOverAmortisedAsset +
+      convertibleOverConvertedAsset
   );
 
   const totalPrepaymentsAndTaxAsset = roundCurrency(prepaymentsAsset + prepaidTaxAsset);
@@ -1104,16 +1222,24 @@ function deriveBalanceSheetFromSnapshot(snap: CumulativeSnapshot, cumulativeCurr
 
   const totalAssets = roundCurrency(snap.totalNonCurrentAssets + totalCurrentAssets);
 
-  // Equity (includes IAS 16.41 transfer from revaluation reserve upon asset disposal & capital contributed in kind)
+  // Equity (includes IAS 16.41 transfer from revaluation reserve upon asset disposal, IAS 32 pref shares & deposits for shares)
   const cumulativePAT = roundCurrency(snap.profitBeforeTax - cumulativeCurrentTax - snap.deferredTaxLiability);
   const retainedEarnings = roundCurrency(snap.manualOpeningRE + cumulativePAT + snap.revaluationTransferToRE - snap.dividendsPaid);
   const totalGeneralReserve = roundCurrency(snap.generalReserve + snap.assetEquityContribution);
   const totalEquity = roundCurrency(
-    snap.shareCapital + snap.sharePremium + snap.revaluationReserve + totalGeneralReserve + retainedEarnings
+    snap.shareCapital +
+      snap.preferenceShareCapital +
+      snap.depositForShares +
+      snap.sharePremium +
+      snap.revaluationReserve +
+      totalGeneralReserve +
+      retainedEarnings
   );
 
   // Liabilities
-  const totalNonCurrentLiabilities = roundCurrency(longTermBorrowingsLiab + deferredGrantsLiab + snap.deferredTaxLiability);
+  const totalNonCurrentLiabilities = roundCurrency(
+    longTermBorrowingsLiab + convertibleInvestmentsLiab + deferredGrantsLiab + snap.deferredTaxLiability
+  );
   const accruedAndOtherPayables = roundCurrency(
     snap.accruedExpenses + snap.assetVendorPayable + prepaymentsCreditAdj + otherRecCreditAdj
   );
@@ -1162,6 +1288,8 @@ function deriveBalanceSheetFromSnapshot(snap: CumulativeSnapshot, cumulativeCurr
     totalAssets,
     equity: {
       shareCapital: snap.shareCapital,
+      preferenceShareCapital: snap.preferenceShareCapital,
+      depositForShares: snap.depositForShares,
       sharePremium: snap.sharePremium,
       revaluationReserve: snap.revaluationReserve,
       generalReserve: totalGeneralReserve,
@@ -1170,6 +1298,7 @@ function deriveBalanceSheetFromSnapshot(snap: CumulativeSnapshot, cumulativeCurr
     },
     nonCurrentLiabilities: {
       longTermBorrowings: longTermBorrowingsLiab,
+      convertibleAndRedeemableInvestments: convertibleInvestmentsLiab,
       deferredGrants: deferredGrantsLiab,
       deferredTaxLiability: snap.deferredTaxLiability,
       totalNonCurrentLiabilities,
@@ -1324,10 +1453,16 @@ export function generateFinancialStatements(inputs: RawFinancialInputs, startDat
 
   // Statement of Changes in Equity (IAS 1.106)
   const issueOfShareCapital = roundCurrency(closeSnap.shareCapital - openSnap.shareCapital);
+  const conversionToShareCapital = roundCurrency(closeSnap.convertibleConverted - openSnap.convertibleConverted);
+  const issueOfPreferenceShares = roundCurrency(closeSnap.preferenceShareCapital - openSnap.preferenceShareCapital);
+  const issueOfDepositForShares = roundCurrency(closeSnap.depositForShares - openSnap.depositForShares);
+  const preferenceAndDepositsMovement = roundCurrency(issueOfPreferenceShares + issueOfDepositForShares);
   const issueOfSharePremium = roundCurrency(closeSnap.sharePremium - openSnap.sharePremium);
   const cashCapitalIntroducedReserve = roundCurrency(closeSnap.generalReserve - openSnap.generalReserve);
   const assetEquityContributionMovement = roundCurrency(closeSnap.assetEquityContribution - openSnap.assetEquityContribution);
-  const capitalIntroducedReserve = roundCurrency(cashCapitalIntroducedReserve + assetEquityContributionMovement);
+  const capitalIntroducedReserve = roundCurrency(
+    cashCapitalIntroducedReserve + assetEquityContributionMovement + preferenceAndDepositsMovement
+  );
   const priorRetainedEarningsIntroduced = roundCurrency(closeSnap.manualOpeningRE - openSnap.manualOpeningRE);
   const revaluationTransferToRE = roundCurrency(closeSnap.revaluationTransferToRE - openSnap.revaluationTransferToRE);
   const dividendsPaidInPeriod = roundCurrency(closeSnap.dividendsPaid - openSnap.dividendsPaid);
@@ -1337,7 +1472,11 @@ export function generateFinancialStatements(inputs: RawFinancialInputs, startDat
       shareCapital: openingPosition.equity.shareCapital,
       sharePremium: openingPosition.equity.sharePremium,
       revaluationReserve: openingPosition.equity.revaluationReserve,
-      generalReserve: openingPosition.equity.generalReserve,
+      generalReserve: roundCurrency(
+        openingPosition.equity.generalReserve +
+          openingPosition.equity.preferenceShareCapital +
+          openingPosition.equity.depositForShares
+      ),
       retainedEarnings: openingPosition.equity.retainedEarnings,
       total: openingPosition.equity.totalEquity,
     },
@@ -1345,6 +1484,8 @@ export function generateFinancialStatements(inputs: RawFinancialInputs, startDat
     otherComprehensiveIncome: otherComprehensiveIncomeReval,
     totalComprehensiveIncome,
     issueOfShares: issueOfShareCapital,
+    conversionToShareCapital,
+    preferenceAndDepositsMovement,
     sharePremiumMovement: issueOfSharePremium,
     capitalAndReservesMovement: capitalIntroducedReserve,
     openingRetainedEarningsAdjustment: priorRetainedEarningsIntroduced,
@@ -1354,7 +1495,11 @@ export function generateFinancialStatements(inputs: RawFinancialInputs, startDat
       shareCapital: closingPosition.equity.shareCapital,
       sharePremium: closingPosition.equity.sharePremium,
       revaluationReserve: closingPosition.equity.revaluationReserve,
-      generalReserve: closingPosition.equity.generalReserve,
+      generalReserve: roundCurrency(
+        closingPosition.equity.generalReserve +
+          closingPosition.equity.preferenceShareCapital +
+          closingPosition.equity.depositForShares
+      ),
       retainedEarnings: closingPosition.equity.retainedEarnings,
       total: closingPosition.equity.totalEquity,
     },
@@ -1418,10 +1563,17 @@ export function generateFinancialStatements(inputs: RawFinancialInputs, startDat
   const proceedsFromDisposalOfPPE = roundCurrency(closeSnap.disposalCashProceeds - openSnap.disposalCashProceeds);
   const netCashFromInvestingActivities = roundCurrency(purchaseOfPPE + purchaseOfIntangibles + proceedsFromDisposalOfPPE);
 
-  // Financing Activities (IAS 7.17 — strictly cash equity, borrowings & IAS 20 capital grants)
+  // Financing Activities (IAS 7.17 — strictly cash equity, investor capital, quasi-equity debt, borrowings & IAS 20 capital grants)
+  const cashOrdinaryShareIssue = roundCurrency(issueOfShareCapital - conversionToShareCapital);
   const proceedsFromShareIssue = roundCurrency(
-    issueOfShareCapital + issueOfSharePremium + cashCapitalIntroducedReserve + priorRetainedEarningsIntroduced
+    cashOrdinaryShareIssue +
+      preferenceAndDepositsMovement +
+      issueOfSharePremium +
+      cashCapitalIntroducedReserve +
+      priorRetainedEarningsIntroduced
   );
+  const quasiEquityInvestmentsReceived = roundCurrency(closeSnap.convertibleReceived - openSnap.convertibleReceived);
+  const investmentsRedeemed = roundCurrency(-(closeSnap.convertibleRedeemed - openSnap.convertibleRedeemed));
   const capitalGrantsReceived = roundCurrency(closeSnap.deferredGrantReceived - openSnap.deferredGrantReceived);
   const netProceedsFromLongTermBorrowings = roundCurrency(closeSnap.longTermLoans - openSnap.longTermLoans);
   const netProceedsFromShortTermBorrowings = roundCurrency(closeSnap.shortTermLoans - openSnap.shortTermLoans);
@@ -1446,6 +1598,8 @@ export function generateFinancialStatements(inputs: RawFinancialInputs, startDat
 
   const netCashFromFinancingActivities = roundCurrency(
     proceedsFromShareIssue +
+      quasiEquityInvestmentsReceived +
+      investmentsRedeemed +
       capitalGrantsReceived +
       netProceedsFromLongTermBorrowings +
       netProceedsFromShortTermBorrowings +
@@ -1536,7 +1690,7 @@ export function generateFinancialStatements(inputs: RawFinancialInputs, startDat
       hasComparative: hasStart,
       currency: "NGN (₦)",
       standardsApplied: [
-        "IFRS / IAS 1, IAS 2, IAS 7, IAS 12, IAS 16, IAS 20, IFRS 9, IFRS 15 (FRCN Adopted)",
+        "IFRS / IAS 1, IAS 2, IAS 7, IAS 12, IAS 16, IAS 20, IAS 32, IFRS 9, IFRS 15 (FRCN Adopted)",
         "Companies and Allied Matters Act (CAMA) 2020",
         "Nigeria Finance Act (CIT, Capital Allowances & Tertiary Education Tax)",
       ],
@@ -1601,6 +1755,8 @@ export function generateFinancialStatements(inputs: RawFinancialInputs, startDat
       },
       financing: {
         proceedsFromShareIssue,
+        quasiEquityInvestmentsReceived,
+        investmentsRedeemed,
         capitalGrantsReceived,
         borrowingsReceived,
         borrowingsRepaid,
@@ -1622,8 +1778,10 @@ export function generateFinancialStatements(inputs: RawFinancialInputs, startDat
         closeSnap.assetCreditFinancing -
           openSnap.assetCreditFinancing +
           (closeSnap.assetVendorPayable - openSnap.assetVendorPayable) +
-          (closeSnap.assetEquityContribution - openSnap.assetEquityContribution)
+          (closeSnap.assetEquityContribution - openSnap.assetEquityContribution) +
+          conversionToShareCapital
       ),
+      nonCashConvertibleConversion: conversionToShareCapital,
       nonCashDisposalReceivable: roundCurrency(closeSnap.disposalReceivables - openSnap.disposalReceivables),
     },
     ratios,

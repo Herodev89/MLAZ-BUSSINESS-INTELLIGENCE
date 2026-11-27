@@ -55,13 +55,26 @@ export function exportFinancialStatementsCSV(statements: any, scope: ExportState
     rows.push(["EQUITY AND LIABILITIES", "", ""]);
     rows.push(["Equity Attributable to Owners", "", ""]);
     rows.push(["Issued Ordinary Share Capital", "8", sofp.equity.shareCapital.toFixed(2)]);
+    if (sofp.equity.preferenceShareCapital) {
+      rows.push(["Irredeemable Preference Share Capital (IAS 32)", "8", sofp.equity.preferenceShareCapital.toFixed(2)]);
+    }
+    if (sofp.equity.depositForShares) {
+      rows.push(["Deposit for Shares (Pending CAC Allotment)", "8", sofp.equity.depositForShares.toFixed(2)]);
+    }
     rows.push(["Share Premium", "8", sofp.equity.sharePremium.toFixed(2)]);
     rows.push(["Revaluation Reserve", "8", sofp.equity.revaluationReserve.toFixed(2)]);
-    rows.push(["General / Owner Capital Reserve", "8", sofp.equity.generalReserve.toFixed(2)]);
+    rows.push(["General, Partner & Owner Capital Reserves", "8", sofp.equity.generalReserve.toFixed(2)]);
     rows.push(["Retained Earnings", "8", sofp.equity.retainedEarnings.toFixed(2)]);
     rows.push(["Total Equity", "", sofp.equity.totalEquity.toFixed(2)]);
     rows.push(["Non-Current Liabilities", "", ""]);
     rows.push(["Long-Term Borrowings & Asset Financing", "9", sofp.nonCurrentLiabilities.longTermBorrowings.toFixed(2)]);
+    if (sofp.nonCurrentLiabilities.convertibleAndRedeemableInvestments) {
+      rows.push([
+        "Convertible Notes & Redeemable Preference Shares (IAS 32)",
+        "9",
+        sofp.nonCurrentLiabilities.convertibleAndRedeemableInvestments.toFixed(2),
+      ]);
+    }
     rows.push(["Deferred Government Grants (IAS 20)", "9", (sofp.nonCurrentLiabilities.deferredGrants || 0).toFixed(2)]);
     rows.push(["Deferred Tax Liabilities", "10", sofp.nonCurrentLiabilities.deferredTaxLiability.toFixed(2)]);
     rows.push(["Total Non-Current Liabilities", "", sofp.nonCurrentLiabilities.totalNonCurrentLiabilities.toFixed(2)]);
@@ -206,7 +219,21 @@ export function exportFinancialStatementsCSV(statements: any, scope: ExportState
     rows.push(["Proceeds from Disposal of PPE", "4", socf.investing.proceedsFromDisposalOfPPE.toFixed(2)]);
     rows.push(["Net Cash used in Investing Activities", "", socf.investing.netCashFromInvestingActivities.toFixed(2)]);
     rows.push(["Financing Activities", "", ""]);
-    rows.push(["Proceeds from Share Issue / Owner Capital", "8", socf.financing.proceedsFromShareIssue.toFixed(2)]);
+    rows.push(["Proceeds from Share Issue / Equity Investments", "8", socf.financing.proceedsFromShareIssue.toFixed(2)]);
+    if (socf.financing.quasiEquityInvestmentsReceived && socf.financing.quasiEquityInvestmentsReceived !== 0) {
+      rows.push([
+        "Convertible Notes & Redeemable Preference Shares Received (IAS 32)",
+        "9",
+        socf.financing.quasiEquityInvestmentsReceived.toFixed(2),
+      ]);
+    }
+    if (socf.financing.investmentsRedeemed && socf.financing.investmentsRedeemed !== 0) {
+      rows.push([
+        "Redemption of Convertible / Redeemable Investments",
+        "9",
+        socf.financing.investmentsRedeemed.toFixed(2),
+      ]);
+    }
     if (socf.financing.capitalGrantsReceived && socf.financing.capitalGrantsReceived !== 0) {
       rows.push(["Capital / Asset-Related Grants Received (IAS 20)", "9", socf.financing.capitalGrantsReceived.toFixed(2)]);
     }
@@ -341,6 +368,26 @@ export function exportFinancialStatementsPDF(
             <td class="num">${fmt(sofp.equity.shareCapital)}</td>
             ${comp ? `<td class="num">${fmt(comp.equity.shareCapital)}</td>` : ""}
           </tr>
+          ${
+            sofp.equity.preferenceShareCapital || comp?.equity?.preferenceShareCapital
+              ? `<tr>
+                  <td class="indent">Irredeemable preference share capital (IAS 32)</td>
+                  <td class="note-col">8</td>
+                  <td class="num">${fmt(sofp.equity.preferenceShareCapital || 0)}</td>
+                  ${comp ? `<td class="num">${fmt(comp.equity.preferenceShareCapital || 0)}</td>` : ""}
+                </tr>`
+              : ""
+          }
+          ${
+            sofp.equity.depositForShares || comp?.equity?.depositForShares
+              ? `<tr>
+                  <td class="indent">Deposit for shares (Pending CAC allotment)</td>
+                  <td class="note-col">8</td>
+                  <td class="num">${fmt(sofp.equity.depositForShares || 0)}</td>
+                  ${comp ? `<td class="num">${fmt(comp.equity.depositForShares || 0)}</td>` : ""}
+                </tr>`
+              : ""
+          }
           <tr>
             <td class="indent">Share premium</td>
             <td class="note-col">8</td>
@@ -348,7 +395,7 @@ export function exportFinancialStatementsPDF(
             ${comp ? `<td class="num">${fmt(comp.equity.sharePremium)}</td>` : ""}
           </tr>
           <tr>
-            <td class="indent">Revaluation &amp; capital reserves</td>
+            <td class="indent">Revaluation, partner JV &amp; capital reserves</td>
             <td class="note-col">8</td>
             <td class="num">${fmt(sofp.equity.revaluationReserve + sofp.equity.generalReserve)}</td>
             ${comp ? `<td class="num">${fmt(comp.equity.revaluationReserve + comp.equity.generalReserve)}</td>` : ""}
@@ -373,6 +420,17 @@ export function exportFinancialStatementsPDF(
             <td class="num">${fmt(sofp.nonCurrentLiabilities.longTermBorrowings)}</td>
             ${comp ? `<td class="num">${fmt(comp.nonCurrentLiabilities.longTermBorrowings)}</td>` : ""}
           </tr>
+          ${
+            sofp.nonCurrentLiabilities.convertibleAndRedeemableInvestments ||
+            comp?.nonCurrentLiabilities?.convertibleAndRedeemableInvestments
+              ? `<tr>
+                  <td class="indent">Convertible notes, SAFE &amp; redeemable preference shares (IAS 32)</td>
+                  <td class="note-col">9</td>
+                  <td class="num">${fmt(sofp.nonCurrentLiabilities.convertibleAndRedeemableInvestments || 0)}</td>
+                  ${comp ? `<td class="num">${fmt(comp.nonCurrentLiabilities.convertibleAndRedeemableInvestments || 0)}</td>` : ""}
+                </tr>`
+              : ""
+          }
           <tr>
             <td class="indent">Deferred government grants (IAS 20)</td>
             <td class="note-col">9</td>
@@ -697,7 +755,17 @@ export function exportFinancialStatementsPDF(
           </tr>
 
           <tr class="group-row"><td colspan="3">Cash Flows from Financing Activities</td></tr>
-          <tr><td class="indent">Proceeds from issue of share capital &amp; owner equity</td><td class="note-col">8</td><td class="num">${fmt(socf.financing.proceedsFromShareIssue)}</td></tr>
+          <tr><td class="indent">Proceeds from share issue, equity investments &amp; owner capital</td><td class="note-col">8</td><td class="num">${fmt(socf.financing.proceedsFromShareIssue)}</td></tr>
+          ${
+            socf.financing.quasiEquityInvestmentsReceived && socf.financing.quasiEquityInvestmentsReceived !== 0
+              ? `<tr><td class="indent">Convertible notes, SAFE &amp; redeemable preference shares received (IAS 32)</td><td class="note-col">9</td><td class="num">${fmt(socf.financing.quasiEquityInvestmentsReceived)}</td></tr>`
+              : ""
+          }
+          ${
+            socf.financing.investmentsRedeemed && socf.financing.investmentsRedeemed !== 0
+              ? `<tr><td class="indent">Redemption of convertible / redeemable investments</td><td class="note-col">9</td><td class="num">${fmt(socf.financing.investmentsRedeemed)}</td></tr>`
+              : ""
+          }
           ${
             socf.financing.capitalGrantsReceived && socf.financing.capitalGrantsReceived !== 0
               ? `<tr><td class="indent">Capital / asset-related grants received (IAS 20)</td><td class="note-col">9</td><td class="num">${fmt(socf.financing.capitalGrantsReceived)}</td></tr>`

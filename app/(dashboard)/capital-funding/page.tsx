@@ -8,6 +8,7 @@ import {
   HandCoins,
   ArrowDownLeft,
   ArrowUpRight,
+  Briefcase,
   Plus,
   Search,
   Edit,
@@ -33,7 +34,17 @@ import {
 } from "@/lib/accounting-standards";
 import { formatAccountingNaira } from "@/lib/financial-export";
 
-type FundingCategory = "ALL" | "CAPITAL" | "GRANT" | "LOAN" | "OUTFLOW";
+type FundingCategory = "ALL" | "INVESTMENT" | "CAPITAL" | "GRANT" | "LOAN" | "OUTFLOW";
+
+const INVESTMENT_TYPES: FinancialEntryType[] = [
+  "INVESTOR_ORDINARY_EQUITY",
+  "PREFERENCE_SHARE_CAPITAL",
+  "DEPOSIT_FOR_SHARES",
+  "PARTNER_JV_INVESTMENT",
+  "CONVERTIBLE_INVESTMENT",
+  "REDEEMABLE_PREFERENCE_SHARES",
+  "CONVERTIBLE_CONVERSION",
+];
 
 const CAPITAL_TYPES: FinancialEntryType[] = [
   "CAPITAL_INTRODUCED",
@@ -57,17 +68,78 @@ const LOAN_INFLOW_TYPES: FinancialEntryType[] = [
 const OUTFLOW_TYPES: FinancialEntryType[] = [
   "LONG_TERM_LOAN_REPAYMENT",
   "SHORT_TERM_LOAN_REPAYMENT",
+  "INVESTMENT_REDEMPTION",
   "DIVIDENDS_PAID",
 ];
 
 const ALL_FUNDING_TYPES: FinancialEntryType[] = [
+  ...INVESTMENT_TYPES,
   ...CAPITAL_TYPES,
   ...GRANT_TYPES,
   ...LOAN_INFLOW_TYPES,
   ...OUTFLOW_TYPES,
 ];
 
+interface InvestmentOption {
+  code: FinancialEntryType;
+  shortTitle: string;
+  classification: "Equity (CAMA / IAS 32)" | "Financial Liability (IAS 32 / IFRS 9)" | "Non-Cash Reclassification";
+  whenToUse: string;
+}
+
+const NIGERIAN_INVESTMENT_SELECTOR: InvestmentOption[] = [
+  {
+    code: "INVESTOR_ORDINARY_EQUITY",
+    shortTitle: "Ordinary Share Equity",
+    classification: "Equity (CAMA / IAS 32)",
+    whenToUse: "Investor receives allotted ordinary shares (CAC Form CAC2A).",
+  },
+  {
+    code: "DEPOSIT_FOR_SHARES",
+    shortTitle: "Deposit for Shares",
+    classification: "Equity (CAMA / IAS 32)",
+    whenToUse: "Committed equity cash received while awaiting CAC share allotment.",
+  },
+  {
+    code: "PREFERENCE_SHARE_CAPITAL",
+    shortTitle: "Irredeemable Pref. Shares",
+    classification: "Equity (CAMA / IAS 32)",
+    whenToUse: "Preference shares with no mandatory redemption & discretionary dividends.",
+  },
+  {
+    code: "PARTNER_JV_INVESTMENT",
+    shortTitle: "Silent Partner / JV Equity",
+    classification: "Equity (CAMA / IAS 32)",
+    whenToUse: "Syndicate, angel, or joint-venture profit-sharing capital without debt terms.",
+  },
+  {
+    code: "CONVERTIBLE_INVESTMENT",
+    shortTitle: "Convertible Note / SAFE",
+    classification: "Financial Liability (IAS 32 / IFRS 9)",
+    whenToUse: "Seed/VC funding that converts into shares at a future valuation round.",
+  },
+  {
+    code: "REDEEMABLE_PREFERENCE_SHARES",
+    shortTitle: "Redeemable Pref. Shares",
+    classification: "Financial Liability (IAS 32 / IFRS 9)",
+    whenToUse: "Preference shares with mandatory buyback/redemption date (treated as Liability).",
+  },
+  {
+    code: "CONVERTIBLE_CONVERSION",
+    shortTitle: "Convert Note to Shares",
+    classification: "Non-Cash Reclassification",
+    whenToUse: "Reclassify existing Convertible Note / SAFE liability into Share Capital.",
+  },
+  {
+    code: "INVESTMENT_REDEMPTION",
+    shortTitle: "Redeem Investment Principal",
+    classification: "Financial Liability (IAS 32 / IFRS 9)",
+    whenToUse: "Cash payout redeeming matured convertible notes or redeemable shares.",
+  },
+];
+
 function getEntryCategory(code: string): Exclude<FundingCategory, "ALL"> | null {
+  if (INVESTMENT_TYPES.includes(code as FinancialEntryType)) return "INVESTMENT";
   if (CAPITAL_TYPES.includes(code as FinancialEntryType)) return "CAPITAL";
   if (GRANT_TYPES.includes(code as FinancialEntryType)) return "GRANT";
   if (LOAN_INFLOW_TYPES.includes(code as FinancialEntryType)) return "LOAN";
@@ -82,16 +154,59 @@ function getDoubleEntryGuide(code: FinancialEntryType): {
 } {
   switch (code) {
     case "SHARE_CAPITAL":
+    case "INVESTOR_ORDINARY_EQUITY":
       return {
         debit: "Cash / Bank Account (Current Asset)",
         credit: "Issued Ordinary Share Capital (Equity)",
-        statementImpact: "SOFP Equity & SOCF Financing Inflow (CAMA 2020 s.27)",
+        statementImpact: "SOFP Equity, SOCE Share Allotment & SOCF Financing Inflow (CAMA 2020 s.124)",
+      };
+    case "PREFERENCE_SHARE_CAPITAL":
+      return {
+        debit: "Cash / Bank Account (Current Asset)",
+        credit: "Irredeemable Preference Share Capital (Equity)",
+        statementImpact: "SOFP Equity (IAS 32.16), SOCE & SOCF Financing Inflow",
+      };
+    case "DEPOSIT_FOR_SHARES":
+      return {
+        debit: "Cash / Bank Account (Current Asset)",
+        credit: "Deposit for Shares — Pending CAC Allotment (Equity)",
+        statementImpact: "SOFP Equity (FRCN Nigeria Practice), SOCE & SOCF Financing Inflow",
+      };
+    case "PARTNER_JV_INVESTMENT":
+      return {
+        debit: "Cash / Bank Account (Current Asset)",
+        credit: "Partner / Joint Venture Capital Reserve (Equity)",
+        statementImpact: "SOFP Equity Reserves (IAS 1 / IFRS 11), SOCE & SOCF Financing Inflow",
+      };
+    case "CONVERTIBLE_INVESTMENT":
+      return {
+        debit: "Cash / Bank Account (Current Asset)",
+        credit: "Convertible Notes & SAFE Liability (Non-Current Liability)",
+        statementImpact: "SOFP Non-Current Liability (IAS 32.28 / IFRS 9) & SOCF Financing Inflow",
+      };
+    case "REDEEMABLE_PREFERENCE_SHARES":
+      return {
+        debit: "Cash / Bank Account (Current Asset)",
+        credit: "Redeemable Preference Share Liability (Non-Current Liability)",
+        statementImpact: "SOFP Non-Current Financial Liability (IAS 32.18) & SOCF Financing Inflow",
+      };
+    case "CONVERTIBLE_CONVERSION":
+      return {
+        debit: "Convertible Investment Liability (Reduces Liability)",
+        credit: "Issued Ordinary Share Capital (Increases Equity)",
+        statementImpact: "Non-Cash Debt-to-Equity Conversion (IAS 32.28); Zero Cash Impact",
+      };
+    case "INVESTMENT_REDEMPTION":
+      return {
+        debit: "Convertible / Redeemable Liability (Reduces Liability)",
+        credit: "Cash / Bank Account (Current Asset)",
+        statementImpact: "SOFP Reduces Non-Current Investment Liability & SOCF Financing Outflow",
       };
     case "SHARE_PREMIUM":
       return {
         debit: "Cash / Bank Account (Current Asset)",
         credit: "Share Premium Reserve (Equity)",
-        statementImpact: "SOFP Equity & SOCF Financing Inflow",
+        statementImpact: "SOFP Equity & SOCF Financing Inflow (CAMA 2020 s.145)",
       };
     case "CAPITAL_INTRODUCED":
       return {
@@ -150,7 +265,7 @@ function getDoubleEntryGuide(code: FinancialEntryType): {
       };
     case "DIVIDENDS_PAID":
       return {
-        debit: "Retained Earnings / Owner Equity",
+        debit: "Retained Earnings / Distributable Reserves",
         credit: "Cash / Bank Account (Current Asset)",
         statementImpact: "SOCE Distribution (CAMA 2020 s.426) & SOCF Financing Outflow",
       };
@@ -164,10 +279,11 @@ function getDoubleEntryGuide(code: FinancialEntryType): {
 }
 
 const CATEGORY_BADGE_MAP: Record<Exclude<FundingCategory, "ALL">, { label: string; className: string }> = {
+  INVESTMENT: { label: "Investment Received", className: "badge-success" },
   CAPITAL: { label: "Owner Capital", className: "badge-success" },
   GRANT: { label: "Grant (IAS 20)", className: "badge-accent" },
   LOAN: { label: "Loan Inflow", className: "badge-warning" },
-  OUTFLOW: { label: "Repayment / Drawings", className: "badge-muted" },
+  OUTFLOW: { label: "Repayment / Redemption / Drawings", className: "badge-muted" },
 };
 
 export default function CapitalFundingPage() {
@@ -180,8 +296,9 @@ export default function CapitalFundingPage() {
   // Modal state
   const [showModal, setShowModal] = useState(false);
   const [editingEntry, setEditingEntry] = useState<FinancialEntryRecord | null>(null);
-  const [modalModeLabel, setModalModeLabel] = useState("Record Capital, Grant or Loan");
-  const [selectedType, setSelectedType] = useState<FinancialEntryType>("CAPITAL_INTRODUCED");
+  const [modalModeLabel, setModalModeLabel] = useState("Record Investment, Capital, Grant or Loan");
+  const [showInvestmentPicker, setShowInvestmentPicker] = useState(false);
+  const [selectedType, setSelectedType] = useState<FinancialEntryType>("INVESTOR_ORDINARY_EQUITY");
   const [presetTitle, setPresetTitle] = useState("");
   const [presetAmount, setPresetAmount] = useState("");
   const [presetReference, setPresetReference] = useState("");
@@ -232,16 +349,35 @@ export default function CapitalFundingPage() {
         .filter((e) => types.includes(e.entryType))
         .reduce<number>((sum, e) => sum + (Number(e.amount) || 0), 0);
 
+    // Owner Capital
     const shareCapitalTotal = sumOf(["SHARE_CAPITAL", "SHARE_PREMIUM"]);
     const ownerCapitalTotal = sumOf(["CAPITAL_INTRODUCED", "OPENING_RETAINED_EARNINGS"]);
     const totalCapitalInjected = shareCapitalTotal + ownerCapitalTotal;
 
+    // External Investments Received (IAS 32 / CAMA 2020)
+    const equityInvestmentsCash = sumOf([
+      "INVESTOR_ORDINARY_EQUITY",
+      "PREFERENCE_SHARE_CAPITAL",
+      "DEPOSIT_FOR_SHARES",
+      "PARTNER_JV_INVESTMENT",
+    ]);
+    const quasiEquityReceived = sumOf(["CONVERTIBLE_INVESTMENT", "REDEEMABLE_PREFERENCE_SHARES"]);
+    const quasiEquityConverted = sumOf(["CONVERTIBLE_CONVERSION"]);
+    const quasiEquityRedeemed = sumOf(["INVESTMENT_REDEMPTION"]);
+    const activeConvertibleLiability = Math.max(
+      0,
+      quasiEquityReceived - quasiEquityConverted - quasiEquityRedeemed
+    );
+    const totalInvestmentsCashReceived = equityInvestmentsCash + quasiEquityReceived;
+
+    // Grants (IAS 20)
     const grantIncomeImmediate = sumOf(["GRANT_INCOME"]);
     const deferredGrantTotal = sumOf(["DEFERRED_GRANT"]);
     const grantAmortisedTotal = sumOf(["GRANT_AMORTISED"]);
     const remainingDeferredGrant = Math.max(0, deferredGrantTotal - grantAmortisedTotal);
     const totalGrantsCashReceived = grantIncomeImmediate + deferredGrantTotal;
 
+    // Loans & Repayments
     const longTermReceived = sumOf(["LONG_TERM_LOAN", "DIRECTOR_LOAN"]);
     const longTermRepaid = sumOf(["LONG_TERM_LOAN_REPAYMENT"]);
     const shortTermReceived = sumOf(["SHORT_TERM_LOAN"]);
@@ -251,40 +387,49 @@ export default function CapitalFundingPage() {
     const netShortTermLoans = Math.max(0, shortTermReceived - shortTermRepaid);
     const netLoansOutstanding = netLongTermLoans + netShortTermLoans;
 
-    const totalLoanRepayments = longTermRepaid + shortTermRepaid;
-    const totalDividendsDrawings = sumOf(["DIVIDENDS_PAID"]);
+    const totalOutflows = longTermRepaid + shortTermRepaid + quasiEquityRedeemed + sumOf(["DIVIDENDS_PAID"]);
 
     return {
       shareCapitalTotal,
       ownerCapitalTotal,
       totalCapitalInjected,
+      equityInvestmentsCash,
+      quasiEquityReceived,
+      quasiEquityConverted,
+      quasiEquityRedeemed,
+      activeConvertibleLiability,
+      totalInvestmentsCashReceived,
       grantIncomeImmediate,
       deferredGrantTotal,
       grantAmortisedTotal,
       remainingDeferredGrant,
       totalGrantsCashReceived,
-      longTermReceived,
-      shortTermReceived,
       netLongTermLoans,
       netShortTermLoans,
       netLoansOutstanding,
-      totalLoanRepayments,
-      totalDividendsDrawings,
+      totalOutflows,
     };
   }, [fundingEntries]);
 
   const openQuickModal = (
     defaultType: FinancialEntryType,
     modeTitle: string,
-    prefill?: { title?: string; amount?: string; reference?: string; notes?: string }
+    options?: {
+      investmentPicker?: boolean;
+      title?: string;
+      amount?: string;
+      reference?: string;
+      notes?: string;
+    }
   ) => {
     setEditingEntry(null);
     setSelectedType(defaultType);
     setModalModeLabel(modeTitle);
-    setPresetTitle(prefill?.title || "");
-    setPresetAmount(prefill?.amount || "");
-    setPresetReference(prefill?.reference || "");
-    setPresetNotes(prefill?.notes || "");
+    setShowInvestmentPicker(Boolean(options?.investmentPicker));
+    setPresetTitle(options?.title || "");
+    setPresetAmount(options?.amount || "");
+    setPresetReference(options?.reference || "");
+    setPresetNotes(options?.notes || "");
     setSaveError(null);
     setShowModal(true);
   };
@@ -292,7 +437,10 @@ export default function CapitalFundingPage() {
   const openEditModal = (entry: FinancialEntryRecord) => {
     setEditingEntry(entry);
     setSelectedType(entry.entryType);
-    setModalModeLabel("Edit Capital / Grant / Loan Entry");
+    setModalModeLabel("Edit Funding / Investment Entry");
+    setShowInvestmentPicker(
+      INVESTMENT_TYPES.includes(entry.entryType) || entry.entryType === "INVESTMENT_REDEMPTION"
+    );
     setPresetTitle(entry.title || "");
     setPresetAmount(String(entry.amount || ""));
     setPresetReference(entry.reference || "");
@@ -323,7 +471,11 @@ export default function CapitalFundingPage() {
   };
 
   const handleDelete = async (entry: FinancialEntryRecord) => {
-    if (!confirm(`Delete "${entry.title}" (${formatAccountingNaira(entry.amount)})? This will update all Financial Statements.`)) {
+    if (
+      !confirm(
+        `Delete "${entry.title}" (${formatAccountingNaira(entry.amount)})? This will immediately update all Financial Statements.`
+      )
+    ) {
       return;
     }
     const res = await deleteFinancialEntryAction(entry.id);
@@ -348,10 +500,10 @@ export default function CapitalFundingPage() {
         <div>
           <h1 className="page-title" style={{ display: "flex", alignItems: "center", gap: 10 }}>
             <Landmark size={24} color="var(--color-brand)" />
-            Capital, Grants &amp; Loans
+            Investments, Grants, Capital &amp; Loans
           </h1>
           <p className="page-subtitle">
-            Record owner capital injections, government/NGO grants (IAS 20), bank/BOI/director loans, loan repayments &amp; drawings. Every entry posts directly into your Financial Statements.
+            Categorize investments received (Ordinary Equity, Preference Shares, Deposit for Shares, Partner JV, Convertible Notes/SAFE), IAS 20 grants, owner capital &amp; loans &mdash; auto-posted under Nigerian IFRS &amp; CAMA 2020.
           </p>
         </div>
 
@@ -386,22 +538,32 @@ export default function CapitalFundingPage() {
         >
           <div>
             <div style={{ fontWeight: 700, fontSize: 14, color: "var(--color-text-primary)" }}>
-              Quick Funding Actions
+              Quick Funding &amp; Investment Actions
             </div>
             <div style={{ fontSize: 12.5, color: "var(--color-text-secondary)" }}>
-              Select the transaction type below &mdash; double-entry debit/credit and cash flow classification are handled automatically.
+              Choose how funds entered or left the business &mdash; the system selects the CAMA 2020 / IAS 32 / IAS 20 / IFRS 9 accounts automatically.
             </div>
           </div>
 
           <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
             <button
+              className="btn-primary btn-sm"
+              onClick={() =>
+                openQuickModal("INVESTOR_ORDINARY_EQUITY", "Record Investment Received (Categorize Type)", {
+                  investmentPicker: true,
+                })
+              }
+            >
+              <Briefcase size={14} /> + Receive Investment
+            </button>
+            <button
               className="btn-accent btn-sm"
               onClick={() => openQuickModal("CAPITAL_INTRODUCED", "Owner Capital Injection / Share Allotment")}
             >
-              <NairaIcon size={14} /> + Owner Capital Injection
+              <NairaIcon size={14} /> + Owner Capital
             </button>
             <button
-              className="btn-primary btn-sm"
+              className="btn-outline btn-sm"
               onClick={() => openQuickModal("GRANT_INCOME", "Receive Government / NGO Grant (IAS 20)")}
             >
               <Gift size={14} /> + Receive Grant (IAS 20)
@@ -414,9 +576,11 @@ export default function CapitalFundingPage() {
             </button>
             <button
               className="btn-outline btn-sm"
-              onClick={() => openQuickModal("LONG_TERM_LOAN_REPAYMENT", "Record Loan Repayment or Owner Drawings")}
+              onClick={() =>
+                openQuickModal("LONG_TERM_LOAN_REPAYMENT", "Repayment, Redemption or Distribution")
+              }
             >
-              <ArrowUpRight size={14} /> + Loan Repayment / Drawings
+              <ArrowUpRight size={14} /> + Repay / Distribute
             </button>
           </div>
         </div>
@@ -426,10 +590,24 @@ export default function CapitalFundingPage() {
       <div className="kpi-grid" style={{ marginBottom: 20 }}>
         <div className="kpi-card">
           <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
-            <span className="kpi-label">Owner Capital &amp; Shares</span>
-            <NairaIcon size={18} color="var(--color-success)" />
+            <span className="kpi-label">Investments Received</span>
+            <Briefcase size={18} color="var(--color-success)" />
           </div>
           <div className="kpi-value" style={{ color: "var(--color-success)" }}>
+            {formatAccountingNaira(kpis.totalInvestmentsCashReceived)}
+          </div>
+          <div style={{ fontSize: 12, color: "var(--color-text-muted)" }}>
+            Equity/JV: {formatAccountingNaira(kpis.equityInvestmentsCash)} &bull; Convertible/Redeemable Bal:{" "}
+            {formatAccountingNaira(kpis.activeConvertibleLiability)}
+          </div>
+        </div>
+
+        <div className="kpi-card">
+          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+            <span className="kpi-label">Owner Capital &amp; Shares</span>
+            <NairaIcon size={18} color="var(--color-brand)" />
+          </div>
+          <div className="kpi-value" style={{ color: "var(--color-brand)" }}>
             {formatAccountingNaira(kpis.totalCapitalInjected)}
           </div>
           <div style={{ fontSize: 12, color: "var(--color-text-muted)" }}>
@@ -441,13 +619,13 @@ export default function CapitalFundingPage() {
         <div className="kpi-card">
           <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
             <span className="kpi-label">Grants Received (IAS 20)</span>
-            <Gift size={18} color="var(--color-brand)" />
+            <Gift size={18} color="var(--color-accent)" />
           </div>
-          <div className="kpi-value" style={{ color: "var(--color-brand)" }}>
+          <div className="kpi-value">
             {formatAccountingNaira(kpis.totalGrantsCashReceived)}
           </div>
           <div style={{ fontSize: 12, color: "var(--color-text-muted)" }}>
-            Immediate Income: {formatAccountingNaira(kpis.grantIncomeImmediate)} &bull; Deferred Bal:{" "}
+            Income Grant: {formatAccountingNaira(kpis.grantIncomeImmediate)} &bull; Deferred Bal:{" "}
             {formatAccountingNaira(kpis.remainingDeferredGrant)}
           </div>
         </div>
@@ -457,31 +635,80 @@ export default function CapitalFundingPage() {
             <span className="kpi-label">Net Loans Outstanding</span>
             <HandCoins size={18} color="var(--color-warning)" />
           </div>
-          <div className="kpi-value" style={{ color: kpis.netLoansOutstanding > 0 ? "var(--color-warning)" : "var(--color-text-primary)" }}>
+          <div
+            className="kpi-value"
+            style={{ color: kpis.netLoansOutstanding > 0 ? "var(--color-warning)" : "var(--color-text-primary)" }}
+          >
             {formatAccountingNaira(kpis.netLoansOutstanding)}
           </div>
           <div style={{ fontSize: 12, color: "var(--color-text-muted)" }}>
-            Long-Term: {formatAccountingNaira(kpis.netLongTermLoans)} &bull; Short-Term:{" "}
-            {formatAccountingNaira(kpis.netShortTermLoans)}
-          </div>
-        </div>
-
-        <div className="kpi-card">
-          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
-            <span className="kpi-label">Repayments &amp; Drawings</span>
-            <ArrowUpRight size={18} color="var(--color-text-secondary)" />
-          </div>
-          <div className="kpi-value">
-            {formatAccountingNaira(kpis.totalLoanRepayments + kpis.totalDividendsDrawings)}
-          </div>
-          <div style={{ fontSize: 12, color: "var(--color-text-muted)" }}>
-            Loan Principal Paid: {formatAccountingNaira(kpis.totalLoanRepayments)} &bull; Drawings:{" "}
-            {formatAccountingNaira(kpis.totalDividendsDrawings)}
+            Long-Term: {formatAccountingNaira(kpis.netLongTermLoans)} &bull; Repayments/Distributions:{" "}
+            {formatAccountingNaira(kpis.totalOutflows)}
           </div>
         </div>
       </div>
 
-      {/* Deferred Grant Release Tracker (shown when deferred capital grants exist) */}
+      {/* Convertible / Redeemable Investment Conversion Tracker */}
+      {kpis.activeConvertibleLiability > 0 && (
+        <div
+          className="card"
+          style={{
+            padding: 16,
+            marginBottom: 16,
+            borderLeft: "4px solid var(--color-success)",
+            display: "flex",
+            justifyContent: "space-between",
+            alignItems: "center",
+            flexWrap: "wrap",
+            gap: 12,
+          }}
+        >
+          <div>
+            <div style={{ fontWeight: 700, fontSize: 14, display: "flex", alignItems: "center", gap: 6 }}>
+              <Briefcase size={15} color="var(--color-success)" />
+              Active Convertible Notes / SAFE &amp; Redeemable Investments (IAS 32 Liability)
+            </div>
+            <div style={{ fontSize: 12.5, color: "var(--color-text-secondary)", marginTop: 4 }}>
+              Total Quasi-Equity / Redeemable Received:{" "}
+              <strong>{formatAccountingNaira(kpis.quasiEquityReceived)}</strong> &bull; Converted to Shares:{" "}
+              <strong>{formatAccountingNaira(kpis.quasiEquityConverted)}</strong> &bull; Remaining Liability:{" "}
+              <strong style={{ color: "var(--color-success)" }}>
+                {formatAccountingNaira(kpis.activeConvertibleLiability)}
+              </strong>
+            </div>
+          </div>
+
+          <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
+            <button
+              className="btn-accent btn-sm"
+              onClick={() =>
+                openQuickModal("CONVERTIBLE_CONVERSION", "Convert Convertible Note / SAFE to Ordinary Shares", {
+                  investmentPicker: true,
+                  title: "Conversion of Convertible Note / SAFE to Ordinary Shares",
+                  amount: String(kpis.activeConvertibleLiability),
+                  notes: "Non-cash equity conversion under IAS 32.28 & CAMA 2020 share allotment.",
+                })
+              }
+            >
+              <Plus size={14} /> Convert to Shares (CAC)
+            </button>
+            <button
+              className="btn-outline btn-sm"
+              onClick={() =>
+                openQuickModal("INVESTMENT_REDEMPTION", "Redeem Convertible / Redeemable Investment", {
+                  investmentPicker: true,
+                  title: "Principal Redemption of Redeemable Investment",
+                  amount: String(kpis.activeConvertibleLiability),
+                })
+              }
+            >
+              Redeem in Cash
+            </button>
+          </div>
+        </div>
+      )}
+
+      {/* Deferred Grant Release Tracker */}
       {kpis.deferredGrantTotal > 0 && (
         <div
           className="card"
@@ -528,7 +755,7 @@ export default function CapitalFundingPage() {
         </div>
       )}
 
-      {/* Accounting Standards Reference Strip */}
+      {/* Nigerian Accounting Standards Guide Strip */}
       <div
         style={{
           display: "grid",
@@ -539,11 +766,12 @@ export default function CapitalFundingPage() {
       >
         <div className="card" style={{ padding: 14 }}>
           <div style={{ fontWeight: 700, fontSize: 13, color: "var(--color-success)", marginBottom: 4 }}>
-            Owner Capital &amp; Shares (IAS 1 / CAMA 2020)
+            Investments Received (IAS 32 &amp; CAMA 2020)
           </div>
           <p style={{ fontSize: 12, color: "var(--color-text-secondary)", margin: 0, lineHeight: 1.45 }}>
-            Cash injected by owners or shareholders increases <strong>Cash</strong> and <strong>Equity</strong> (SOFP &amp;
-            SOCE) and appears under <strong>Financing Activities</strong> &mdash; never counted as taxable revenue.
+            <strong>Ordinary Equity, Irredeemable Pref. Shares, Deposit for Shares &amp; Partner JV</strong> post to{" "}
+            <strong>Equity</strong>. <strong>Convertible Notes/SAFE &amp; Redeemable Pref. Shares</strong> post to{" "}
+            <strong>Non-Current Liabilities</strong> until converted or redeemed.
           </p>
         </div>
 
@@ -552,19 +780,19 @@ export default function CapitalFundingPage() {
             Government &amp; NGO Grants (IAS 20)
           </div>
           <p style={{ fontSize: 12, color: "var(--color-text-secondary)", margin: 0, lineHeight: 1.45 }}>
-            <strong>Income Grants</strong> post immediately to SOPL Grant Income (Operating Cash Flow).{" "}
-            <strong>Capital / Asset Grants</strong> sit in Non-Current Liabilities and release systematically via{" "}
+            <strong>Income Grants</strong> credit Profit or Loss immediately (Operating Cash Flow).{" "}
+            <strong>Capital / Asset Grants</strong> sit in Non-Current Liabilities and release over asset useful life via{" "}
             <em>Deferred Grant Amortised</em>.
           </p>
         </div>
 
         <div className="card" style={{ padding: 14 }}>
           <div style={{ fontWeight: 700, fontSize: 13, color: "var(--color-warning)", marginBottom: 4 }}>
-            Loans, Repayments &amp; Drawings (IFRS 9 / IAS 7)
+            Loans, Repayments &amp; Distributions (IFRS 9 / IAS 7)
           </div>
           <p style={{ fontSize: 12, color: "var(--color-text-secondary)", margin: 0, lineHeight: 1.45 }}>
-            Loan principal received increases Cash and Liabilities; repayments reduce principal without affecting Profit.
-            Interest charges are recorded separately on the <strong>Expenses</strong> page as Finance Cost.
+            Loan principal received &amp; repaid flows through <strong>Financing Cash Flows</strong> and Debt
+            Liabilities. Interest paid on loans or redeemable instruments goes on <strong>Expenses</strong> as Finance Cost.
           </p>
         </div>
       </div>
@@ -586,10 +814,11 @@ export default function CapitalFundingPage() {
           {(
             [
               { id: "ALL", label: `All (${fundingEntries.length})` },
+              { id: "INVESTMENT", label: "Investments Received" },
               { id: "CAPITAL", label: "Owner Capital" },
               { id: "GRANT", label: "Grants (IAS 20)" },
               { id: "LOAN", label: "Loans Received" },
-              { id: "OUTFLOW", label: "Repayments & Drawings" },
+              { id: "OUTFLOW", label: "Repayments / Redemptions / Drawings" },
             ] as const
           ).map((tab) => (
             <button
@@ -617,7 +846,7 @@ export default function CapitalFundingPage() {
             type="text"
             className="input"
             style={{ paddingLeft: 32, height: 34, fontSize: 13 }}
-            placeholder="Search lender, grantor, reference..."
+            placeholder="Search investor, lender, grantor, ref..."
             value={searchTerm}
             onChange={(e) => setSearchTerm(e.target.value)}
           />
@@ -631,9 +860,11 @@ export default function CapitalFundingPage() {
           style={{ display: "flex", justifyContent: "space-between", alignItems: "center", flexWrap: "wrap", gap: 8 }}
         >
           <div>
-            <h2 style={{ fontSize: 16, fontWeight: 800, margin: 0 }}>Capital, Grant &amp; Loan Register</h2>
+            <h2 style={{ fontSize: 16, fontWeight: 800, margin: 0 }}>
+              Investments, Capital, Grant &amp; Loan Register
+            </h2>
             <p style={{ fontSize: 12, color: "var(--color-text-secondary)", margin: "2px 0 0 0" }}>
-              Showing {filteredEntries.length} of {fundingEntries.length} funding entries &bull; Balance Sheet Status:{" "}
+              Showing {filteredEntries.length} of {fundingEntries.length} entries &bull; Balance Sheet Status:{" "}
               {sofp ? (
                 isBalanced ? (
                   <span style={{ color: "var(--color-success)", fontWeight: 700 }}>
@@ -650,10 +881,14 @@ export default function CapitalFundingPage() {
             </p>
           </div>
           <button
-            className="btn-accent btn-sm"
-            onClick={() => openQuickModal("CAPITAL_INTRODUCED", "Record Capital, Grant or Loan")}
+            className="btn-primary btn-sm"
+            onClick={() =>
+              openQuickModal("INVESTOR_ORDINARY_EQUITY", "Record Investment Received (Categorize Type)", {
+                investmentPicker: true,
+              })
+            }
           >
-            <Plus size={14} /> Add Funding Entry
+            <Plus size={14} /> Record Funding / Investment
           </button>
         </div>
 
@@ -663,8 +898,8 @@ export default function CapitalFundingPage() {
               <tr>
                 <th>Date</th>
                 <th>Particulars / Description</th>
-                <th>Source / Ref</th>
-                <th>Type &amp; Standard</th>
+                <th>Investor / Source Ref</th>
+                <th>Category &amp; Standard</th>
                 <th>Cash Flow / Effect</th>
                 <th style={{ textAlign: "right" }}>Amount (₦)</th>
                 <th style={{ textAlign: "right" }}>Actions</th>
@@ -674,14 +909,14 @@ export default function CapitalFundingPage() {
               {loading ? (
                 <tr>
                   <td colSpan={7} style={{ textAlign: "center", padding: 36, color: "var(--color-text-muted)" }}>
-                    Loading capital, grants &amp; loans ledger...
+                    Loading investments, capital, grants &amp; loans ledger...
                   </td>
                 </tr>
               ) : filteredEntries.length === 0 ? (
                 <tr>
                   <td colSpan={7} style={{ textAlign: "center", padding: 40, color: "var(--color-text-muted)" }}>
-                    No capital injections, grants, or loans recorded in this view yet. Use the Quick Funding Actions above
-                    to record owner capital, a government/NGO grant, or a loan.
+                    No investments, capital injections, grants, or loans recorded in this view yet. Use the Quick Actions
+                    above to record an investment, grant, capital injection, or loan.
                   </td>
                 </tr>
               ) : (
@@ -690,7 +925,9 @@ export default function CapitalFundingPage() {
                   const cat = getEntryCategory(entry.entryType) || "CAPITAL";
                   const badge = CATEGORY_BADGE_MAP[cat];
                   const isOutflowOrNonCash =
-                    cat === "OUTFLOW" || entry.entryType === "GRANT_AMORTISED";
+                    cat === "OUTFLOW" ||
+                    entry.entryType === "GRANT_AMORTISED" ||
+                    entry.entryType === "CONVERTIBLE_CONVERSION";
 
                   return (
                     <tr key={entry.id}>
@@ -711,7 +948,9 @@ export default function CapitalFundingPage() {
                       <td>
                         <div style={{ display: "flex", flexDirection: "column", gap: 3, alignItems: "flex-start" }}>
                           <span className={badge.className}>{def?.label || entry.entryType}</span>
-                          <span style={{ fontSize: 11, color: "var(--color-text-muted)" }}>{def?.standardRef}</span>
+                          <span style={{ fontSize: 11, color: "var(--color-text-muted)" }}>
+                            {def?.section.replace(/_/g, " ")} &bull; {def?.standardRef}
+                          </span>
                         </div>
                       </td>
                       <td>
@@ -776,13 +1015,13 @@ export default function CapitalFundingPage() {
             className="card"
             style={{
               width: "100%",
-              maxWidth: 560,
+              maxWidth: 640,
               maxHeight: "92vh",
               overflowY: "auto",
               padding: 24,
             }}
           >
-            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 16 }}>
+            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 14 }}>
               <h3 style={{ fontWeight: 800, fontSize: 18, margin: 0 }}>{modalModeLabel}</h3>
               <button className="btn-ghost" onClick={() => setShowModal(false)}>
                 <X size={18} />
@@ -806,8 +1045,68 @@ export default function CapitalFundingPage() {
             )}
 
             <form onSubmit={handleSave} style={{ display: "flex", flexDirection: "column", gap: 14 }}>
+              {/* Visual Nigerian Investment Category Cards when in Investment Picker mode */}
+              {showInvestmentPicker && (
+                <div>
+                  <label className="label" style={{ marginBottom: 6 }}>
+                    Step 1 &mdash; Select Investment Category (Nigerian CAMA 2020 &amp; IAS 32 Recognition)
+                  </label>
+                  <div
+                    style={{
+                      display: "grid",
+                      gridTemplateColumns: "repeat(auto-fit, minmax(175px, 1fr))",
+                      gap: 8,
+                    }}
+                  >
+                    {NIGERIAN_INVESTMENT_SELECTOR.map((opt) => {
+                      const active = selectedType === opt.code;
+                      return (
+                        <button
+                          key={opt.code}
+                          type="button"
+                          onClick={() => setSelectedType(opt.code)}
+                          style={{
+                            textAlign: "left",
+                            padding: "9px 10px",
+                            borderRadius: 8,
+                            border: active ? "2px solid var(--color-brand)" : "1px solid var(--color-border)",
+                            background: active ? "var(--color-surface-warm)" : "var(--color-bg-card, #fff)",
+                            cursor: "pointer",
+                          }}
+                        >
+                          <div style={{ fontWeight: 700, fontSize: 12.5, color: "var(--color-text-primary)" }}>
+                            {opt.shortTitle}
+                          </div>
+                          <div
+                            style={{
+                              fontSize: 10.5,
+                              fontWeight: 600,
+                              color: opt.classification.startsWith("Equity")
+                                ? "var(--color-success)"
+                                : opt.classification.startsWith("Non-Cash")
+                                ? "var(--color-accent)"
+                                : "var(--color-warning)",
+                              marginTop: 2,
+                            }}
+                          >
+                            {opt.classification}
+                          </div>
+                          <div style={{ fontSize: 11, color: "var(--color-text-muted)", marginTop: 3, lineHeight: 1.3 }}>
+                            {opt.whenToUse}
+                          </div>
+                        </button>
+                      );
+                    })}
+                  </div>
+                </div>
+              )}
+
               <div>
-                <label className="label">Transaction Classification (IFRS / IAS 20 / CAMA 2020)</label>
+                <label className="label">
+                  {showInvestmentPicker
+                    ? "Accounting Classification Selected (Full Catalog)"
+                    : "Transaction Classification (IFRS / IAS 20 / IAS 32 / CAMA 2020)"}
+                </label>
                 <select
                   name="entryType"
                   className="select"
@@ -817,13 +1116,15 @@ export default function CapitalFundingPage() {
                   {selectableTypes.map((t) => {
                     const cat = getEntryCategory(t.code);
                     const prefix =
-                      cat === "CAPITAL"
+                      cat === "INVESTMENT"
+                        ? "Investment Received"
+                        : cat === "CAPITAL"
                         ? "Owner Capital"
                         : cat === "GRANT"
                         ? "Grant (IAS 20)"
                         : cat === "LOAN"
                         ? "Loan Inflow"
-                        : "Repayment / Drawings";
+                        : "Repayment / Redemption / Drawings";
                     return (
                       <option key={t.code} value={t.code}>
                         [{prefix}] {t.label}
@@ -846,7 +1147,8 @@ export default function CapitalFundingPage() {
                 }}
               >
                 <div style={{ fontWeight: 700, color: "var(--color-text-primary)", marginBottom: 4 }}>
-                  {selectedMeta?.standardRef} &bull; {selectedMeta?.cashFlowCategory} Cash Flow
+                  {selectedMeta?.standardRef} &bull; {selectedMeta?.cashFlowCategory} Cash Flow &bull; SOFP:{" "}
+                  {selectedMeta?.section.replace(/_/g, " ")}
                 </div>
                 <div>{selectedMeta?.hint}</div>
                 <div
@@ -878,7 +1180,13 @@ export default function CapitalFundingPage() {
                   className="input"
                   defaultValue={editingEntry?.title ?? presetTitle}
                   placeholder={
-                    selectedType === "GRANT_INCOME"
+                    selectedType === "INVESTOR_ORDINARY_EQUITY"
+                      ? "e.g., Seed Equity Investment by Lagos Angel Network (10% Ordinary Shares)"
+                      : selectedType === "DEPOSIT_FOR_SHARES"
+                      ? "e.g., Equity Commitment Pending CAC Form CAC2A Allotment"
+                      : selectedType === "CONVERTIBLE_INVESTMENT"
+                      ? "e.g., Pre-Seed Convertible Note / SAFE (18-mo Cap)"
+                      : selectedType === "GRANT_INCOME"
                       ? "e.g., SMEDAN / TEF SME Development Grant"
                       : selectedType === "DEFERRED_GRANT"
                       ? "e.g., BOI / State Machinery Equipment Capital Grant"
@@ -900,7 +1208,7 @@ export default function CapitalFundingPage() {
                     min="0.01"
                     className="input"
                     defaultValue={editingEntry?.amount ?? presetAmount}
-                    placeholder="500000"
+                    placeholder="2500000"
                     required
                   />
                 </div>
@@ -921,22 +1229,22 @@ export default function CapitalFundingPage() {
               </div>
 
               <div>
-                <label className="label">Grantor / Lender / Investor &amp; Reference No. (Optional)</label>
+                <label className="label">Investor / Grantor / Lender &amp; Reference No. (Optional)</label>
                 <input
                   name="reference"
                   className="input"
                   defaultValue={editingEntry?.reference ?? presetReference}
-                  placeholder="e.g., SMEDAN-2026-04 / BOI-LN-001 / Director Transfer Ref"
+                  placeholder="e.g., CAC2A-INV-01 / SAFE-2026 / SMEDAN-04 / BOI-LN-001"
                 />
               </div>
 
               <div>
-                <label className="label">Conditions / Repayment Terms / Notes (Optional)</label>
+                <label className="label">Equity % / Conversion Terms / Repayment Notes (Optional)</label>
                 <input
                   name="notes"
                   className="input"
                   defaultValue={editingEntry?.notes ?? presetNotes}
-                  placeholder="e.g., 24-month tenor @ 9% p.a. / Asset-linked grant over 5-yr life"
+                  placeholder="e.g., 10% ordinary equity, CAC filing ref / 20% discount SAFE / 5-yr grant amortisation"
                 />
               </div>
 
@@ -944,7 +1252,7 @@ export default function CapitalFundingPage() {
                 <button type="button" className="btn-outline" onClick={() => setShowModal(false)}>
                   Cancel
                 </button>
-                <button type="submit" className="btn-accent" disabled={isSaving}>
+                <button type="submit" className="btn-primary" disabled={isSaving}>
                   {isSaving ? "Posting Entry..." : editingEntry ? "Save Changes" : "Post to Financial Ledger"}
                 </button>
               </div>

@@ -706,6 +706,30 @@ export default function FinancialStatementsPage() {
                       <td style={{ textAlign: "right" }}>{fmt(sofp.equity.shareCapital)}</td>
                       {comp && <td style={{ textAlign: "right" }}>{fmt(comp.equity.shareCapital)}</td>}
                     </tr>
+                    {(sofp.equity.preferenceShareCapital > 0 || (comp?.equity?.preferenceShareCapital || 0) > 0) && (
+                      <tr>
+                        <td style={{ paddingLeft: 28 }}>Irredeemable preference share capital (IAS 32)</td>
+                        <td style={{ textAlign: "center" }}>
+                          <button className="badge-accent" style={{ border: "none", cursor: "pointer" }} onClick={jumpToNote}>
+                            8
+                          </button>
+                        </td>
+                        <td style={{ textAlign: "right" }}>{fmt(sofp.equity.preferenceShareCapital || 0)}</td>
+                        {comp && <td style={{ textAlign: "right" }}>{fmt(comp.equity.preferenceShareCapital || 0)}</td>}
+                      </tr>
+                    )}
+                    {(sofp.equity.depositForShares > 0 || (comp?.equity?.depositForShares || 0) > 0) && (
+                      <tr>
+                        <td style={{ paddingLeft: 28 }}>Deposit for shares &mdash; pending CAC allotment</td>
+                        <td style={{ textAlign: "center" }}>
+                          <button className="badge-accent" style={{ border: "none", cursor: "pointer" }} onClick={jumpToNote}>
+                            8
+                          </button>
+                        </td>
+                        <td style={{ textAlign: "right" }}>{fmt(sofp.equity.depositForShares || 0)}</td>
+                        {comp && <td style={{ textAlign: "right" }}>{fmt(comp.equity.depositForShares || 0)}</td>}
+                      </tr>
+                    )}
                     <tr>
                       <td style={{ paddingLeft: 28 }}>Share premium</td>
                       <td style={{ textAlign: "center" }}>
@@ -717,7 +741,7 @@ export default function FinancialStatementsPage() {
                       {comp && <td style={{ textAlign: "right" }}>{fmt(comp.equity.sharePremium)}</td>}
                     </tr>
                     <tr>
-                      <td style={{ paddingLeft: 28 }}>Revaluation &amp; owner capital reserves</td>
+                      <td style={{ paddingLeft: 28 }}>Revaluation, partner JV &amp; owner capital reserves</td>
                       <td style={{ textAlign: "center" }}>
                         <button className="badge-accent" style={{ border: "none", cursor: "pointer" }} onClick={jumpToNote}>
                           8
@@ -770,6 +794,27 @@ export default function FinancialStatementsPage() {
                       <td style={{ textAlign: "right" }}>{fmt(sofp.nonCurrentLiabilities.longTermBorrowings)}</td>
                       {comp && <td style={{ textAlign: "right" }}>{fmt(comp.nonCurrentLiabilities.longTermBorrowings)}</td>}
                     </tr>
+                    {(sofp.nonCurrentLiabilities.convertibleAndRedeemableInvestments > 0 ||
+                      (comp?.nonCurrentLiabilities?.convertibleAndRedeemableInvestments || 0) > 0) && (
+                      <tr>
+                        <td style={{ paddingLeft: 28 }}>
+                          Convertible notes, SAFE &amp; redeemable preference shares (IAS 32)
+                        </td>
+                        <td style={{ textAlign: "center" }}>
+                          <button className="badge-accent" style={{ border: "none", cursor: "pointer" }} onClick={jumpToNote}>
+                            9
+                          </button>
+                        </td>
+                        <td style={{ textAlign: "right" }}>
+                          {fmt(sofp.nonCurrentLiabilities.convertibleAndRedeemableInvestments || 0)}
+                        </td>
+                        {comp && (
+                          <td style={{ textAlign: "right" }}>
+                            {fmt(comp.nonCurrentLiabilities.convertibleAndRedeemableInvestments || 0)}
+                          </td>
+                        )}
+                      </tr>
+                    )}
                     <tr>
                       <td style={{ paddingLeft: 28 }}>Deferred government grants (IAS 20)</td>
                       <td style={{ textAlign: "center" }}>
@@ -1208,7 +1253,7 @@ export default function FinancialStatementsPage() {
                       <th style={{ textAlign: "right" }}>Issued Share Capital (₦)</th>
                       <th style={{ textAlign: "right" }}>Share Premium (₦)</th>
                       <th style={{ textAlign: "right" }}>Revaluation Reserve (₦)</th>
-                      <th style={{ textAlign: "right" }}>General / Owner Reserve (₦)</th>
+                      <th style={{ textAlign: "right" }}>Capital, Pref. &amp; Share Deposits (₦)</th>
                       <th style={{ textAlign: "right" }}>Retained Earnings (₦)</th>
                       <th style={{ textAlign: "right" }}>Total Equity (₦)</th>
                     </tr>
@@ -1259,11 +1304,11 @@ export default function FinancialStatementsPage() {
 
                     <tr>
                       <td colSpan={7} style={{ fontWeight: 700, color: "var(--color-text-secondary)", paddingTop: 12 }}>
-                        Transactions with Owners in their Capacity as Owners
+                        Transactions with Owners &amp; Equity Investors
                       </td>
                     </tr>
                     <tr>
-                      <td style={{ paddingLeft: 24 }}>Issue of ordinary shares &amp; share premium</td>
+                      <td style={{ paddingLeft: 24 }}>Issue / conversion of ordinary shares &amp; share premium</td>
                       <td style={{ textAlign: "right" }}>{fmt(soce.issueOfShares)}</td>
                       <td style={{ textAlign: "right" }}>{fmt(soce.sharePremiumMovement)}</td>
                       <td style={{ textAlign: "right", color: "var(--color-text-muted)" }}>—</td>
@@ -1272,7 +1317,9 @@ export default function FinancialStatementsPage() {
                       <td style={{ textAlign: "right" }}>{fmt(soce.issueOfShares + soce.sharePremiumMovement)}</td>
                     </tr>
                     <tr>
-                      <td style={{ paddingLeft: 24 }}>Owner capital injections &amp; prior retained earnings brought in</td>
+                      <td style={{ paddingLeft: 24 }}>
+                        Owner/partner capital, preference shares, deposit for shares &amp; prior RE
+                      </td>
                       <td style={{ textAlign: "right", color: "var(--color-text-muted)" }}>—</td>
                       <td style={{ textAlign: "right", color: "var(--color-text-muted)" }}>—</td>
                       <td style={{ textAlign: "right", color: "var(--color-text-muted)" }}>—</td>
@@ -1562,10 +1609,30 @@ export default function FinancialStatementsPage() {
                       </td>
                     </tr>
                     <tr>
-                      <td style={{ paddingLeft: 28 }}>Proceeds from issue of share capital &amp; owner equity injections</td>
+                      <td style={{ paddingLeft: 28 }}>
+                        Proceeds from share issue, equity investments &amp; owner capital
+                      </td>
                       <td style={{ textAlign: "center" }}>8</td>
                       <td style={{ textAlign: "right" }}>{fmt(socf.financing.proceedsFromShareIssue)}</td>
                     </tr>
+                    {(socf.financing.quasiEquityInvestmentsReceived || 0) !== 0 && (
+                      <tr>
+                        <td style={{ paddingLeft: 28 }}>
+                          Convertible notes, SAFE &amp; redeemable preference shares received (IAS 32)
+                        </td>
+                        <td style={{ textAlign: "center" }}>9</td>
+                        <td style={{ textAlign: "right" }}>{fmt(socf.financing.quasiEquityInvestmentsReceived)}</td>
+                      </tr>
+                    )}
+                    {(socf.financing.investmentsRedeemed || 0) !== 0 && (
+                      <tr>
+                        <td style={{ paddingLeft: 28 }}>
+                          Redemption of convertible notes &amp; redeemable preference shares
+                        </td>
+                        <td style={{ textAlign: "center" }}>9</td>
+                        <td style={{ textAlign: "right" }}>{fmt(socf.financing.investmentsRedeemed)}</td>
+                      </tr>
+                    )}
                     {socf.financing.capitalGrantsReceived !== 0 && (
                       <tr>
                         <td style={{ paddingLeft: 28 }}>Capital &amp; asset-related grants received (IAS 20)</td>
